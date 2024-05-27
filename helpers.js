@@ -172,7 +172,11 @@ export async function fetchPageContent(url) {
 
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
-  await page.goto(url);
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  // wait a second for the page to load
+
+  const pageTitle = await page.title();
+
   const content = await page.content();
   await browser.close();
 
@@ -185,5 +189,5 @@ export async function fetchPageContent(url) {
     .get()
     .join(" ");
 
-  return allowedContent;
+  return `#${pageTitle}\n##${url}\n${allowedContent}`;
 }

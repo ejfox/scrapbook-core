@@ -58,25 +58,25 @@ const fetchStatuses = async (userId) => {
   return allStatuses;
 };
 
-(async () => {
-  const userId = await fetchUserId();
-  if (userId) {
-    const statuses = await fetchStatuses(userId);
-    const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
-    const filePath = path.join(dirPath, "mastodon.json");
-    await fs.mkdir(dirPath, { recursive: true }, (err) => {
-      if (err) {
-        console.error("Error creating directories:", err);
-      }
-    });
-    await fs.writeFile(filePath, JSON.stringify(statuses, null, 2), (err) => {
-      if (err) {
-        console.error("Error writing file:", err);
-      }
-    });
-  } else {
-    console.error("User ID could not be found for the specified username.");
-  }
-})();
+// (async () => {
+//   const userId = await fetchUserId();
+//   if (userId) {
+//     const statuses = await fetchStatuses(userId);
+//     const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
+//     const filePath = path.join(dirPath, "mastodon.json");
+//     await fs.mkdir(dirPath, { recursive: true }, (err) => {
+//       if (err) {
+//         console.error("Error creating directories:", err);
+//       }
+//     });
+//     await fs.writeFile(filePath, JSON.stringify(statuses, null, 2), (err) => {
+//       if (err) {
+//         console.error("Error writing file:", err);
+//       }
+//     });
+//   } else {
+//     console.error("User ID could not be found for the specified username.");
+//   }
+// })();
 
 export { fetchStatuses, fetchUserId };
