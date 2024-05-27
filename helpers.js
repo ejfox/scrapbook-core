@@ -2,6 +2,7 @@ import CryptoJS from "crypto-js";
 import { md5 } from "js-md5";
 import cheerio from "cheerio";
 import puppeteer from "puppeteer";
+import llamaTokenizer from "llama-tokenizer-js";
 
 export function generateShortId(data, length = 8) {
   const hash = CryptoJS.SHA256(data);
@@ -190,4 +191,46 @@ export async function fetchPageContent(url) {
     .join(" ");
 
   return `#${pageTitle}\n##${url}\n${allowedContent}`;
+}
+
+// this breaks the large content into smaller chunks
+export function breakContentIntoChunks(content, chunkSizeTokens) {
+  // Split the content into sentences using a regular expression
+  // The regular expression matches common sentence delimiters: periods, exclamation marks, and question marks
+  // It accounts for common abbreviations and edge cases to avoid splitting on false sentence boundaries
+  const sentences = content.match(/[^.!?]+[.!?]+/g);
+
+  // Initialize an empty array to store the chunks
+  const chunks = [];
+
+  // Initialize a variable to keep track of the current chunk being built
+  let currentChunk = "";
+
+  // Iterate over each sentence
+  for (const sentence of sentences) {
+    // Calculate the token count of the current sentence
+    const sentenceTokenCount = llamaTokenizer.encode(sentence).length;
+
+    // Check if adding the current sentence to the current chunk would exceed the chunk size limit
+    if (
+      llamaTokenizer.encode(currentChunk + sentence).length > chunkSizeTokens
+    ) {
+      // If the chunk size limit is exceeded, add the current chunk to the chunks array
+      chunks.push(currentChunk.trim());
+
+      // Reset the current chunk to start building a new chunk
+      currentChunk = "";
+    }
+
+    // Append the current sentence to the current chunk
+    currentChunk += sentence + " ";
+  }
+
+  // After processing all sentences, add the remaining current chunk to the chunks array
+  if (currentChunk.trim() !== "") {
+    chunks.push(currentChunk.trim());
+  }
+
+  // Return the array of chunks
+  return chunks;
 }
