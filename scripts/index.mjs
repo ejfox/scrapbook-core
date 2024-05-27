@@ -206,11 +206,11 @@ async function generateWebpageScreenshot(webUrl) {
       "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) CriOS/56.0.2924.75 Mobile/14E5239e Safari/602.1"
     );
 
-    console.log("Navigating to:", url);
+    console.log("Navigating to:", webUrl);
 
     // await page.goto(url, { waitUntil: "domcontentloaded" });
     // no waitUntil, it's kinda ruining things
-    await page.goto(url);
+    await page.goto(webUrl);
 
     // wait an extra moment for the page to load
     await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -226,7 +226,7 @@ async function generateWebpageScreenshot(webUrl) {
 
     await browser.close();
 
-    let urlWithoutQueryParams = url.split("?")[0];
+    let urlWithoutQueryParams = webUrl.split("?")[0];
     // let filename = new URL(urlWithoutQueryParams).pathname.split("/").pop();
     // that's not right, it's just the lasdt part of the url
     // we want the entire URL with no slashes
