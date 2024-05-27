@@ -1,0 +1,17 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "are.na": "^0.1.5",
+    "axios": "^1.7.2",
+    "bottleneck": "^2.19.5",
+    "cheerio": "^1.0.0-rc.12",
+    "crypto-js": "^4.2.0",
+    "d3": "^7.9.0",
+    "dotenv": "^16.4.5",
+    "inquirer": "^9.2.22",
+    "js-md5": "^0.8.3",
+    "ora": "^8.0.1",
+    "puppeteer": "^22.10.0"
+  }
+}

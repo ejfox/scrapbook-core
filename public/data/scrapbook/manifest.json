@@ -1,0 +1,18 @@
+{
+  "arena": {
+    "lastFetch": null,
+    "errors": []
+  },
+  "github": {
+    "lastFetch": null,
+    "errors": []
+  },
+  "mastodon": {
+    "lastFetch": null,
+    "errors": []
+  },
+  "pinboard": {
+    "lastFetch": "2024-05-27T04:51:56.368Z",
+    "errors": []
+  }
+}
