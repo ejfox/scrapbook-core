@@ -146,7 +146,7 @@ const fetchBookmarksWithCache = async () => {
     let manifest = {};
     try {
       const jsonFile = await fs.readFile(
-        "./public/data/scrapbook/manifest.json",
+        "public/data/scrapbook/manifest.json",
         "utf8",
         () => {}
       );

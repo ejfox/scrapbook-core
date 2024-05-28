@@ -34,6 +34,26 @@ const browserLimiter = new Bottleneck({
   minTime: 1000,
 });
 
+// Function to clean and format the filename
+function cleanAndFormatFilename(url) {
+  // Remove any : or / or ? from the filename
+  let cleanedFilename = url.replace(/[:/]/g, "");
+
+  // Remove any special characters and spaces
+  cleanedFilename = cleanedFilename.replace(/[^\w\s]/gi, "");
+
+  // Replace spaces with underscores
+  cleanedFilename = cleanedFilename.replace(/\s+/g, "_");
+
+  return cleanedFilename;
+}
+
+// New function to split out the query parameters from the webUrl
+function splitQueryParams(url) {
+  const [baseUrl, queryParams] = url.split("?");
+  return { baseUrl, queryParams };
+}
+
 async function fetchAndUpsertScraps() {
   const checkpoint = await loadCheckpoint();
 
@@ -159,7 +179,7 @@ async function generateWebpageScreenshot(webUrl) {
 
       if (error) {
         console.error(`Error uploading screenshot: ${videoId}.jpg`, error);
-        return null;
+        // return null;
       }
 
       // return the public URL
@@ -185,22 +205,6 @@ async function generateWebpageScreenshot(webUrl) {
     // set it to 1920x1080
     await page.setViewport({ width: 1080, height: 1920 });
 
-    // set device emulation to iPhone
-    // await page.emulate({
-    //   userAgent:
-    //     "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) CriOS/56.0.2924.75 Mobile/14E5239e Safari/602.1",
-    //   viewport: {
-    //     // width: 1920,
-    //     // height: 1080,
-    //     width: 1080,
-    //     height: 1920,
-    //     // deviceScaleFactor: 2,
-    //     isMobile: true,
-    //     hasTouch: true,
-    //     isLandscape: false,
-    //   },
-    // });
-
     // choose an ios user agent
     await page.setUserAgent(
       "Mozilla/5.0 (iPhone; CPU iPhone OS 10_3 like Mac OS X) AppleWebKit/602.1.50 (KHTML, like Gecko) CriOS/56.0.2924.75 Mobile/14E5239e Safari/602.1"
@@ -219,7 +223,6 @@ async function generateWebpageScreenshot(webUrl) {
     //   // waitUntil: "networkidle0",
     //   waitUntil: "domcontentloaded",
     // });
-
     // wait a second for the page to load and then take a screenshot
     screenshotBuffer = await page.screenshot({ type: "png" });
     console.log("Screenshot taken.");
@@ -227,16 +230,19 @@ async function generateWebpageScreenshot(webUrl) {
     await browser.close();
 
     let urlWithoutQueryParams = webUrl.split("?")[0];
-    // let filename = new URL(urlWithoutQueryParams).pathname.split("/").pop();
-    // that's not right, it's just the lasdt part of the url
-    // we want the entire URL with no slashes
-    let filename = urlWithoutQueryParams.split("/").join("");
-
-    // remove any : or / or ? from the filename
-    filename = filename.replace(/[:/]/g, "");
+    let filename = cleanAndFormatFilename(urlWithoutQueryParams);
 
     if (!filename || filename.length === 0) {
       filename = Date.now().toString();
+    }
+
+    const { baseUrl } = splitQueryParams(webUrl);
+    const formattedFilename = cleanAndFormatFilename(baseUrl);
+
+    if (!formattedFilename || formattedFilename.length === 0) {
+      filename = Date.now().toString();
+    } else {
+      filename = formattedFilename;
     }
 
     const { data, error } = await supabase.storage
@@ -321,6 +327,14 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
 
         console.log(`Summary: ${JSON.stringify(summary)}`);
 
+        let screenshotUrl = null;
+        await browserLimiter.schedule(async () => {
+          screenshotUrl = await generateWebpageScreenshot(bookmark.href);
+          console.log(`⚡️ Screenshot URL (inside limiter): ${screenshotUrl}`);
+        });
+
+        // we actually need to fetch the url with the
+
         const bookmarkObj = {
           scrap_id: helpers.scrapToUUID(bookmark.href),
           source: "pinboard",
@@ -333,9 +347,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
           relationships: {},
           metadata: {
             href: bookmark.href,
-            screenshotUrl: await browserLimiter.schedule(() =>
-              generateWebpageScreenshot(bookmark.href)
-            ),
+            screenshotUrl: screenshotUrl,
           },
         };
 
