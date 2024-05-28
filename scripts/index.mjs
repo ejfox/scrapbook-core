@@ -10,6 +10,7 @@ import fs from "fs/promises";
 import axios from "axios";
 import { summarizeContent } from "./aiSummarization.mjs";
 import path from "path";
+import terminalImage from "terminal-image";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -41,6 +42,9 @@ function cleanAndFormatFilename(url) {
 
   // Remove any special characters and spaces
   cleanedFilename = cleanedFilename.replace(/[^\w\s]/gi, "");
+
+  // remove any dots: .
+  cleanedFilename = cleanedFilename.replace(/\./g, "");
 
   // Replace spaces with underscores
   cleanedFilename = cleanedFilename.replace(/\s+/g, "_");
@@ -178,7 +182,10 @@ async function generateWebpageScreenshot(webUrl) {
         .upload(`${videoId}.jpg`, imageBuffer);
 
       if (error) {
-        console.error(`Error uploading screenshot: ${videoId}.jpg`, error);
+        console.error(
+          `Error uploading YouTube screenshot: ${videoId}.jpg`,
+          error
+        );
         // return null;
       }
 
@@ -227,6 +234,10 @@ async function generateWebpageScreenshot(webUrl) {
     screenshotBuffer = await page.screenshot({ type: "png" });
     console.log("Screenshot taken.");
 
+    // TODO: Would be cool to use a CLI tool to render the screenshot
+    // in the terminal
+    console.log(await terminalImage.buffer(screenshotBuffer, { height: 50 }));
+
     await browser.close();
 
     let urlWithoutQueryParams = webUrl.split("?")[0];
@@ -251,18 +262,24 @@ async function generateWebpageScreenshot(webUrl) {
 
     if (error) {
       console.error(`Error uploading screenshot: ${filename}.png`, error);
-      return null;
     }
 
-    const { publicURL, error: publicURLError } = supabase.storage
+    // const { publicURL, error: publicURLError } = supabase.storage
+    const screenshotData = await supabase.storage
       .from("scrap_screenshots")
-      .getPublicUrl(data.path);
+      .getPublicUrl(`${filename}.png`);
 
-    if (publicURLError) {
-      console.error("Error getting public URL:", publicURLError);
+    console.log("screenshotData!");
+    console.log(screenshotData);
+
+    if (!screenshotData) {
+      console.error("Error getting public URL");
       return null;
     }
 
+    const publicURL = screenshotData.data.publicUrl;
+
+    console.log("Returning public URL:", publicURL);
     return publicURL;
   } catch (error) {
     console.error("Error in generateWebpageScreenshot:", error);

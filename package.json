@@ -13,6 +13,7 @@
     "js-md5": "^0.8.3",
     "llama-tokenizer-js": "^1.2.1",
     "ora": "^8.0.1",
-    "puppeteer": "^22.10.0"
+    "puppeteer": "^22.10.0",
+    "terminal-image": "^2.0.0"
   }
 }
