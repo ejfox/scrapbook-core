@@ -308,7 +308,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
         const { data, error } = await supabase
           .from("scraps")
           .select("summary")
-          .eq("scrap_id", helpers.scrapToUUID(bookmark.href));
+          .eq("scrap_id", helpers.scrapToUUID("pinboard" + bookmark.href));
 
         const existingSummary = data[0]?.summary;
 
@@ -353,7 +353,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
         // we actually need to fetch the url with the
 
         const bookmarkObj = {
-          scrap_id: helpers.scrapToUUID(bookmark.href),
+          scrap_id: helpers.scrapToUUID("pinboard" + bookmark.href),
           source: "pinboard",
           content: bookmark.description,
           created_at: bookmark.time,
@@ -396,7 +396,7 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
       .filter((status) => !lastScrapTime || status.created_at > lastScrapTime)
       .map((status) => {
         return {
-          scrap_id: helpers.scrapToUUID(status.id),
+          scrap_id: helpers.scrapToUUID("mastodon" + status.id),
           source: "mastodon",
           content: status.content.replace(/&[^;]+;/g, ""),
           summary: "",
@@ -440,18 +440,45 @@ async function fetchAndUpsertArenaBlocks(lastScrapTime) {
 
     const processedArenaBlocks = arenaBlocks
       .filter((block) => !lastScrapTime || block.created_at > lastScrapTime)
-      .map((block) => {
+      .map(async (block) => {
         const relationships = block.channels.map((channel) => ({
           type: "belongs_to",
           target: {
-            scrap_id: helpers.scrapToUUID(channel.id),
+            scrap_id: helpers.scrapToUUID("arena" + channel.id),
             type: "channel",
             name: channel.title,
           },
         }));
 
+        let images = [];
+        if (block.image) {
+          const imageUrl = block.image.display.url;
+          const imageFilename = cleanAndFormatFilename(imageUrl);
+          const { data, error } = await supabase.storage
+            .from("arena_block_images")
+            .upload(
+              `${imageFilename}.png`,
+              await axios
+                .get(imageUrl, { responseType: "arraybuffer" })
+                .then((response) => response.data),
+              {
+                contentType: "image/png",
+              }
+            );
+          if (error) {
+            console.error("Error uploading image:", error);
+          } else {
+            const imagePublicURL = await supabase.storage
+              .from("arena_block_images")
+              .getPublicUrl(`${imageFilename}.png`);
+            if (imagePublicURL) {
+              images = [imagePublicURL.data.publicUrl];
+            }
+          }
+        }
+
         return {
-          scrap_id: helpers.scrapToUUID(block.id),
+          scrap_id: helpers.scrapToUUID("arena" + block.id),
           source: "arena",
           content: block.description,
           summary: "",
@@ -460,7 +487,9 @@ async function fetchAndUpsertArenaBlocks(lastScrapTime) {
           relationships: relationships,
           metadata: {
             href: `https://www.are.na/block/${block.id}`,
-            images: block.image ? [block.image.display.url] : [],
+            // use the first image as the primary image
+            image: images[0],
+            images: images,
           },
         };
       });
