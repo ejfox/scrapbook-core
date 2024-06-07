@@ -4,8 +4,14 @@ import Bottleneck from "bottleneck";
 // const relationshipRegex =
 //   /^\[([a-zA-Z0-9\s]+):([a-zA-Z0-9\s]+)\] -\[:([a-zA-Z0-9\s]+)\]-> \[([a-zA-Z0-9\s]+):([a-zA-Z0-9\s]+)\]$/;
 
+/*
+[person:Stewart Brand] -[:FOUNDED]-> [organization:Whole Earth Catalog]
+[person:Steve Jobs] -[:INFLUENCED_BY]-> [person:Stewart Brand]
+[organization:Apple] -[:DEVELOPED]-> [technology:iPhone]    
+*/
+
 const relationshipRegex =
-  /^\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\] -\[:([a-zA-Z0-9\s]+)\]-> \[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]$/;
+  /^\s*\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]\s*-\s*\[:([a-zA-Z0-9_]+)\]\s*->\s*\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]\s*$/;
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
@@ -99,7 +105,10 @@ export async function summarizeContent(content, options = {}) {
   const relationshipsData = [];
 
   for (const relationship of relationships) {
+    console.log(`Parsing relationship: ${relationship}`);
+
     const match = relationship.match(relationshipRegex);
+    console.log(match);
     if (match) {
       const [
         _,
@@ -120,6 +129,10 @@ export async function summarizeContent(content, options = {}) {
         target: targetNode,
         type: relationshipType.trim(),
       });
+
+      console.log(
+        `⚡️ Relationship: ${sourceNode.name} (${sourceNode.type}) -[${relationshipType}]-> ${targetNode.name} (${targetNode.type})`
+      );
     } else {
       console.log(`Invalid relationship format: ${relationship}`);
     }
@@ -169,9 +182,9 @@ Output each relationship on a new line using this EXACT format:
 [entity1_type:entity1_name] -[:RELATIONSHIP_TYPE]-> [entity2_type:entity2_name]
 
 Examples:
-[person:Stewart Brand] -[:FOUNDED]-> [organization:Whole Earth Catalog]
-[person:Steve Jobs] -[:INFLUENCED_BY]-> [person:Stewart Brand]
-[organization:Apple] -[:DEVELOPED]-> [technology:iPhone]    
+[Person:Stewart Brand] -[:FOUNDED]-> [Organization:Whole Earth Catalog]
+[Person:Steve Jobs] -[:INFLUENCED_BY]-> [Person:Stewart Brand]
+[Organization:Apple] -[:DEVELOPED]-> [Technology:iPhone]    
     `,
   });
 
@@ -201,10 +214,26 @@ Please provide one relationship per line. Return ONLY the relationships, no othe
 
   const responseMsg = response.data.choices[0].message.content;
 
-  // make sure the responseMsg contains at least one relationship, otherwise retry summarization
-  if (!responseMsg.match(relationshipRegex)) {
+  // console.log(`Response message: ${responseMsg}`);
+
+  // Split the response message into lines and check each line for a match
+  const relationships = responseMsg
+    .split("\n")
+    .filter((line) => line.trim() !== "");
+
+  let validRelationshipFound = false;
+
+  for (const relationship of relationships) {
+    if (relationship.match(relationshipRegex)) {
+      validRelationshipFound = true;
+      break;
+    }
+  }
+
+  // Make sure the responseMsg contains at least one relationship, otherwise retry summarization
+  if (!validRelationshipFound) {
     console.log(
-      "Response message does not contain any relationships, retrying summarization... \n" +
+      "Response message does not contain any valid relationships, retrying summarization... \n" +
         responseMsg
     );
     return await summarizeString(content, { metaSummary: true });
