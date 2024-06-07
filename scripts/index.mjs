@@ -63,8 +63,8 @@ async function fetchAndUpsertScraps() {
 
   try {
     await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
-    // await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
-    // await fetchAndUpsertArenaBlocks(checkpoint.arena);
+    await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
+    await fetchAndUpsertArenaBlocks(checkpoint.arena);
 
     console.log("All scraps fetched and upserted.");
   } catch (error) {
