@@ -258,7 +258,9 @@ async function generateWebpageScreenshot(webUrl) {
 
     const { data, error } = await supabase.storage
       .from("scrap_screenshots")
-      .upload(`${filename}.png`, screenshotBuffer);
+      .upload(`${filename}.png`, screenshotBuffer, {
+        contentType: "image/png",
+      });
 
     if (error) {
       console.error(`Error uploading screenshot: ${filename}.png`, error);
