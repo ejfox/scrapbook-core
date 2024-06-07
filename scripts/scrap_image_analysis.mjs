@@ -3,9 +3,8 @@ import axios from "axios";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 import getColors from "get-image-colors";
-// import FileReader for base64 encoding
-import FileReader from "filereader";
-
+// import chroma js
+import chroma from "chroma-js";
 dotenv.config();
 
 const supabase = createClient(
@@ -54,6 +53,7 @@ async function updateScrapImageAnalysis(
   const { data: scrapData, error: scrapError } = await supabase
     .from("scraps")
     .select("metadata")
+
     .eq("scrap_id", scrapId);
 
   if (scrapError) {
@@ -96,14 +96,19 @@ async function analyzeImage(imageUrl) {
 
     const colors = await getColors(imageBuffer, { type: "image/png" });
 
-    const dominantColor = colors[0].hex();
-    const lightness = colors[0].get("lab.l");
-    const textColor = lightness > 60 ? "#000000" : "#FFFFFF";
+    // const lightness = colors[0].get("lab.l");
+
+    // const dominantColor = colors[0].rgba();
+    // use chroma js to get the average color of the image
+    const dominantColor = chroma.average(colors, "lch").hex();
+    const lightness = chroma(dominantColor).get("lab.l");
+    const temperature = chroma(dominantColor).temperature();
 
     return {
       palette: colors.map((color) => color.hex()),
       dominant_color: dominantColor,
-      text_color: textColor,
+      lightness: lightness,
+      temperature: temperature,
     };
   } catch (error) {
     console.error("Error analyzing image:", error);
@@ -119,26 +124,27 @@ async function analyzeImage(imageUrl) {
 async function generateImageEmbedding(imageUrl) {
   console.log("Generating image embedding for:", imageUrl);
 
-  const b64 = await toDataURL_node(imageUrl).catch(console.error);
+  // const b64 = await toDataURL_node(imageUrl).catch(console.error);
 
-  async function toDataURL_node(url) {
-    try {
-      const response = await fetch(url);
-      const contentType = response.headers.get("Content-Type");
-      const buffer = await response.buffer();
-      return "data:" + contentType + ";base64," + buffer.toString("base64");
-    } catch (error) {
-      console.error("Error converting image to base64:", error);
-      return null;
-    }
-  }
+  // async function toDataURL_node(url) {
+  //   try {
+  //     const response = await fetch(url);
+  //     const contentType = response.headers.get("Content-Type");
+  //     const buffer = await response.buffer();
+  //     return "data:" + contentType + ";base64," + buffer.toString("base64");
+  //   } catch (error) {
+  //     console.error("Error converting image to base64:", error);
+  //     return null;
+  //   }
+  // }
 
   try {
     const response = await axios.post(
       "https://api-atlas.nomic.ai/v1/embedding/image",
       {
         model: "nomic-embed-vision-v1.5",
-        images: b64,
+        // images: b64,
+        images: imageUrl,
       },
       {
         headers: {
@@ -148,7 +154,12 @@ async function generateImageEmbedding(imageUrl) {
       }
     );
 
-    return response.data.embeddings[0];
+    if (response.data.embeddings && response.data.embeddings.length > 0) {
+      return response.data.embeddings[0];
+    } else {
+      console.error("No embedding returned for image:", imageUrl);
+      return null;
+    }
   } catch (error) {
     console.error("Error generating image embedding:", error);
     return null;
@@ -163,23 +174,29 @@ async function generateImageEmbedding(imageUrl) {
 async function processScrapBatch(scraps) {
   for (const scrap of scraps) {
     if (scrap.metadata.screenshotUrl) {
-      const [imageAnalysis, imageEmbedding] = await Promise.all([
-        limiter.schedule(() => analyzeImage(scrap.metadata.screenshotUrl)),
-        limiter.schedule(() =>
-          generateImageEmbedding(scrap.metadata.screenshotUrl)
-        ),
-      ]);
-
-      if (imageAnalysis && imageEmbedding) {
-        await updateScrapImageAnalysis(
-          scrap.scrap_id,
-          imageAnalysis,
-          imageEmbedding
-        );
-        console.log(
-          `Image analysis and embedding updated for scrap ${scrap.scrap_id}`
+      const imageAnalysis = await limiter.schedule(() =>
+        analyzeImage(scrap.metadata.screenshotUrl)
+      );
+      let imageEmbedding = null;
+      try {
+        // imageEmbedding = await limiter.schedule(() =>
+        //   generateImageEmbedding(scrap.metadata.screenshotUrl)
+        // );
+      } catch (error) {
+        console.error(
+          `Error generating image embedding for scrap ${scrap.scrap_id}:`,
+          error
         );
       }
+
+      await updateScrapImageAnalysis(
+        scrap.scrap_id,
+        imageAnalysis,
+        imageEmbedding
+      );
+      console.log(
+        `Image analysis and embedding updated for scrap ${scrap.scrap_id}`
+      );
     }
   }
 }
