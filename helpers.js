@@ -168,7 +168,7 @@ export function generatePassword(titleSlug) {
 
 export async function fetchPageContent(url) {
   const ALLOWED_TEXT_ELEMENTS =
-    "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote";
+    "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
   // set up puppeteer
 
   const browser = await puppeteer.launch();
@@ -208,13 +208,12 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
 
   // Iterate over each sentence
   for (const sentence of sentences) {
-    // Calculate the token count of the current sentence
-    const sentenceTokenCount = llamaTokenizer.encode(sentence).length;
+    const sentenceTokenSize = llamaTokenizer.encode(
+      currentChunk + sentence
+    ).length;
 
     // Check if adding the current sentence to the current chunk would exceed the chunk size limit
-    if (
-      llamaTokenizer.encode(currentChunk + sentence).length > chunkSizeTokens
-    ) {
+    if (sentenceTokenSize > chunkSizeTokens) {
       // If the chunk size limit is exceeded, add the current chunk to the chunks array
       chunks.push(currentChunk.trim());
 
@@ -229,6 +228,9 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
   // After processing all sentences, add the remaining current chunk to the chunks array
   if (currentChunk.trim() !== "") {
     chunks.push(currentChunk.trim());
+
+    // Log the size of the last chunk
+    console.log(`Chunk size: ${llamaTokenizer.encode(currentChunk).length}`);
   }
 
   // Return the array of chunks

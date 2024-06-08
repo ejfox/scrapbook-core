@@ -150,6 +150,11 @@ export async function extractRelationships(content, options = {}) {
   console.log(`Summary: ${summary.length} characters`);
   console.log(`Nodes: ${uniqueNodes.length}`);
   console.log(`Relationships: ${relationshipsData.length}`);
+
+  // trim to 6 relationships and 6 nodes
+  console.log("Trimming to 6 relationships and 6 nodes...");
+  relationshipsData.splice(6);
+  uniqueNodes.splice(6);
   return {
     summary,
     nodes: uniqueNodes,
@@ -187,8 +192,12 @@ Output each relationship on a new line using this EXACT format:
 Examples:
 [Person:Stewart Brand] -[:FOUNDED]-> [Organization:Whole Earth Catalog]
 [Person:Steve Jobs] -[:INFLUENCED_BY]-> [Person:Stewart Brand]
-[Organization:Apple] -[:DEVELOPED]-> [Technology:iPhone]    
-    `,
+[Organization:Apple] -[:DEVELOPED]-> [Technology:iPhone]
+
+---
+
+Select only 3-5 of the *most important* relationships from the content. If you are unsure, select the relationships that are most likely to be relevant to further research and investigation. If you are unable to find any relationships, you can say "skip" to move on.
+`,
   });
 
   console.log("Adding user content to messages...");

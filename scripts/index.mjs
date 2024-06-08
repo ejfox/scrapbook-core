@@ -9,7 +9,7 @@ import puppeteer from "puppeteer";
 import Bottleneck from "bottleneck";
 import fs from "fs/promises";
 import axios from "axios";
-import { summarizeContent } from "./aiSummarization.mjs";
+import { summarizeContent, metaSummaryToTags } from "./aiSummarization.mjs";
 import path from "path";
 import terminalImage from "terminal-image";
 import { extractLocation } from "./aiGeolocation.mjs";
@@ -178,11 +178,15 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
           return extractRelationships(pageContent);
         });
 
+        const tags = await limiter.schedule(() => metaSummaryToTags(summary));
+
         let screenshotUrl = null;
         await browserLimiter.schedule(async () => {
           screenshotUrl = await generateWebpageScreenshot(bookmark.href);
           console.log(`⚡️ Screenshot URL (inside limiter): ${screenshotUrl}`);
         });
+
+        const combinedTags = [...tags, ...bookmark.tags];
 
         // Now that we have assembled a screenshot and a summary, we can upsert the bookmark scrap
         const bookmarkObj = {
@@ -193,7 +197,8 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
           // update the updated_at time to now
           updated_at: new Date().toISOString(),
           summary: summary,
-          tags: bookmark.tags,
+          // tags: bookmark.tags,
+          tags: combinedTags,
           relationships: relationships,
           metadata: {
             href: bookmark.href,
@@ -505,7 +510,9 @@ async function generateWebpageScreenshot(webUrl) {
 
       const { data, error } = await supabase.storage
         .from("scrap_screenshots")
-        .upload(`${videoId}.jpg`, imageBuffer);
+        .upload(`${videoId}.jpg`, imageBuffer, {
+          contentType: "image/jpeg",
+        });
 
       if (error) {
         console.error(
@@ -584,7 +591,9 @@ async function generateWebpageScreenshot(webUrl) {
 
     const { data, error } = await supabase.storage
       .from("scrap_screenshots")
-      .upload(`${filename}.png`, screenshotBuffer);
+      .upload(`${filename}.png`, screenshotBuffer, {
+        contentType: "image/png",
+      });
 
     if (error) {
       console.error(`Error uploading screenshot: ${filename}.png`, error);
