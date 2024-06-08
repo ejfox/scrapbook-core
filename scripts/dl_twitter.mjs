@@ -64,7 +64,10 @@ function processTweet(tweet, allTweets) {
     relationships: relationships,
     metadata: {
       href: `https://twitter.com/i/web/status/${tweetId}`,
+      rts: tweet.retweet_count,
+      likes: tweet.favorite_count,
       user: tweet.reply_to_username,
+      reply_to_tweet_id: tweet.reply_to_tweet_id, // Add the tweet ID of the tweet replying to
     },
   };
 }

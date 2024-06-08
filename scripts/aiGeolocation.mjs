@@ -7,10 +7,8 @@ dotenv.config();
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
-  // minTime: 1000,
+  minTime: 1000,
 });
-
-// ... (breakContentIntoChunks function remains the same)
 
 export async function extractLocation(content, options = {}) {
   const chunkSizeTokens = 6144;
@@ -48,7 +46,9 @@ export async function extractLocation(content, options = {}) {
   const location = filteredLocations[0];
   console.log("Extracted Location:", location);
 
-  const { latitude, longitude } = await reverseGeocode(location);
+  const { latitude, longitude } = await limiter.schedule(() =>
+    reverseGeocode(location)
+  );
   console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
 
   return { location, latitude, longitude };
@@ -60,7 +60,7 @@ export async function extractLocationFromString(content) {
   messages.push({
     role: "system",
     content:
-      "You need to extract a geographic location from the given content. The location should be in the format: 'City, State' or 'City, Country'. If no location is found, return null.",
+      "You need to extract a single geographic location from this content. If multiple locations are found, return the first one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no location is found, return 'null'. Respond with ONLY the locationo, no other chatter, introduction, or conclusion.",
   });
 
   messages.push({

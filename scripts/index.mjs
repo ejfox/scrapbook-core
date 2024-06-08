@@ -1,6 +1,7 @@
 import { fetchAllBlocks } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache } from "./dl_pinboard.mjs";
+import { fetchGithubData } from "./dl_github.mjs";
 import * as helpers from "../helpers.js";
 import { updateManifest } from "./manifestHelpers.mjs";
 import { createClient } from "@supabase/supabase-js";
@@ -11,6 +12,11 @@ import axios from "axios";
 import { summarizeContent } from "./aiSummarization.mjs";
 import path from "path";
 import terminalImage from "terminal-image";
+import { extractLocation } from "./aiGeolocation.mjs";
+import { extractRelationships } from "./aiRelationshipExtraction.mjs";
+
+// This checkpoint file keeps track of the data fetched from each source
+const CHECKPOINT_FILE = "./data/checkpoint.json";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -23,6 +29,7 @@ const limiter = new Bottleneck({
   minTime: 500,
 });
 
+// Limiter for summary generation
 const upsertLimiter = new Bottleneck({
   maxConcurrent: 3,
   minTime: 1000,
@@ -35,47 +42,9 @@ const browserLimiter = new Bottleneck({
   minTime: 1000,
 });
 
-// Function to clean and format the filename
-function cleanAndFormatFilename(url) {
-  // Remove any : or / or ? from the filename
-  let cleanedFilename = url.replace(/[:/]/g, "");
-
-  // Remove any special characters and spaces
-  cleanedFilename = cleanedFilename.replace(/[^\w\s]/gi, "");
-
-  // remove any dots: .
-  cleanedFilename = cleanedFilename.replace(/\./g, "");
-
-  // Replace spaces with underscores
-  cleanedFilename = cleanedFilename.replace(/\s+/g, "_");
-
-  return cleanedFilename;
-}
-
-// New function to split out the query parameters from the webUrl
-function splitQueryParams(url) {
-  const [baseUrl, queryParams] = url.split("?");
-  return { baseUrl, queryParams };
-}
-
-async function fetchAndUpsertScraps() {
-  const checkpoint = await loadCheckpoint();
-
-  try {
-    await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
-    await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
-    await fetchAndUpsertArenaBlocks(checkpoint.arena);
-
-    console.log("All scraps fetched and upserted.");
-  } catch (error) {
-    console.error("Error in fetchAndUpsertScraps:", error);
-  }
-}
-
-// This checkpoint file keeps track of the data fetched from each source
-const CHECKPOINT_FILE = "./data/checkpoint.json";
-
 // Determine when the last time we fetched data was
+// by checking our checkpoint file that we save to
+// at the end of each run
 async function loadCheckpoint() {
   try {
     const data = await fs.readFile(CHECKPOINT_FILE, "utf-8");
@@ -94,6 +63,21 @@ async function loadCheckpoint() {
     await fs.writeFile(CHECKPOINT_FILE, JSON.stringify(checkpoint, null, 2));
 
     return checkpoint;
+  }
+}
+
+// Await all the various fetches and upserts
+async function fetchAndUpsertScraps() {
+  const checkpoint = await loadCheckpoint();
+
+  try {
+    await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
+    await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
+    await fetchAndUpsertArenaBlocks(checkpoint.arena);
+    await fetchAndUpsertGithubData();
+    console.log("All scraps fetched and upserted.");
+  } catch (error) {
+    console.error("Error in fetchAndUpsertScraps:", error);
   }
 }
 
@@ -127,6 +111,345 @@ async function upsertScrap(scrap) {
   } catch (error) {
     console.error("Error in upsertScrap:", error);
   }
+}
+
+// Fetch and upsert Pinboard bookmarks
+async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
+  try {
+    console.log("Fetching Pinboard bookmarks...");
+    const pinboardBookmarks = await fetchBookmarksWithCache();
+
+    if (pinboardBookmarks) {
+      await updateManifest("pinboard", { lastFetch: new Date().toISOString() });
+    }
+
+    for (const bookmark of pinboardBookmarks) {
+      if (!lastScrapTime || bookmark.time > lastScrapTime) {
+        let pageContent = "";
+        let summary = "";
+
+        // check if a summary exists for this scrap already
+        const { data, error } = await supabase
+          .from("scraps")
+          .select("summary")
+          .eq("scrap_id", helpers.scrapToUUID("pinboard" + bookmark.href));
+
+        const existingSummary = data[0]?.summary;
+
+        if (existingSummary) {
+          console.log(`Summary already exists for ${bookmark.href}...`);
+          console.log(JSON.stringify(data));
+          console.log("Skipping...");
+          summary = existingSummary;
+        } else {
+          try {
+            pageContent = await browserLimiter.schedule(() =>
+              helpers.fetchPageContent(bookmark.href)
+            );
+          } catch (error) {
+            console.error("Error fetching page content:", error);
+          }
+
+          try {
+            await limiter.schedule(async () => {
+              console.log(`Summarizing content for ${bookmark.href}...`);
+              summary = await summarizeContent(pageContent, {
+                metaSummary: true, // Re-summarizes the summary as a final step
+              });
+            });
+          } catch (error) {
+            console.error("Error summarizing content:", error);
+          }
+        }
+
+        console.log(`Summary: ${JSON.stringify(summary)}`);
+
+        // since we have the summary already, lets use it to geocode and build relationships from the content
+        const { location, latitude, longitude } = await limiter.schedule(() => {
+          return extractLocation(pageContent);
+        });
+
+        if (location) {
+          console.log(`Location: ${location}`);
+          console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
+        }
+
+        const relationships = await limiter.schedule(() => {
+          return extractRelationships(pageContent);
+        });
+
+        let screenshotUrl = null;
+        await browserLimiter.schedule(async () => {
+          screenshotUrl = await generateWebpageScreenshot(bookmark.href);
+          console.log(`⚡️ Screenshot URL (inside limiter): ${screenshotUrl}`);
+        });
+
+        // Now that we have assembled a screenshot and a summary, we can upsert the bookmark scrap
+        const bookmarkObj = {
+          scrap_id: helpers.scrapToUUID("pinboard" + bookmark.href),
+          source: "pinboard",
+          content: bookmark.description,
+          created_at: bookmark.time,
+          // update the updated_at time to now
+          updated_at: new Date().toISOString(),
+          summary: summary,
+          tags: bookmark.tags,
+          relationships: relationships,
+          metadata: {
+            href: bookmark.href,
+            screenshotUrl: screenshotUrl,
+            location: location,
+            latitude: latitude,
+            longitude: longitude,
+          },
+        };
+
+        await upsertLimiter.schedule(() => upsertScrap(bookmarkObj));
+      }
+    }
+
+    console.log(
+      `${pinboardBookmarks.length} Pinboard bookmarks processed and upserted.`
+    );
+
+    await saveCheckpoint({ ...checkpoint, pinboard: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error in fetchAndUpsertPinboardBookmarks:", error);
+  }
+}
+
+// fetch and upsert github data
+async function fetchAndUpsertGithubData() {
+  const checkpoint = await loadCheckpoint();
+
+  try {
+    const githubData = await fetchGithubData();
+    // we have starredRepos, userRepos, userIssues, and userGists
+
+    const allGithubData = [];
+    githubData.starredRepos.forEach((repo) => {
+      const starredRepo = {
+        scrap_id: helpers.scrapToUUID("github" + repo.id),
+        source: "github",
+        content: `Starred Repository: ${repo.description}`,
+        created_at: repo.created_at,
+        updated_at: repo.updated_at,
+        metadata: {
+          stars: repo.stargazers_count,
+          forks: repo.forks_count,
+          language: repo.language,
+          owner: repo.owner.login,
+        },
+      };
+      allGithubData.push(starredRepo);
+    });
+
+    githubData.userRepos.forEach((repo) => {
+      const userRepo = {
+        scrap_id: helpers.scrapToUUID("github" + repo.id),
+        source: "github",
+        content: `User Repository: ${repo.description}`,
+        created_at: repo.created_at,
+        updated_at: repo.updated_at,
+        metadata: {
+          language: repo.language,
+
+          size: repo.size,
+          open_issues: repo.open_issues_count,
+        },
+      };
+      allGithubData.push(userRepo);
+    });
+
+    githubData.userIssues.forEach((issue) => {
+      const userIssue = {
+        scrap_id: helpers.scrapToUUID("github" + issue.id),
+        source: "github",
+        content: `GitHub Issue: ${issue.title}`,
+        created_at: issue.created_at,
+        updated_at: issue.updated_at,
+        metadata: {
+          number: issue.number,
+          isPullRequest: issue.pull_request !== undefined,
+          body: issue.body,
+        },
+      };
+      allGithubData.push(userIssue);
+    });
+
+    githubData.userGists.forEach((gist) => {
+      const userGist = {
+        scrap_id: helpers.scrapToUUID("github" + gist.id),
+        source: "github",
+        content: `User Gist: ${gist.description}`,
+        created_at: gist.created_at,
+        updated_at: gist.updated_at,
+        metadata: {
+          files: gist.files,
+        },
+      };
+      allGithubData.push(userGist);
+    });
+
+    await upsertLimiter.schedule(() => upsertScrap(allGithubData));
+
+    console.log(`${allGithubData.length} GitHub data processed and upserted.`);
+
+    await saveCheckpoint({ ...checkpoint, github: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error in fetchAndUpsertGithubData:", error);
+  }
+}
+
+// Fetch and upsert Mastodon statuses
+async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
+  try {
+    console.log("Fetching Mastodon statuses...");
+    const mastodonUserId = await fetchUserId();
+    const mastodonStatuses = await fetchStatuses(mastodonUserId);
+
+    if (mastodonStatuses) {
+      await updateManifest("mastodon", { lastFetch: new Date().toISOString() });
+    }
+
+    const processedMastodonStatuses = mastodonStatuses
+      .filter((status) => !lastScrapTime || status.created_at > lastScrapTime)
+      .map((status) => {
+        return {
+          scrap_id: helpers.scrapToUUID("mastodon" + status.id),
+          source: "mastodon",
+          content: status.content.replace(/&[^;]+;/g, ""),
+          summary: "",
+          created_at: status.created_at,
+          tags: [],
+          relationships: {},
+          metadata: {
+            href: status.url,
+            images: status.media_attachments
+              .filter((attachment) => attachment.type === "image")
+              .map((attachment) => attachment.preview_url),
+            videos: status.media_attachments
+              .filter((attachment) => attachment.type === "video")
+              .map((attachment) => attachment.url),
+          },
+        };
+      });
+
+    for (const scrap of processedMastodonStatuses) {
+      await upsertScrap(scrap);
+    }
+
+    console.log(
+      `${processedMastodonStatuses.length} Mastodon statuses processed and upserted.`
+    );
+
+    await saveCheckpoint({ ...checkpoint, mastodon: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error in fetchAndUpsertMastodonStatuses:", error);
+  }
+}
+
+// Fetch and upsert Are.na blocks
+async function fetchAndUpsertArenaBlocks(lastScrapTime) {
+  try {
+    console.log("Fetching Are.na blocks...");
+    const arenaBlocks = await helpers.safeFetch(fetchAllBlocks());
+
+    if (arenaBlocks) {
+      await updateManifest("arena", { lastFetch: new Date().toISOString() });
+    }
+
+    const processedArenaBlocks = arenaBlocks
+      .filter((block) => !lastScrapTime || block.created_at > lastScrapTime)
+      .map(async (block) => {
+        const relationships = block.channels.map((channel) => ({
+          type: "belongs_to",
+          target: {
+            scrap_id: helpers.scrapToUUID("arena" + channel.id),
+            type: "channel",
+            name: channel.title,
+          },
+        }));
+
+        let images = [];
+        if (block.image) {
+          const imageUrl = block.image.display.url;
+          const imageFilename = cleanAndFormatFilename(imageUrl);
+          const { data, error } = await supabase.storage
+            .from("arena_block_images")
+            .upload(
+              `${imageFilename}.png`,
+              await axios
+                .get(imageUrl, { responseType: "arraybuffer" })
+                .then((response) => response.data),
+              {
+                contentType: "image/png",
+              }
+            );
+          if (error) {
+            console.error("Error uploading image:", error);
+          } else {
+            const imagePublicURL = await supabase.storage
+              .from("arena_block_images")
+              .getPublicUrl(`${imageFilename}.png`);
+            if (imagePublicURL) {
+              images = [imagePublicURL.data.publicUrl];
+            }
+          }
+        }
+
+        return {
+          scrap_id: helpers.scrapToUUID("arena" + block.id),
+          source: "arena",
+          content: block.description,
+          summary: "",
+          created_at: block.created_at,
+          tags: [],
+          relationships: relationships,
+          metadata: {
+            href: `https://www.are.na/block/${block.id}`,
+            // use the first image as the primary image
+            image: images[0],
+            images: images,
+          },
+        };
+      });
+
+    for (const scrap of processedArenaBlocks) {
+      await upsertScrap(scrap);
+    }
+
+    console.log(
+      `${processedArenaBlocks.length} Are.na blocks processed and upserted.`
+    );
+
+    await saveCheckpoint({ ...checkpoint, arena: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error in fetchAndUpsertArenaBlocks:", error);
+  }
+}
+
+// Function to clean and format the filename
+function cleanAndFormatFilename(url) {
+  // Remove any : or / or ? from the filename
+  let cleanedFilename = url.replace(/[:/]/g, "");
+
+  // Remove any special characters and spaces
+  cleanedFilename = cleanedFilename.replace(/[^\w\s]/gi, "");
+
+  // remove any dots: .
+  cleanedFilename = cleanedFilename.replace(/\./g, "");
+
+  // Replace spaces with underscores
+  cleanedFilename = cleanedFilename.replace(/\s+/g, "_");
+
+  return cleanedFilename;
+}
+
+// New function to split out the query parameters from the webUrl
+function splitQueryParams(url) {
+  const [baseUrl, queryParams] = url.split("?");
+  return { baseUrl, queryParams };
 }
 
 // Generate a screenshot of a webpage
@@ -164,8 +487,11 @@ async function generateWebpageScreenshot(webUrl) {
       console.log(`Grabbing thumbnail image from ${imageUrl}`);
 
       // now we need to get the image
-      const imageResponse = await axios.get(imageUrl);
-      const imageBuffer = imageResponse.data;
+      const imageResponse = await axios.get(imageUrl, {
+        responseType: "arraybuffer",
+      });
+
+      const imageBuffer = Buffer.from(imageResponse.data, "binary");
 
       // if the image is not found, return null
       if (!imageBuffer) {
@@ -284,227 +610,6 @@ async function generateWebpageScreenshot(webUrl) {
   } catch (error) {
     console.error("Error in generateWebpageScreenshot:", error);
     return null;
-  }
-}
-
-async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
-  try {
-    console.log("Fetching Pinboard bookmarks...");
-    const pinboardBookmarks = await fetchBookmarksWithCache();
-
-    if (pinboardBookmarks) {
-      await updateManifest("pinboard", { lastFetch: new Date().toISOString() });
-    }
-
-    for (const bookmark of pinboardBookmarks) {
-      if (!lastScrapTime || bookmark.time > lastScrapTime) {
-        // wait 1s before fetching the page content
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        let pageContent = "";
-        let summary = "";
-
-        // check if a summary exists for this scrap already
-        const { data, error } = await supabase
-          .from("scraps")
-          .select("summary")
-          .eq("scrap_id", helpers.scrapToUUID("pinboard" + bookmark.href));
-
-        const existingSummary = data[0]?.summary;
-
-        // if a summary for this bookmark already exists, skip it
-        // if (data[0] && data[0].summary) {
-        if (existingSummary) {
-          console.log(`Summary already exists for ${bookmark.href}...`);
-          console.log(JSON.stringify(data));
-          console.log("Skipping...");
-          // return;
-          // continue;
-          summary = existingSummary;
-        } else {
-          try {
-            pageContent = await browserLimiter.schedule(() =>
-              helpers.fetchPageContent(bookmark.href)
-            );
-          } catch (error) {
-            console.error("Error fetching page content:", error);
-          }
-
-          try {
-            await limiter.schedule(async () => {
-              console.log(`Summarizing content for ${bookmark.href}...`);
-              summary = await summarizeContent(pageContent, {
-                metaSummary: true,
-              });
-            });
-          } catch (error) {
-            console.error("Error summarizing content:", error);
-          }
-        }
-
-        console.log(`Summary: ${JSON.stringify(summary)}`);
-
-        let screenshotUrl = null;
-        await browserLimiter.schedule(async () => {
-          screenshotUrl = await generateWebpageScreenshot(bookmark.href);
-          console.log(`⚡️ Screenshot URL (inside limiter): ${screenshotUrl}`);
-        });
-
-        // we actually need to fetch the url with the
-
-        const bookmarkObj = {
-          scrap_id: helpers.scrapToUUID("pinboard" + bookmark.href),
-          source: "pinboard",
-          content: bookmark.description,
-          created_at: bookmark.time,
-          // update the updated_at time to now
-          updated_at: new Date().toISOString(),
-          summary: summary,
-          tags: bookmark.tags,
-          relationships: {},
-          metadata: {
-            href: bookmark.href,
-            screenshotUrl: screenshotUrl,
-          },
-        };
-
-        await upsertLimiter.schedule(() => upsertScrap(bookmarkObj));
-      }
-    }
-
-    console.log(
-      `${pinboardBookmarks.length} Pinboard bookmarks processed and upserted.`
-    );
-
-    await saveCheckpoint({ ...checkpoint, pinboard: new Date().toISOString() });
-  } catch (error) {
-    console.error("Error in fetchAndUpsertPinboardBookmarks:", error);
-  }
-}
-
-async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
-  try {
-    console.log("Fetching Mastodon statuses...");
-    const mastodonUserId = await fetchUserId();
-    const mastodonStatuses = await fetchStatuses(mastodonUserId);
-
-    if (mastodonStatuses) {
-      await updateManifest("mastodon", { lastFetch: new Date().toISOString() });
-    }
-
-    const processedMastodonStatuses = mastodonStatuses
-      .filter((status) => !lastScrapTime || status.created_at > lastScrapTime)
-      .map((status) => {
-        return {
-          scrap_id: helpers.scrapToUUID("mastodon" + status.id),
-          source: "mastodon",
-          content: status.content.replace(/&[^;]+;/g, ""),
-          summary: "",
-          created_at: status.created_at,
-          tags: [],
-          relationships: {},
-          metadata: {
-            href: status.url,
-            images: status.media_attachments
-              .filter((attachment) => attachment.type === "image")
-              .map((attachment) => attachment.preview_url),
-            videos: status.media_attachments
-              .filter((attachment) => attachment.type === "video")
-              .map((attachment) => attachment.url),
-          },
-        };
-      });
-
-    for (const scrap of processedMastodonStatuses) {
-      await upsertScrap(scrap);
-    }
-
-    console.log(
-      `${processedMastodonStatuses.length} Mastodon statuses processed and upserted.`
-    );
-
-    await saveCheckpoint({ ...checkpoint, mastodon: new Date().toISOString() });
-  } catch (error) {
-    console.error("Error in fetchAndUpsertMastodonStatuses:", error);
-  }
-}
-
-async function fetchAndUpsertArenaBlocks(lastScrapTime) {
-  try {
-    console.log("Fetching Are.na blocks...");
-    const arenaBlocks = await helpers.safeFetch(fetchAllBlocks());
-
-    if (arenaBlocks) {
-      await updateManifest("arena", { lastFetch: new Date().toISOString() });
-    }
-
-    const processedArenaBlocks = arenaBlocks
-      .filter((block) => !lastScrapTime || block.created_at > lastScrapTime)
-      .map(async (block) => {
-        const relationships = block.channels.map((channel) => ({
-          type: "belongs_to",
-          target: {
-            scrap_id: helpers.scrapToUUID("arena" + channel.id),
-            type: "channel",
-            name: channel.title,
-          },
-        }));
-
-        let images = [];
-        if (block.image) {
-          const imageUrl = block.image.display.url;
-          const imageFilename = cleanAndFormatFilename(imageUrl);
-          const { data, error } = await supabase.storage
-            .from("arena_block_images")
-            .upload(
-              `${imageFilename}.png`,
-              await axios
-                .get(imageUrl, { responseType: "arraybuffer" })
-                .then((response) => response.data),
-              {
-                contentType: "image/png",
-              }
-            );
-          if (error) {
-            console.error("Error uploading image:", error);
-          } else {
-            const imagePublicURL = await supabase.storage
-              .from("arena_block_images")
-              .getPublicUrl(`${imageFilename}.png`);
-            if (imagePublicURL) {
-              images = [imagePublicURL.data.publicUrl];
-            }
-          }
-        }
-
-        return {
-          scrap_id: helpers.scrapToUUID("arena" + block.id),
-          source: "arena",
-          content: block.description,
-          summary: "",
-          created_at: block.created_at,
-          tags: [],
-          relationships: relationships,
-          metadata: {
-            href: `https://www.are.na/block/${block.id}`,
-            // use the first image as the primary image
-            image: images[0],
-            images: images,
-          },
-        };
-      });
-
-    for (const scrap of processedArenaBlocks) {
-      await upsertScrap(scrap);
-    }
-
-    console.log(
-      `${processedArenaBlocks.length} Are.na blocks processed and upserted.`
-    );
-
-    await saveCheckpoint({ ...checkpoint, arena: new Date().toISOString() });
-  } catch (error) {
-    console.error("Error in fetchAndUpsertArenaBlocks:", error);
   }
 }
 

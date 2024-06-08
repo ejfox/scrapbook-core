@@ -1,9 +1,5 @@
 import axios from "axios";
 import Bottleneck from "bottleneck";
-
-// const relationshipRegex =
-//   /^\[([a-zA-Z0-9\s]+):([a-zA-Z0-9\s]+)\] -\[:([a-zA-Z0-9\s]+)\]-> \[([a-zA-Z0-9\s]+):([a-zA-Z0-9\s]+)\]$/;
-
 /*
 [person:Stewart Brand] -[:FOUNDED]-> [organization:Whole Earth Catalog]
 [person:Steve Jobs] -[:INFLUENCED_BY]-> [person:Stewart Brand]
@@ -78,7 +74,13 @@ function contentToChunks(content) {
   return chunks;
 }
 
-export async function summarizeContent(content, options = {}) {
+/**
+ *
+ * @param {string} content
+ * @param {object} options
+ * @returns {Promise<{summary: string, nodes: Array<{type: string, name: string}>, relationships: Array<{source: {type: string, name: string}, target: {type: string, name: string}, type: string}>}>}
+ */
+export async function extractRelationships(content, options = {}) {
   console.log("Breaking content into chunks...");
   const chunks = contentToChunks(content);
 
@@ -154,6 +156,7 @@ export async function summarizeContent(content, options = {}) {
     relationships: relationshipsData,
   };
 }
+
 export async function summarizeString(content) {
   console.log("Creating messages array...");
   const messages = [];
@@ -268,9 +271,9 @@ export async function testSummarization() {
   
   In this way, every screenshot Hiro took became a valuable piece of information, adding depth and context to his digital detective work. And as he continued to capture and analyze screenshots, the Memorybook system grew smarter, constantly refining its understanding of Hiro's interests and helping him uncover new insights and connections in the vast sea of data.`;
   console.log("Starting test summarization...");
-  const summary = await summarizeContent(content, { metaSummary: true });
+  const summary = await extractRelationships(content, { metaSummary: true });
   console.log("Test summarization completed. Result:");
   console.log(JSON.stringify(summary, null, 2));
 }
 
-testSummarization();
+// testSummarization();
