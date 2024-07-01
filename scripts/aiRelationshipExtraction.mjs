@@ -6,6 +6,8 @@ import Bottleneck from "bottleneck";
 [organization:Apple] -[:DEVELOPED]-> [technology:iPhone]    
 */
 
+const MAX_RELATIONSHIPS = 6;
+
 const relationshipRegex =
   /^\s*\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]\s*-\s*\[:([a-zA-Z0-9_]+)\]\s*->\s*\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]\s*$/;
 
@@ -152,12 +154,12 @@ export async function extractRelationships(content, options = {}) {
   console.log(`Relationships: ${relationshipsData.length}`);
 
   // trim to 6 relationships and 6 nodes
-  console.log("Trimming to 6 relationships and 6 nodes...");
-  relationshipsData.splice(6);
-  uniqueNodes.splice(6);
+  // console.log("Trimming to 6 relationships and 6 nodes...");
+  // relationshipsData.splice(6);
+  // uniqueNodes.splice(6);
   return {
-    summary,
-    nodes: uniqueNodes,
+    // summary,
+    // nodes: uniqueNodes,
     relationships: relationshipsData,
   };
 }
@@ -172,7 +174,7 @@ export async function summarizeString(content) {
   console.log("Adding system prompt to messages...");
   messages.push({
     role: "system",
-    content: `Extract entities and relationships from the given document to generate relationship strings that will inform further research and investigations. Record any pertinent information that can be used to establish connections between entities. Connections between technologies, influential people, political organizations, police departments, and other entities can be particularly useful. Remember that the goal is to create a knowledge graph that can be queried to uncover hidden connections and relationships.
+    content: `Extract entities and identify relationship types from the given document to generate relationship strings that will inform further research and investigations. Please limit the number of relationships to ${MAX_RELATIONSHIPS}. Record any pertinent information that can be used to establish connections between entities. Connections between technologies, influential people, political organizations, police departments, and other entities can be particularly useful. Remember that the goal is to create a knowledge graph that can be queried to uncover hidden connections and relationships.Please provide one relationship per line. Return ONLY the relationships, no other text. Do not include any other information in your response besides the newline-delimited relationships.
     `,
   });
 
@@ -204,8 +206,6 @@ Select only 3-5 of the *most important* relationships from the content. If you a
   messages.push({
     role: "user",
     content: `${content}
-    
-Please provide one relationship per line. Return ONLY the relationships, no other text. Do not include any other information in your response besides the newline-delimited relationships.
     `,
   });
 
@@ -214,7 +214,7 @@ Please provide one relationship per line. Return ONLY the relationships, no othe
     model: "Meta-Llama-3-8B-Instruct-imatrix",
     messages,
     temperature: 0.7,
-    max_tokens: -1,
+    max_tokens: 256,
     stream: false,
   };
 

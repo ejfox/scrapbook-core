@@ -13,6 +13,10 @@ const limiter = new Bottleneck({
 export async function extractLocation(content, options = {}) {
   const chunkSizeTokens = 6144;
 
+  if (!content) {
+    console.error("No content provided");
+    return { location: null, latitude: null, longitude: null };
+  }
   const flatChunks = breakContentIntoChunks(content, chunkSizeTokens);
 
   console.log(
@@ -40,7 +44,7 @@ export async function extractLocation(content, options = {}) {
 
   if (filteredLocations.length === 0) {
     console.log("No location found in the content.");
-    return null;
+    return { location: null, latitude: null, longitude: null };
   }
 
   const location = filteredLocations[0];

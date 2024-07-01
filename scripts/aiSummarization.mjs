@@ -278,14 +278,10 @@ export async function metaSummaryToTags(metaSummaryContent) {
 
   messages.push({
     role: "user",
-    content:
-      "These are our default tags:" +
-      "\n" +
-      tags.join("\n") +
-      "\n" +
-      "What tags can you extract from this summary?" +
-      "\n" +
-      metaSummaryContent,
+    content: `These are our default tags:
+${tags.join("\n")}
+What tags can you extract from this summary?
+${metaSummaryContent}`,
   });
 
   const payload = {

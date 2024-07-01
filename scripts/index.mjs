@@ -69,6 +69,10 @@ async function loadCheckpoint() {
 // Await all the various fetches and upserts
 async function fetchAndUpsertScraps() {
   const checkpoint = await loadCheckpoint();
+  if (!checkpoint) {
+    console.error("No checkpoint found, exiting...");
+    return;
+  }
 
   try {
     await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
@@ -166,7 +170,8 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
 
         // since we have the summary already, lets use it to geocode and build relationships from the content
         const { location, latitude, longitude } = await limiter.schedule(() => {
-          return extractLocation(pageContent);
+          // return extractLocation(pageContent);
+          return extractLocation(summary);
         });
 
         if (location) {
@@ -174,11 +179,13 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
           console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
         }
 
-        const relationships = await limiter.schedule(() => {
-          return extractRelationships(pageContent);
-        });
+        // const relationships = await limiter.schedule(() => {
+        //   return extractRelationships(pageContent);
+        // });
 
-        const tags = await limiter.schedule(() => metaSummaryToTags(summary));
+        let tags = await limiter.schedule(() => metaSummaryToTags(summary));
+
+        console.log(`Tags: ${tags}`);
 
         let screenshotUrl = null;
         await browserLimiter.schedule(async () => {
@@ -186,6 +193,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
           console.log(`⚡️ Screenshot URL (inside limiter): ${screenshotUrl}`);
         });
 
+        tags = tags.split(",").map((tag) => tag.trim());
         const combinedTags = [...tags, ...bookmark.tags];
 
         // Now that we have assembled a screenshot and a summary, we can upsert the bookmark scrap
@@ -199,7 +207,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime) {
           summary: summary,
           // tags: bookmark.tags,
           tags: combinedTags,
-          relationships: relationships,
+          // relationships: relationships,
           metadata: {
             href: bookmark.href,
             screenshotUrl: screenshotUrl,
@@ -319,14 +327,15 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
 
     const processedMastodonStatuses = mastodonStatuses
       .filter((status) => !lastScrapTime || status.created_at > lastScrapTime)
-      .map((status) => {
+      .map(async (status) => {
         return {
           scrap_id: helpers.scrapToUUID("mastodon" + status.id),
           source: "mastodon",
-          content: status.content.replace(/&[^;]+;/g, ""),
+          content: status.content,
           summary: "",
           created_at: status.created_at,
-          tags: [],
+          // tags: [],
+          tags: await limiter.schedule(() => metaSummaryToTags(status.content)),
           relationships: {},
           metadata: {
             href: status.url,

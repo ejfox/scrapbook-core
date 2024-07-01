@@ -225,6 +225,11 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
     currentChunk += sentence + " ";
   }
 
+  // log the chunk sizes in tokens
+  chunks.forEach((chunk, index) => {
+    console.log(`Chunk ${index} size: ${llamaTokenizer.encode(chunk).length}`);
+  });
+
   // After processing all sentences, add the remaining current chunk to the chunks array
   if (currentChunk.trim() !== "") {
     chunks.push(currentChunk.trim());

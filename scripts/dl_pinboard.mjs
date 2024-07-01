@@ -145,10 +145,9 @@ const fetchBookmarksWithCache = async () => {
 
     let manifest = {};
     try {
-      const jsonFile = await fs.readFile(
+      const jsonFile = await fs.readFileSync(
         "public/data/scrapbook/manifest.json",
-        "utf8",
-        () => {}
+        "utf8"
       );
       console.log("Manifest data:", jsonFile);
       manifest = JSON.parse(jsonFile);
@@ -174,9 +173,7 @@ const fetchBookmarksWithCache = async () => {
       // Use cached bookmarks
       let existingBookmarks = [];
       try {
-        existingBookmarks = JSON.parse(
-          await fs.readFile(filePath, "utf8", () => {})
-        );
+        existingBookmarks = JSON.parse(await fs.readFileSync(filePath, "utf8"));
       } catch (error) {
         console.error(
           "Failed to read existing bookmarks, assuming none.",
