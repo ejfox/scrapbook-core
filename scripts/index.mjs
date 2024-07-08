@@ -1,3 +1,6 @@
+#!/usr/bin/env node
+
+import { program } from "commander";
 import { fetchAllBlocks } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache } from "./dl_pinboard.mjs";
@@ -14,8 +17,10 @@ import path from "path";
 import terminalImage from "terminal-image";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
+import dotenv from "dotenv";
 
-// This checkpoint file keeps track of the data fetched from each source
+dotenv.config();
+
 const CHECKPOINT_FILE = "./data/checkpoint.json";
 
 const supabase = createClient(
@@ -23,28 +28,21 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
-// This is a limiter for the local API requests and upserts
 const limiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: 500,
 });
 
-// Limiter for summary generation
 const upsertLimiter = new Bottleneck({
   maxConcurrent: 3,
   minTime: 1000,
 });
 
-// This is a limiter for the browser requests and headless chrome instances
-// which will quickly crash your computer if you don't limit them
 const browserLimiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: 1000,
 });
 
-// Determine when the last time we fetched data was
-// by checking our checkpoint file that we save to
-// at the end of each run
 async function loadCheckpoint() {
   try {
     const data = await fs.readFile(CHECKPOINT_FILE, "utf-8");
@@ -53,46 +51,20 @@ async function loadCheckpoint() {
     console.log(
       "No checkpoint file found, starting from the beginning of time."
     );
-
     const checkpoint = {
       pinboard: new Date(0).toISOString(),
       mastodon: new Date(0).toISOString(),
       arena: new Date(0).toISOString(),
     };
-
     await fs.writeFile(CHECKPOINT_FILE, JSON.stringify(checkpoint, null, 2));
-
     return checkpoint;
   }
 }
 
-// Await all the various fetches and upserts
-async function fetchAndUpsertScraps() {
-  const checkpoint = await loadCheckpoint();
-  if (!checkpoint) {
-    console.error("No checkpoint found, exiting...");
-    return;
-  }
-
-  try {
-    await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
-    await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
-    await fetchAndUpsertArenaBlocks(checkpoint.arena);
-    await fetchAndUpsertGithubData();
-    console.log("All scraps fetched and upserted.");
-  } catch (error) {
-    console.error("Error in fetchAndUpsertScraps:", error);
-  }
-}
-
-// Save the checkpoint file
 async function saveCheckpoint(checkpoint) {
   try {
-    // Create the directory if it doesn't exist
     const directory = path.dirname(CHECKPOINT_FILE);
     await fs.mkdir(directory, { recursive: true });
-
-    // Write the checkpoint file
     await fs.writeFile(CHECKPOINT_FILE, JSON.stringify(checkpoint, null, 2));
     console.log("Checkpoint saved.");
   } catch (error) {
@@ -100,7 +72,6 @@ async function saveCheckpoint(checkpoint) {
   }
 }
 
-// Upsert a scrap into the database
 async function upsertScrap(scrap) {
   try {
     const { data, error } = await supabase
@@ -110,7 +81,7 @@ async function upsertScrap(scrap) {
     if (error) {
       console.error("Error upserting scrap:", error);
     } else {
-      console.log(`${JSON.stringify(scrap)} upserted`);
+      console.log(`Scrap upserted: ${scrap.scrap_id}`);
     }
   } catch (error) {
     console.error("Error in upsertScrap:", error);
@@ -631,13 +602,63 @@ async function generateWebpageScreenshot(webUrl) {
   }
 }
 
-async function main() {
+async function main(options) {
   try {
     const checkpoint = await loadCheckpoint();
-    await fetchAndUpsertScraps(checkpoint);
+
+    if (options.pinboard) {
+      await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
+    }
+
+    if (options.mastodon) {
+      await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
+    }
+
+    if (options.arena) {
+      await fetchAndUpsertArenaBlocks(checkpoint.arena);
+    }
+
+    if (options.github) {
+      await fetchAndUpsertGithubData();
+    }
+
+    if (options.all) {
+      await fetchAndUpsertPinboardBookmarks(checkpoint.pinboard);
+      await fetchAndUpsertMastodonStatuses(checkpoint.mastodon);
+      await fetchAndUpsertArenaBlocks(checkpoint.arena);
+      await fetchAndUpsertGithubData();
+    }
+
+    console.log("All requested scraps fetched and upserted.");
   } catch (error) {
     console.error("Error in main:", error);
   }
 }
 
-main().catch((error) => console.error("Error in main:", error));
+program
+  .option("-p, --pinboard", "Fetch and upsert Pinboard bookmarks")
+  .option("-m, --mastodon", "Fetch and upsert Mastodon statuses")
+  .option("-a, --arena", "Fetch and upsert Are.na blocks")
+  .option("-g, --github", "Fetch and upsert GitHub data")
+  .option("--all", "Fetch and upsert all data sources")
+  .option("--debug", "Enable debug mode")
+  .parse(process.argv);
+
+const options = program.opts();
+
+if (options.debug) {
+  console.log("Debug mode is on.");
+}
+
+if (
+  !options.pinboard &&
+  !options.mastodon &&
+  !options.arena &&
+  !options.github &&
+  !options.all
+) {
+  console.error("Please specify at least one data source or use --all");
+  process.exit(1);
+}
+
+main(options).catch((error) => console.error("Error in main:", error));

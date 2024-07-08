@@ -19,7 +19,7 @@ async function search(query) {
 
     const results = await db.all(
       `
-      SELECT *
+      SELECT DISTINCT *
       FROM scraps
       WHERE scraps MATCH ?
       ORDER BY created_at DESC

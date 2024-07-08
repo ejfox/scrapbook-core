@@ -198,6 +198,8 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
   // Split the content into sentences using a regular expression
   // The regular expression matches common sentence delimiters: periods, exclamation marks, and question marks
   // It accounts for common abbreviations and edge cases to avoid splitting on false sentence boundaries
+
+  if (!content) return [];
   const sentences = content.match(/[^.!?]+[.!?]+/g);
 
   // Initialize an empty array to store the chunks
