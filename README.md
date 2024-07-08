@@ -1,66 +1,111 @@
-# scrapbook-core
- 
-This repo is responsible for the data management, combination, and analysis of scraps / hypercards stored by EJ Fox.
+# Scrapbook Core
 
-The main purpose of the repo to is to accumulate all of the digital ephemera I cast off each day:
-- Pinboard booksmarks
-- Mastodon posts
-- GitHub stars, issues, pull requests, and gists
-- Are.na blocks and channels
+Scrapbook Core is a comprehensive data management system designed to accumulate and analyze digital ephemera from various sources. It serves as a personal knowledge management tool, capturing and organizing daily digital interactions across multiple platforms.
 
-Each of these are stored as "scraps", given a unique ID, and then stored in the database. Scraps can be threaded together, and there are a few tools to aid in the summarization, tagging, and entity extraction to make it easier to find relevant information later. 
+## Features
 
-## Overview
-This script fetches data from various sources (Pinboard, Mastodon, Are.na, and GitHub), processes it, and upserts it into a Supabase database. It also generates summaries, extracts locations, and creates screenshots for certain types of content.
+- Fetches data from multiple sources:
+  - Pinboard bookmarks
+  - Mastodon posts
+  - GitHub activities (stars, issues, pull requests, gists)
+  - Are.na blocks and channels
+- Processes and stores data as "scraps" with unique IDs
+- Generates summaries and extracts entities for easy retrieval
+- Creates screenshots for visual reference
+- Syncs data with both Supabase and SQLite databases
+- Includes an Alfred Workflow for quick local database searches
 
-## Main Components
+## System Architecture
 
-![Flow diagram](http://res.cloudinary.com/ejf/image/upload/v1719800138/Screenshot_2024-06-30_at_10.15.26_PM.png)
+```mermaid
+graph TD
+    A[Data Sources] --> B[Fetchers]
+    B --> C[Processors]
+    C --> D[Storage]
+    D --> E[Supabase]
+    D --> F[SQLite]
+    G[AI Services] --> C
+    H[Screenshot Service] --> C
+    F --> I[Alfred Workflow]
+```
 
-1. **Imports**: The script imports various modules and functions from other files.
+## Key Components
 
-2. **Constants and Configurations**:
-   - `CHECKPOINT_FILE`: Keeps track of the last fetch time for each source.
-   - `supabase`: Supabase client for database operations.
-   - `limiter`, `upsertLimiter`, `browserLimiter`: Rate limiters for different operations.
+1. **Data Fetchers**: Modules for each data source (e.g., `dl_pinboard.mjs`, `dl_mastodon.mjs`)
+2. **Processors**: 
+   - `aiSummarization.js`: Generates summaries and tags
+   - `aiGeolocation.mjs`: Extracts location data
+   - `aiRelationshipExtraction.mjs`: Identifies relationships between scraps
+3. **Storage**:
+   - `index.mjs`: Main script for Supabase operations
+   - `sync_supabase_to_sqlite.js`: Syncs data to local SQLite database
+4. **Utilities**:
+   - `helpers.js`: Common helper functions
+   - `manifestHelpers.mjs`: Manages data fetch manifests
+5. **Alfred Workflow**: Enables quick searching of the local SQLite database
 
-3. **Checkpoint Management**:
-   - `loadCheckpoint()`: Loads the last fetch times from the checkpoint file.
-   - `saveCheckpoint()`: Saves the current fetch times to the checkpoint file.
+## Files
 
-4. **Main Functions**:
-   - `fetchAndUpsertScraps()`: Orchestrates the fetching and upserting of data from all sources.
-   - `upsertScrap()`: Upserts a single scrap into the Supabase database.
+- `index.mjs`: The main entry point of the application. It orchestrates the fetching, processing, and storage of data from all sources.
+- `sync_supabase_to_sqlite.js`: Synchronizes data between Supabase and a local SQLite database.
+- `aiSummarization.js`: Contains functions for summarizing content and generating tags using AI.
+- `dl_pinboard.mjs`: Handles fetching and processing of Pinboard bookmarks.
+- `dl_mastodon.mjs`: Manages the retrieval of Mastodon statuses.
+- `dl_arena.mjs`: Fetches and processes Are.na blocks and channels.
+- `dl_github.mjs`: Retrieves GitHub-related data (stars, issues, PRs, gists).
+- `aiGeolocation.mjs`: Extracts location information from content.
+- `aiRelationshipExtraction.mjs`: Identifies relationships between different pieces of content.
+- `helpers.js`: Contains utility functions used across the project.
+- `manifestHelpers.mjs`: Manages the manifest file for tracking data fetch operations.
+- `alfred_search.js`: Script used by the Alfred Workflow to search the local SQLite database.
+- `Scrapbook Search.alfredworkflow`: Alfred Workflow for quick searching of scraps (included as a zip file).
 
-5. **Source-specific Functions**:
-   - `fetchAndUpsertPinboardBookmarks()`: Handles Pinboard bookmarks.
-   - `fetchAndUpsertGithubData()`: Handles GitHub data (repos, issues, gists).
-   - `fetchAndUpsertMastodonStatuses()`: Handles Mastodon statuses.
-   - `fetchAndUpsertArenaBlocks()`: Handles Are.na blocks.
+## Setup
 
-6. **Helper Functions**:
-   - `generateWebpageScreenshot()`: Creates screenshots of webpages.
-   - `cleanAndFormatFilename()`: Cleans and formats filenames for storage.
-   - `splitQueryParams()`: Splits URL query parameters.
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables in a `.env` file:
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_KEY=your_supabase_key
+   PINBOARD_TOKEN=your_pinboard_token
+   ```
+4. Run the main script: `node index.mjs`
+5. Install the Alfred Workflow:
+   - Unzip the `Scrapbook Search.alfredworkflow` file
+   - Double-click the extracted file to import it into Alfred
 
-7. **Main Execution**:
-   - `main()`: The entry point of the script, which calls `fetchAndUpsertScraps()`.
+## Usage
 
-## Flow of Execution
+- Fetch all data: `node index.mjs --all`
+- Fetch specific sources:
+  - Pinboard: `node index.mjs --pinboard`
+  - Mastodon: `node index.mjs --mastodon`
+  - Are.na: `node index.mjs --arena`
+  - GitHub: `node index.mjs --github`
+- Sync to SQLite: `node sync_supabase_to_sqlite.js`
+- Search scraps using Alfred:
+  - Activate Alfred
+  - Type the keyword (default: `sc`) followed by your search query
 
-1. Load the checkpoint file to determine the last fetch time for each source.
-2. For each source (Pinboard, Mastodon, Are.na, GitHub):
-   a. Fetch new data since the last checkpoint.
-   b. Process each item:
-      - Generate summaries (for Pinboard).
-      - Extract locations and relationships (for Pinboard).
-      - Create screenshots (for Pinboard and Are.na).
-      - Format data into a consistent structure.
-   c. Upsert processed data into the Supabase database.
-3. Update the checkpoint file with the new fetch times.
+## Data Flow
 
-## Rate Limiting
-Different rate limiters are used to prevent overwhelming external APIs and local resources:
-- `limiter`: For local API requests and upserts.
-- `upsertLimiter`: For summary generation.
-- `browserLimiter`: For browser requests and headless Chrome instances.
+1. Data is fetched from various sources
+2. Each item is processed:
+   - Summaries are generated
+   - Locations and relationships are extracted
+   - Screenshots are created (for applicable sources)
+3. Processed data is upserted into Supabase
+4. Data can be synced to a local SQLite database for offline access
+5. The local SQLite database can be searched quickly using the Alfred Workflow
+
+## Alfred Workflow
+
+The included Alfred Workflow allows for quick searching of the local SQLite database. It uses the `alfred_search.js` script to perform searches and format results. The workflow provides the following features:
+
+- Fast full-text search of scraps
+- Display of relevant information including title, summary, and age of the scrap
+- Quick actions:
+  - Press Enter to open the scrap's URL
+  - Press ⌥ (Option) to view full content
+  - Press ⌘ (Command) to copy a formatted version of the scrap

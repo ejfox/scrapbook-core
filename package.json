@@ -4,6 +4,7 @@
     "@supabase/supabase-js": "^2.43.4",
     "are.na": "^0.1.5",
     "axios": "^1.7.2",
+    "axios-rate-limit": "^1.4.0",
     "bottleneck": "^2.19.5",
     "cheerio": "^1.0.0-rc.12",
     "chroma-js": "^2.4.2",
