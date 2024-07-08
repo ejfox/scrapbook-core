@@ -9,6 +9,7 @@
     "chroma-js": "^2.4.2",
     "crypto-js": "^4.2.0",
     "d3": "^7.9.0",
+    "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "filereader": "^0.10.3",
     "get-image-colors": "^4.0.1",
@@ -17,6 +18,8 @@
     "llama-tokenizer-js": "^1.2.1",
     "ora": "^8.0.1",
     "puppeteer": "^22.10.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "terminal-image": "^2.0.0"
   }
 }
