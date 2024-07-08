@@ -47,9 +47,57 @@ const fetchGithubData = async () => {
 
     spinner.succeed("Downloaded GitHub data");
 
+    const enhancedUserRepos = await Promise.all(
+      userRepos.data
+        .filter((repo) => repo.visibility === "public")
+        .map(async (repo) => {
+          try {
+            const readmeResponse = await octokit.repos.getReadme({
+              owner: username,
+              repo: repo.name,
+            });
+
+            const readme = Buffer.from(
+              readmeResponse.data.content,
+              "base64"
+            ).toString("utf-8");
+
+            // Fetch repository contents to look for image files
+            const contentsResponse = await octokit.repos.getContent({
+              owner: username,
+              repo: repo.name,
+              path: "",
+            });
+
+            const imageFiles = contentsResponse.data
+              .filter(
+                (file) =>
+                  file.type === "file" && /\.(png|jpe?g|gif)$/i.test(file.name)
+              )
+              .map((file) => file.download_url);
+
+            // make sure the repo visibility is public
+            if (repo.visibility !== "public") {
+              // return nothing
+              return false;
+            }
+
+            return {
+              ...repo,
+              readme,
+              images: imageFiles,
+            };
+          } catch (error) {
+            console.error(`Error fetching data for repo ${repo.name}:`, error);
+            return repo;
+          }
+        })
+    );
+
     return {
       starredRepos: starredRepos.data,
-      userRepos: userRepos.data.filter((repo) => repo.visibility === "public"),
+      // userRepos: userRepos.data.filter((repo) => repo.visibility === "public"),
+      userRepos: enhancedUserRepos,
       userIssues: userIssues.data.items,
       userGists: userGists.data,
       userReleases: userReleases.data.items,
