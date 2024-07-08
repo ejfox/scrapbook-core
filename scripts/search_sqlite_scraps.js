@@ -71,11 +71,7 @@ async function search(query) {
       return {
         title: title,
         subtitle: subtitle,
-        arg: JSON.stringify({
-          url: url,
-          content: result.content || "",
-          action: "open",
-        }),
+        arg: url, // This is the key change
         text: {
           copy: result.content || "",
           largetype: result.content || "",
@@ -85,19 +81,15 @@ async function search(query) {
         mods: {
           alt: {
             subtitle: "Press ⌥ to view full content",
-            arg: JSON.stringify({
-              url: url,
-              content: result.content || "",
-              action: "largetype",
-            }),
+            arg: result.content || "",
+            valid: true,
           },
           cmd: {
             subtitle: "Press ⌘ to copy content",
-            arg: JSON.stringify({
-              url: url,
-              content: result.content || "",
-              action: "copy",
-            }),
+            // arg: result.content || "",
+            // lets actually make this a nicely formatted plaintext version of the scrap
+            args: formatScrapForCopy(result, metadata),
+            valid: true,
           },
         },
       };
@@ -112,6 +104,29 @@ async function search(query) {
       },
     ];
   }
+}
+
+function formatScrapForCopy(result, metadata) {
+  const url = metadata?.href || "";
+  const domain = url ? new URL(url).hostname.replace(/^www\./, "") : "";
+  const title = result?.content || "No title";
+  const subtitle = formatSubtitle(result, metadata, domain);
+  // const tags = result?.tags?.join(", ") || "No tags";
+  const created = result?.created_at || "Unknown";
+  const updated = result?.updated_at || "Unknown";
+  const metadataString = JSON.stringify(metadata, null, 2);
+
+  const formattedScrap = [];
+  formattedScrap.push(`Title: ${title}`);
+  formattedScrap.push(`URL: ${url}`);
+  formattedScrap.push(`Domain: ${domain}`);
+  formattedScrap.push(`Summary: ${subtitle}`);
+  // formattedScrap.push(`Tags: ${tags}`);
+  formattedScrap.push(`Created: ${created}`);
+  formattedScrap.push(`Updated: ${updated}`);
+  formattedScrap.push(`Metadata: ${metadataString}`);
+
+  return formattedScrap.join("\n");
 }
 
 function truncate(str, length) {
