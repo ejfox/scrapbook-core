@@ -72,7 +72,7 @@ graph TD
    ```
 4. Run the main script: `node index.mjs`
 5. Install the Alfred Workflow:
-   - Unzip the `Scrapbook Search.alfredworkflow` file
+   - Unzip the `Local Scrap Search.1.1.alfredworkflow.zip` file
    - Double-click the extracted file to import it into Alfred
 
 ## Usage

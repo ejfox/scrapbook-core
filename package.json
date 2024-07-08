@@ -1,4 +1,46 @@
 {
+  "name": "scrapbook-core",
+  "version": "1.0.0",
+  "description": "A comprehensive personal knowledge management system for digital ephemera",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs",
+    "fetch:all": "node index.mjs --all",
+    "fetch:pinboard": "node index.mjs --pinboard",
+    "fetch:mastodon": "node index.mjs --mastodon",
+    "fetch:arena": "node index.mjs --arena",
+    "fetch:github": "node index.mjs --github",
+    "sync:sqlite": "node sync_supabase_to_sqlite.js",
+    "search": "node alfred-search.js"
+  },
+  "keywords": [
+    "knowledge-management",
+    "digital-ephemera",
+    "pinboard",
+    "mastodon",
+    "are.na",
+    "github",
+    "alfred-workflow"
+  ],
+  "author": "EJ Fox",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ejfox/scrapbook-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ejfox/scrapbook-core/issues"
+  },
+  "homepage": "https://github.com/ejfox/scrapbook-core#readme",
+  "alfred": {
+    "workflow": {
+      "name": "Scrapbook Search",
+      "description": "Search your personal scrapbook database",
+      "readme": "Alfred workflow for quick access to your digital scraps",
+      "website": "https://github.com/ejfox/scrapbook-core",
+      "version": "1.0.0"
+    }
+  },
   "type": "module",
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
