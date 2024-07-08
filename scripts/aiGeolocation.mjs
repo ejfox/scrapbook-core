@@ -64,7 +64,7 @@ export async function extractLocationFromString(content) {
   messages.push({
     role: "system",
     content:
-      "You need to extract a single geographic location from this content. If multiple locations are found, return the first one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no location is found, return 'null'. Respond with ONLY the locationo, no other chatter, introduction, or conclusion.",
+      "You need to extract a single geographic location from this content. If multiple locations are found, return the first one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no location is found, return 'null'. These must be real, existing locations on earth. If they aren't, return 'null'. If no locations are mentioned, return 'null'. Respond with ONLY the locationo, no other chatter, introduction, or conclusion.",
   });
 
   messages.push({
