@@ -7,8 +7,6 @@ import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 import { readManifest, updateManifest } from "./manifestHelpers.mjs";
 
-console.log("Script started");
-
 dotenv.config();
 
 const DEBUG = process.env.DEBUG === "true";
@@ -20,6 +18,8 @@ function log(...args) {
 }
 
 log("Debug mode is on");
+
+let isShuttingDown = false;
 
 const limiter = new Bottleneck({ minTime: 333 });
 const USER_SLUG = process.env.USER_SLUG || "ej-fox";
@@ -34,7 +34,7 @@ log("Initializing Arena client");
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
 
 const fetchAllBlocks = async () => {
-  const spinner = ora("Initializing download...").start();
+  // const spinner = ora("Initializing download...").start();
   let manifest;
   try {
     log("Reading manifest");
@@ -60,6 +60,10 @@ const fetchAllBlocks = async () => {
       let fetching = true;
 
       while (fetching) {
+        if (isShuttingDown) {
+          console.log("Shutting down, saving progress...");
+          break;
+        }
         try {
           log(`Fetching page ${page} of channel ${channel.title}`);
           const response = await limiter.schedule(() =>
@@ -69,11 +73,20 @@ const fetchAllBlocks = async () => {
           );
           const blocks = response || [];
           allBlocks = allBlocks.concat(
-            blocks.map((block) => ({ ...block, channel: channel.title }))
+            blocks.map((block) => ({
+              ...block,
+              channel: channel.title,
+              connected_to_channels: [
+                {
+                  id: channel.id,
+                  title: channel.title,
+                },
+                ...(block.connected_to_channels || []),
+              ],
+            }))
           );
           fetching = blocks.length > 0;
           page += 1;
-          spinner.text = `Fetched ${allBlocks.length} blocks...`;
         } catch (error) {
           console.error(
             `Error fetching page ${page} of channel ${channel.title}:`,
@@ -84,12 +97,14 @@ const fetchAllBlocks = async () => {
       }
     }
 
-    spinner.succeed(`Downloaded ${allBlocks.length} blocks`);
+    log(`Fetched ${allBlocks.length} blocks`);
+
+    // spinner.succeed(`Downloaded ${allBlocks.length} blocks`);
     log("Updating manifest");
     await updateManifest("arena", { lastFetch: new Date().toISOString() });
     return allBlocks;
   } catch (error) {
-    spinner.fail("An error occurred");
+    // spinner.fail("An error occurred");
     console.error(error);
     throw error;
   }
@@ -106,6 +121,18 @@ const saveBlocks = async (blocks) => {
 
 async function main() {
   log("Entering main function");
+
+  process.on("SIGINT", async () => {
+    console.log("\nGracefully shutting down...");
+    isShuttingDown = true;
+
+    // Give ongoing operations a chance to complete
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+
+    console.log("Shutdown complete.");
+    process.exit(0);
+  });
+
   try {
     const blocks = await fetchAllBlocks();
     await saveBlocks(blocks);

@@ -1,10 +1,15 @@
 import axios from "axios";
 import Bottleneck from "bottleneck";
-/*
-[person:Stewart Brand] -[:FOUNDED]-> [organization:Whole Earth Catalog]
-[person:Steve Jobs] -[:INFLUENCED_BY]-> [person:Stewart Brand]
-[organization:Apple] -[:DEVELOPED]-> [technology:iPhone]    
-*/
+import OpenAI from "openai";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const MAX_RELATIONSHIPS = 6;
 
@@ -15,6 +20,12 @@ const limiter = new Bottleneck({
   maxConcurrent: 1,
   // minTime: 1000,
 });
+
+// Helper function to choose LLM service based on flag or env variable
+function chooseLLMService() {
+  return process.env.USE_OPENAI === "true" ? "openai" : "local";
+}
+
 function contentToChunks(content) {
   const chunkMaxChars = 2048;
   const chunks = [];
@@ -181,10 +192,10 @@ export async function summarizeString(content) {
   messages.push({
     role: "user",
     content: `Use ONLY these entity types:
-Person, Organization, Event, Product, Technology, Startup, Research Group, Investor, Conference, Publication, Government Agency, Non-Profit Organization, Educational Institution, Concept, Framework, Industry Group, Influencer, Platform, Standard/Protocol, Funding Round
+Person, Organization, Event, Product, Technology, Startup, Research Group, Investor, Conference, Publication, Government Agency, Non-Profit Organization, Educational Institution, Concept, Framework, Industry Group, Influencer, Platform, Standard, Protocol, Funding Round, Location, Job Title, Award, Media Content, Service, Medical Condition, Chemical Substance, Device, Software, Sport, Animal, Plant, Art Movement, Historical Period, Political Movement
 
 And ONLY these relationship types:  
-Founded, Invested In, Collaborated With, Spoke At, Developed, Researched By, Participated In, Published By, Supported By, Affiliated With, Implemented By, Member Of, Promoted By, Standardized By, Held At, Funded By, Reviewed By, Influenced By, Sponsored By
+Created By, Invested In, Collaborated With, Participated In, Published By, Supported By, Implemented By, Occurred At, Influenced By, Used In, Dependent On, Compatible With, Tested By, Documented By, Maintained By
 
 They need to match this regex: /^\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\] -\[:([a-zA-Z0-9\s]+)\]-> \[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]$/
 
@@ -198,7 +209,11 @@ Examples:
 
 ---
 
-Select only 3-5 of the *most important* relationships from the content. If you are unsure, select the relationships that are most likely to be relevant to further research and investigation. If you are unable to find any relationships, you can say "skip" to move on.
+Instructions for Relationship Selection:
+
+- Select between 1 and 20 of the most important relationships from the provided content.
+- Prioritize relationships that are likely to be most relevant for further research and investigation.
+- If no suitable relationships are found, respond with "skip" to move on.
 `,
   });
 
@@ -209,24 +224,39 @@ Select only 3-5 of the *most important* relationships from the content. If you a
     `,
   });
 
-  console.log("Creating payload...");
-  const payload = {
-    model: "Meta-Llama-3-8B-Instruct-imatrix",
-    messages,
-    temperature: 0.7,
-    max_tokens: 256,
-    stream: false,
-  };
+  const llmService = chooseLLMService();
 
-  console.log("Sending messages to local llama...");
-  const response = await axios.post(
-    "http://localhost:1234/v1/chat/completions",
-    payload
-  );
+  console.log(`Using ${llmService} service...`);
 
-  const responseMsg = response.data.choices[0].message.content;
+  let responseMsg;
 
-  // console.log(`Response message: ${responseMsg}`);
+  try {
+    if (llmService === "openai") {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages,
+        temperature: 0.7,
+        max_tokens: 256,
+      });
+      responseMsg = response.choices[0].message.content;
+    } else {
+      const payload = {
+        model: "Meta-Llama-3-8B-Instruct-imatrix",
+        messages,
+        temperature: 0.7,
+        max_tokens: 256,
+        stream: false,
+      };
+      const response = await axios.post(
+        "http://localhost:1234/v1/chat/completions",
+        payload
+      );
+      responseMsg = response.data.choices[0].message.content;
+    }
+  } catch (error) {
+    console.error(`Error in ${llmService} service:`, error);
+    return `Error: ${error.message}`;
+  }
 
   // Split the response message into lines and check each line for a match
   const relationships = responseMsg
@@ -256,7 +286,6 @@ Select only 3-5 of the *most important* relationships from the content. If you a
   );
   return responseMsg;
 }
-
 export async function testSummarization() {
   const content = `In the back of Hiro's trailer, amidst the flickering glow of the virtual cityscape, was his digital command center - the Memorybook dashboard. It was a sight to behold, a modern rendition of a detective's corkboard, but far more dynamic and immersive.
 

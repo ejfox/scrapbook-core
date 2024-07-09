@@ -45,7 +45,7 @@ const fetchGithubData = async () => {
       ),
     ]);
 
-    spinner.succeed("Downloaded GitHub data");
+    // spinner.succeed("Downloaded GitHub data");
 
     const enhancedUserRepos = await Promise.all(
       userRepos.data
@@ -104,7 +104,7 @@ const fetchGithubData = async () => {
       userPRs: userPRs.data.items,
     };
   } catch (error) {
-    spinner.fail("Error downloading GitHub data");
+    // spinner.fail("Error downloading GitHub data");
     console.error("Error fetching GitHub data:", error.message);
     if (error.response) {
       console.error("Response status:", error.response.status);

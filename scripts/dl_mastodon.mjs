@@ -56,7 +56,7 @@ const fetchUserId = async () => {
 };
 
 const fetchStatuses = async (userId) => {
-  const spinner = ora("Initializing download...").start();
+  // const spinner = ora("Initializing download...").start();
   let allStatuses = [];
   let maxId = null;
   const resultCount = 40;
@@ -75,13 +75,13 @@ const fetchStatuses = async (userId) => {
       if (data.length < resultCount) break;
 
       maxId = data[data.length - 1].id;
-      spinner.text = `Fetched ${allStatuses.length} statuses...`;
+      // spinner.text = `Fetched ${allStatuses.length} statuses...`;
     }
 
-    spinner.succeed(`Downloaded ${allStatuses.length} statuses`);
+    // spinner.succeed(`Downloaded ${allStatuses.length} statuses`);
     return allStatuses;
   } catch (error) {
-    spinner.fail(`Error fetching statuses: ${error.message}`);
+    // spinner.fail(`Error fetching statuses: ${error.message}`);
     throw error;
   }
 };
