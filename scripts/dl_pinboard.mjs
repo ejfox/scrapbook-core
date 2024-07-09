@@ -6,7 +6,7 @@ import ora from "ora";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 
-console.log("Script started");
+let isShuttingDown = false;
 
 process.on("unhandledRejection", (reason, promise) => {
   console.log("Unhandled Rejection at:", promise, "reason:", reason);
@@ -34,7 +34,7 @@ if (!apiToken) {
 
 const fetchBookmarks = async () => {
   log("Fetching bookmarks from Pinboard API");
-  const spinner = ora("Initializing download...").start();
+  // const spinner = ora("Initializing download...").start();
   let allBookmarks = [];
   let start = 0;
   let fetching = true;
@@ -56,10 +56,10 @@ const fetchBookmarks = async () => {
       allBookmarks = allBookmarks.concat(response.data);
       start += resultCount;
       fetching = response.data.length === resultCount;
-      spinner.text = `Fetched ${allBookmarks.length} bookmarks...`;
+      // spinner.text = `Fetched ${allBookmarks.length} pinboard bookmarks...`;
     } catch (error) {
       console.error("Error fetching bookmarks:", error.message);
-      spinner.fail("Failed to fetch bookmarks");
+      // spinner.fail("Failed to fetch bookmarks");
       throw error;
     }
   }
@@ -70,10 +70,10 @@ const fetchBookmarks = async () => {
     await fs.mkdir(dirPath, { recursive: true });
     const filePath = path.join(dirPath, "bookmarks.json");
     await fs.writeFile(filePath, JSON.stringify(allBookmarks, null, 2));
-    spinner.succeed(`Downloaded and saved ${allBookmarks.length} bookmarks`);
+    // spinner.succeed(`Downloaded and saved ${allBookmarks.length} bookmarks`);
   } catch (error) {
     console.error("Error saving bookmarks:", error.message);
-    spinner.fail("Failed to save bookmarks");
+    // spinner.fail("Failed to save bookmarks");
     throw error;
   }
 
@@ -102,7 +102,7 @@ const writeManifest = async (manifest) => {
 
 export async function fetchBookmarksWithCache(forceUpdate = false) {
   log("Fetching bookmarks with cache");
-  const spinner = ora("Initializing...").start();
+  // const spinner = ora("Initializing...").start();
   try {
     const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
     await fs.mkdir(dirPath, { recursive: true });
@@ -112,29 +112,31 @@ export async function fetchBookmarksWithCache(forceUpdate = false) {
     const lastUpdateTimestamp = manifest.lastUpdateTimestamp || 0;
     const currentTimestamp = Date.now();
 
-    if (
-      !forceUpdate &&
-      (await fs.stat(filePath).catch(() => false)) &&
-      currentTimestamp - lastUpdateTimestamp <= 24 * 60 * 60 * 1000
-    ) {
+    const cacheExists = await fs.stat(filePath).catch(() => false);
+    const cacheIsValid =
+      currentTimestamp - lastUpdateTimestamp <= 24 * 60 * 60 * 1000;
+
+    if (!forceUpdate && cacheExists && cacheIsValid) {
       log("Using cached bookmarks");
-      spinner.text = "Loading cached bookmarks...";
+      // spinner.text = "Loading cached bookmarks...";
       const bookmarksData = await fs.readFile(filePath, "utf8");
       const existingBookmarks = JSON.parse(bookmarksData);
-      spinner.succeed("Loaded bookmarks from cache.");
+      // spinner.succeed(
+      //   `Loaded ${existingBookmarks.length} bookmarks from cache.`
+      // );
       return existingBookmarks;
     } else {
       log("Fetching new bookmarks");
-      spinner.text = "Fetching new bookmarks from API...";
+      // spinner.text = "Fetching new bookmarks from API...";
       const bookmarks = await fetchBookmarks();
       await fs.writeFile(filePath, JSON.stringify(bookmarks, null, 2));
       manifest.lastUpdateTimestamp = currentTimestamp;
       await writeManifest(manifest);
-      spinner.succeed("Bookmarks fetched and saved.");
+      // spinner.succeed(`Fetched and saved ${bookmarks.length} bookmarks.`);
       return bookmarks;
     }
   } catch (error) {
-    spinner.fail("Failed to process bookmarks.");
+    // spinner.fail("Failed to process bookmarks.");
     console.error("Error in fetchBookmarksWithCache:", error);
     throw error;
   }
@@ -143,6 +145,13 @@ export async function fetchBookmarksWithCache(forceUpdate = false) {
 async function main(forceUpdate = false) {
   log("Entering main function");
   console.time("Time elapsed");
+
+  process.on("SIGINT", async () => {
+    console.log("\nGracefully shutting down...");
+    isShuttingDown = true;
+    process.exit(0);
+  });
+
   try {
     const bookmarks = await fetchBookmarksWithCache(forceUpdate);
     console.timeEnd("Time elapsed");
