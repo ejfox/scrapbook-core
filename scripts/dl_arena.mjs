@@ -1,50 +1,91 @@
+#!/usr/bin/env node
 import Arena from "are.na";
-import * as fs from "fs";
+import * as fs from "fs/promises";
 import path from "path";
-import ora from "ora"; // Add missing import for ora
-import inquirer from "inquirer";
+import ora from "ora";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 import { readManifest, updateManifest } from "./manifestHelpers.mjs";
 
+console.log("Script started");
+
 dotenv.config();
 
+const DEBUG = process.env.DEBUG === "true";
+
+function log(...args) {
+  if (DEBUG) {
+    console.log(...args);
+  }
+}
+
+log("Debug mode is on");
+
 const limiter = new Bottleneck({ minTime: 333 });
-const USER_SLUG = "ej-fox"; // Replace with your Are.na username
+const USER_SLUG = process.env.USER_SLUG || "ej-fox";
 const ARENA_ACCESS_TOKEN = process.env.ARENA_ACCESS_TOKEN;
 
+if (!ARENA_ACCESS_TOKEN) {
+  console.error("ARENA_ACCESS_TOKEN is not set in the environment variables.");
+  process.exit(1);
+}
+
+log("Initializing Arena client");
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
 
 const fetchAllBlocks = async () => {
   const spinner = ora("Initializing download...").start();
-  const manifest = await readManifest();
-  let lastFetch = manifest.arena?.lastFetch || new Date(0).toISOString(); // Default to epoch if no timestamp available
+  let manifest;
+  try {
+    log("Reading manifest");
+    manifest = await readManifest();
+  } catch (error) {
+    console.warn(
+      "Failed to read manifest, using default values:",
+      error.message
+    );
+    manifest = { arena: {} };
+  }
+  let lastFetch = manifest.arena?.lastFetch || new Date(0).toISOString();
   let allBlocks = [];
 
   try {
+    log("Fetching user channels");
     const userChannels = await arena.user(USER_SLUG).channels();
+    log(`Found ${userChannels.length} channels`);
 
     for (const channel of userChannels) {
+      log(`Processing channel: ${channel.title}`);
       let page = 1;
       let fetching = true;
 
       while (fetching) {
-        const response = await limiter.schedule(() =>
-          arena
-            .channel(channel.id)
-            .contents({ page, per: 100, updated_after: lastFetch })
-        );
-        const blocks = response || [];
-        allBlocks = allBlocks.concat(
-          blocks.map((block) => ({ ...block, channel: channel.title }))
-        );
-        fetching = blocks.length > 0;
-        page += 1;
-        spinner.text = `Fetched ${allBlocks.length} blocks...`;
+        try {
+          log(`Fetching page ${page} of channel ${channel.title}`);
+          const response = await limiter.schedule(() =>
+            arena
+              .channel(channel.id)
+              .contents({ page, per: 100, updated_after: lastFetch })
+          );
+          const blocks = response || [];
+          allBlocks = allBlocks.concat(
+            blocks.map((block) => ({ ...block, channel: channel.title }))
+          );
+          fetching = blocks.length > 0;
+          page += 1;
+          spinner.text = `Fetched ${allBlocks.length} blocks...`;
+        } catch (error) {
+          console.error(
+            `Error fetching page ${page} of channel ${channel.title}:`,
+            error.message
+          );
+          fetching = false;
+        }
       }
     }
 
     spinner.succeed(`Downloaded ${allBlocks.length} blocks`);
+    log("Updating manifest");
     await updateManifest("arena", { lastFetch: new Date().toISOString() });
     return allBlocks;
   } catch (error) {
@@ -54,42 +95,28 @@ const fetchAllBlocks = async () => {
   }
 };
 
-const isCI = process.env.CI === "true";
+const saveBlocks = async (blocks) => {
+  log("Saving blocks");
+  const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
+  await fs.mkdir(dirPath, { recursive: true });
+  const filePath = path.join(dirPath, "arena.json");
+  await fs.writeFile(filePath, JSON.stringify(blocks, null, 2));
+  log("Blocks saved successfully");
+};
 
-if (isCI) {
-  fetchAllBlocks()
-    .then(async (blocks) => {
-      const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
-      await fs.mkdir(dirPath, { recursive: true }, () => {}); // Add empty callback
-      const filePath = path.join(dirPath, "arena.json");
-      if (!fs.existsSync(filePath)) {
-        await fs.writeFile(filePath, JSON.stringify([], null, 2), () => {}); // Add empty callback
-      }
-      await fs.writeFile(filePath, JSON.stringify(blocks, null, 2), () => {}); // Add empty callback
-    })
-    .catch(() => {}); // Add empty error handling
-} else {
-  inquirer
-    .prompt([
-      {
-        type: "confirm",
-        name: "fetchAll",
-        message: "Would you like to fetch all blocks?",
-        default: true,
-      },
-    ])
-    .then(async (answers) => {
-      if (answers.fetchAll) {
-        const blocks = await fetchAllBlocks();
-        const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
-        await fs.mkdir(dirPath, { recursive: true }, () => {}); // Add empty callback
-        const filePath = path.join(dirPath, "arena.json");
-        await fs.writeFile(filePath, JSON.stringify(blocks, null, 2), () => {}); // Add empty callback
-      } else {
-        console.log("Fetching canceled.");
-      }
-    })
-    .catch(() => {}); // Add empty error handling
+async function main() {
+  log("Entering main function");
+  try {
+    const blocks = await fetchAllBlocks();
+    await saveBlocks(blocks);
+    console.log("Blocks saved successfully.");
+  } catch (error) {
+    console.error("An error occurred:", error);
+    process.exit(1);
+  }
 }
+
+log("Starting main execution");
+main().catch((error) => console.error("Unhandled error in main:", error));
 
 export { fetchAllBlocks };

@@ -4,14 +4,13 @@
   "description": "A comprehensive personal knowledge management system for digital ephemera",
   "main": "index.mjs",
   "scripts": {
-    "start": "node index.mjs",
-    "fetch:all": "node index.mjs --all",
-    "fetch:pinboard": "node index.mjs --pinboard",
-    "fetch:mastodon": "node index.mjs --mastodon",
-    "fetch:arena": "node index.mjs --arena",
-    "fetch:github": "node index.mjs --github",
-    "sync:sqlite": "node sync_supabase_to_sqlite.js",
-    "search": "node alfred-search.js"
+    "start": "node scripts/index.mjs",
+    "fetch:all": "node scripts/index.mjs --all",
+    "fetch:pinboard": "node scripts/index.mjs --pinboard",
+    "fetch:mastodon": "node scripts/index.mjs --mastodon",
+    "fetch:arena": "node scripts/index.mjs --arena",
+    "fetch:github": "node scripts/index.mjs --github",
+    "sync:sqlite": "node scripts/sync_supabase_to_sqlite.js"
   },
   "keywords": [
     "knowledge-management",
@@ -60,6 +59,7 @@
     "inquirer": "^9.2.22",
     "js-md5": "^0.8.3",
     "llama-tokenizer-js": "^1.2.1",
+    "openai": "^4.52.4",
     "ora": "^8.0.1",
     "puppeteer": "^22.10.0",
     "sqlite": "^5.1.1",

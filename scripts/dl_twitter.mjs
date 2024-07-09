@@ -1,50 +1,20 @@
-import fs from "fs";
-import path from "path";
-import { createClient } from "@supabase/supabase-js";
-import * as helpers from "../helpers.js"; // Assuming you have helper functions for UUID conversion and more
-import Bottleneck from "bottleneck";
-import dotenv from "dotenv";
-import * as d3 from "d3";
+import axios from "axios";
+import * as helpers from "../helpers.js";
 
-dotenv.config();
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
-
-// Initialize Bottleneck
-const limiter = new Bottleneck({
-  maxConcurrent: 3, // Maximum 3 concurrent upserts
-  minTime: 100, // Minimum 1 second between each upsert
-});
-
-async function upsertScrap(scrap) {
-  const { data, error } = await supabase
-    .from("scraps")
-    .upsert(scrap, { onConflict: "scrap_id" });
-
-  console.log(`${JSON.stringify(scrap)} upserted`);
-
-  console.log(`-- ${JSON.stringify(data)}`);
-
-  if (error) {
-    console.error("Error upserting scrap:", error);
+async function fetchTweets(url) {
+  try {
+    const response = await axios.get(url);
+    return response.data.tweets;
+  } catch (error) {
+    console.error("Error fetching tweets:", error);
+    throw error;
   }
-}
-
-function parseTweets(filePath) {
-  const rawData = fs.readFileSync(filePath, "utf-8");
-  console.log("Parsing tweets data");
-  console.log("Data length: ", rawData.length);
-  const tweetsData = JSON.parse(rawData);
-  return tweetsData.tweets;
 }
 
 function processTweet(tweet, allTweets) {
   const tweetId = tweet.id;
   const threadTweets = allTweets.filter((t) => t.reply_to_tweet_id === tweetId);
 
-  // Capture thread relationships
   const relationships = threadTweets.map((t) => ({
     type: "thread",
     target: {
@@ -58,40 +28,34 @@ function processTweet(tweet, allTweets) {
     scrap_id: helpers.scrapToUUID("twitter" + tweetId),
     source: "twitter",
     content: tweet.text,
-    summary: "", // Placeholder for summary
-    created_at: tweet.created_at,
-    tags: [], // Placeholder for tags
+    summary: "",
+    created_at: new Date(tweet.created_at).toISOString(),
+    tags: tweet.hashtags || [],
     relationships: relationships,
     metadata: {
       href: `https://twitter.com/i/web/status/${tweetId}`,
       rts: tweet.retweet_count,
       likes: tweet.favorite_count,
-      user: tweet.reply_to_username,
-      reply_to_tweet_id: tweet.reply_to_tweet_id, // Add the tweet ID of the tweet replying to
+      user: tweet.user?.screen_name || tweet.reply_to_username,
+      reply_to_tweet_id: tweet.reply_to_tweet_id,
     },
   };
 }
 
-async function importTweets(filePath) {
-  const tweets = parseTweets(filePath);
+async function fetchAndProcessTweets(url) {
+  try {
+    console.log("Fetching tweets...");
+    const tweets = await fetchTweets(url);
+    console.log(`Fetched ${tweets.length} tweets`);
 
-  // console.log({ tweets });
-  console.log(`Importing ${tweets.length} tweets`);
+    const processedTweets = tweets.map((tweet) => processTweet(tweet, tweets));
+    console.log(`${processedTweets.length} tweets processed`);
 
-  const scraps = tweets.map((tweet) => processTweet(tweet, tweets));
-
-  console.log(`${scraps.length} tweets to upsert`);
-
-  const upsertPromises = scraps.map((scrap) =>
-    limiter.schedule(() => upsertScrap(scrap))
-  );
-
-  await Promise.all(upsertPromises);
-
-  console.log("Tweets have been imported and upserted into Supabase.");
+    return processedTweets;
+  } catch (error) {
+    console.error("Error in fetchAndProcessTweets:", error);
+    throw error;
+  }
 }
 
-// Path to your tweets.json file
-const tweetsFilePath = path.resolve("data/tweets.json");
-
-importTweets(tweetsFilePath).catch(console.error);
+export { fetchAndProcessTweets };
