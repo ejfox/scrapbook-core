@@ -55,8 +55,19 @@ const fetchUserId = async () => {
   return user ? user.id : null;
 };
 
+const processStatus = (status) => {
+  const processedStatus = { ...status };
+
+  if (status.media_attachments && status.media_attachments.length > 0) {
+    processedStatus.image_urls = status.media_attachments
+      .filter((attachment) => attachment.type === "image")
+      .map((attachment) => attachment.url);
+  }
+
+  return processedStatus;
+};
+
 const fetchStatuses = async (userId) => {
-  // const spinner = ora("Initializing download...").start();
   let allStatuses = [];
   let maxId = null;
   const resultCount = 40;
@@ -70,18 +81,16 @@ const fetchStatuses = async (userId) => {
         })
       );
 
-      allStatuses = allStatuses.concat(data);
+      const processedData = data.map(processStatus);
+      allStatuses = allStatuses.concat(processedData);
 
       if (data.length < resultCount) break;
 
       maxId = data[data.length - 1].id;
-      // spinner.text = `Fetched ${allStatuses.length} statuses...`;
     }
 
-    // spinner.succeed(`Downloaded ${allStatuses.length} statuses`);
     return allStatuses;
   } catch (error) {
-    // spinner.fail(`Error fetching statuses: ${error.message}`);
     throw error;
   }
 };

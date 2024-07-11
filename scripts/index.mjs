@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+import OpenAI from "openai";
 import { program } from "commander";
 import { fetchAllBlocks } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId } from "./dl_mastodon.mjs";
@@ -24,6 +24,11 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 dotenv.config();
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const CHECKPOINT_FILE = "./data/checkpoint.json";
 let DEBUG = false;
@@ -55,6 +60,24 @@ const browserLimiter = new Bottleneck({
   minTime: 1000,
 });
 
+async function generateEmbedding(text) {
+  if (process.env.USE_OPENAI !== "true") {
+    console.log("OpenAI is not enabled, skipping embedding generation.");
+    return null;
+  }
+
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-ada-002",
+      input: text,
+    });
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Error generating embedding:", error);
+    return null;
+  }
+}
+
 async function ensureDirectoryExists(dirPath) {
   try {
     await mkdir(dirPath, { recursive: true });
@@ -63,6 +86,20 @@ async function ensureDirectoryExists(dirPath) {
       throw error;
     }
   }
+}
+
+async function getExistingScrap(scrapId) {
+  const { data, error } = await supabase
+    .from("scraps")
+    .select("*")
+    .eq("scrap_id", scrapId)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error checking for existing scrap:", error);
+  }
+
+  return data;
 }
 
 async function loadCheckpoint() {
@@ -96,7 +133,6 @@ async function saveCheckpoint(checkpoint) {
 async function upsertScrap(scrap, newOnly = false) {
   try {
     if (newOnly) {
-      // Check if the scrap already exists
       const { data, error } = await supabase
         .from("scraps")
         .select("scrap_id")
@@ -109,6 +145,11 @@ async function upsertScrap(scrap, newOnly = false) {
       }
     }
 
+    // Generate embedding if summary exists and USE_OPENAI is true
+    if (scrap.summary && process.env.USE_OPENAI === "true") {
+      scrap.embedding = await generateEmbedding(scrap.summary);
+    }
+
     const { data, error } = await supabase
       .from("scraps")
       .upsert(scrap, { onConflict: "scrap_id" });
@@ -117,7 +158,9 @@ async function upsertScrap(scrap, newOnly = false) {
       console.error("Error upserting scrap:", error);
     } else {
       console.log(
-        `Scrap ${newOnly ? "inserted" : "upserted"}: ${scrap.scrap_id}`
+        `Scrap ${newOnly ? "inserted" : "upserted"}: ${scrap.scrap_id} ${
+          scrap.title
+        } ${scrap.source}`
       );
     }
   } catch (error) {
@@ -143,30 +186,23 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
         break;
       }
 
+      console.log("\nRAW BOOKMARK!!!");
+      console.log(bookmark);
+      console.log("\n");
+
       if (!lastScrapTime || new Date(bookmark.time) > new Date(lastScrapTime)) {
         const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
+        const existingScrap = await getExistingScrap(scrapId);
 
-        if (newOnly) {
-          const exists = await scrapExists(scrapId);
-          if (exists) {
-            console.log(`Scrap ${scrapId} already exists, skipping.`);
-            continue;
-          }
+        if (newOnly && existingScrap) {
+          console.log(`Scrap ${scrapId} already exists, skipping.`);
+          continue;
         }
 
         let pageContent = "";
-        let summary = "";
+        let summary = existingScrap?.summary || "";
 
-        const { data } = await supabase
-          .from("scraps")
-          .select("summary")
-          .eq("scrap_id", scrapId);
-
-        const existingSummary = data?.[0]?.summary;
-
-        if (existingSummary) {
-          summary = existingSummary;
-        } else {
+        if (!summary) {
           try {
             pageContent = await browserLimiter.schedule(() =>
               helpers.fetchPageContent(bookmark.href)
@@ -179,18 +215,29 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
           }
         }
 
-        const { location, latitude, longitude } = await limiter.schedule(() =>
-          extractLocation(summary)
-        );
+        let location = existingScrap?.metadata?.location;
+        let latitude = existingScrap?.metadata?.latitude;
+        let longitude = existingScrap?.metadata?.longitude;
+
+        if (!location) {
+          const locationData = await limiter.schedule(() =>
+            extractLocation(summary)
+          );
+          location = locationData.location;
+          latitude = locationData.latitude;
+          longitude = locationData.longitude;
+        }
 
         let tags = await limiter.schedule(() => metaSummaryToTags(summary));
-        tags = tags.split(",").map((tag) => tag.trim());
+        tags = tags.split("\n").map((tag) => tag.trim());
         const combinedTags = [...new Set([...tags, ...bookmark.tags])];
 
-        let screenshotUrl = null;
-        await browserLimiter.schedule(async () => {
-          screenshotUrl = await generateWebpageScreenshot(bookmark.href);
-        });
+        let screenshotUrl = existingScrap?.metadata?.screenshotUrl;
+        if (!screenshotUrl) {
+          await browserLimiter.schedule(async () => {
+            screenshotUrl = await generateWebpageScreenshot(bookmark.href);
+          });
+        }
 
         // Extract relationships
         const relationshipsData = await limiter.schedule(() =>
@@ -198,6 +245,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
         );
 
         const bookmarkObj = {
+          title: bookmark.title,
           scrap_id: scrapId,
           source: "pinboard",
           content: bookmark.description,
@@ -206,13 +254,14 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
           summary: summary,
           tags: combinedTags,
           metadata: {
+            title: bookmark.title,
             href: bookmark.href,
             screenshotUrl: screenshotUrl,
             location: location,
             latitude: latitude,
             longitude: longitude,
           },
-          relationships: relationshipsData.relationships, // Add the relationships here
+          relationships: relationshipsData.relationships,
         };
 
         await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
@@ -254,6 +303,7 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
       ) {
         const statusObj = {
           scrap_id: helpers.scrapToUUID("mastodon" + status.id),
+          title: status.content,
           source: "mastodon",
           content: status.content,
           created_at: status.created_at,
@@ -303,6 +353,7 @@ async function fetchAndUpsertArenaBlocks(lastScrapTime) {
       ) {
         const blockObj = {
           scrap_id: helpers.scrapToUUID("arena" + block.id),
+          title: block.title,
           source: "arena",
           content: block.content,
           created_at: block.created_at,
@@ -365,6 +416,7 @@ async function fetchAndUpsertGithubData() {
       const repoObj = {
         scrap_id: helpers.scrapToUUID("github" + repo.id),
         source: "github",
+        title: `${repo.name}`,
         content: repo.description,
         created_at: repo.created_at,
         updated_at: repo.updated_at,
@@ -406,7 +458,7 @@ function splitQueryParams(url) {
 async function generateWebpageScreenshot(webUrl) {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800 });
+  await page.setViewport({ width: 1080, height: 1920 });
 
   try {
     await page.goto(webUrl, { waitUntil: "networkidle0", timeout: 60000 });
@@ -417,7 +469,27 @@ async function generateWebpageScreenshot(webUrl) {
     const screenshotPath = `${screenshotDir}/${filename}.png`;
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`Screenshot saved: ${screenshotPath}`);
-    return screenshotPath;
+
+    // Upload screenshot to Supabase
+    const screenshotBuffer = await fs.readFile(screenshotPath);
+    const { data, error } = await supabase.storage
+      .from("screenshots")
+      .upload(`public/${filename}.png`, screenshotBuffer, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Error uploading screenshot to Supabase:", error);
+      return null;
+    }
+
+    const { publicURL } = supabase.storage
+      .from("screenshots")
+      .getPublicUrl(`public/${filename}.png`);
+
+    console.log(`Screenshot URL: ${publicURL}`);
+    return publicURL;
   } catch (error) {
     console.error(`Error capturing screenshot for ${webUrl}:`, error);
     return null;

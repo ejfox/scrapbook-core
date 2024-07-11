@@ -69,7 +69,14 @@ const fetchAllBlocks = async () => {
           const response = await limiter.schedule(() =>
             arena
               .channel(channel.id)
-              .contents({ page, per: 100, updated_after: lastFetch })
+              // .contents({ page, per: 100, updated_after: lastFetch })
+              .contents({
+                page,
+                per: 100,
+                sort: "updated_at",
+                direction: "desc",
+                updated_after: lastFetch,
+              })
           );
           const blocks = response || [];
           allBlocks = allBlocks.concat(
