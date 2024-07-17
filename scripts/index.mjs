@@ -184,7 +184,7 @@ async function upsertScrap(scrap, newOnly = false) {
     } else {
       console.log(
         `Scrap ${newOnly ? "inserted" : "upserted"}: ${scrap.scrap_id} ${
-          scrap.title
+          scrap.content
         } ${scrap.source}`
       );
     }
@@ -419,33 +419,55 @@ async function fetchAndUpsertGithubData() {
   try {
     console.log("Fetching GitHub data...");
     const githubData = await fetchGithubData();
-    log(`Fetched GitHub data`);
+    console.log(`Fetched GitHub data`);
 
     if (githubData) {
       await updateManifest("github", { lastFetch: new Date().toISOString() });
     }
 
-    for (const repo of githubData.repos) {
+    const allScraps = [
+      ...githubData.userRepos.map((repo) => ({ ...repo, repository: true })),
+      ...githubData.userPRs.map((pr) => ({ ...pr, pull_request: true })),
+      ...githubData.userIssues.map((issue) => ({ ...issue, issue: true })),
+      ...githubData.userGists.map((gist) => ({ ...gist, gist: true })),
+      ...githubData.userReleases.map((release) => ({
+        ...release,
+        release: true,
+      })),
+      ...githubData.starredRepos.map((starred) => ({
+        ...starred,
+        starred: true,
+      })),
+    ];
+
+    for (const scrap of allScraps) {
       if (isShuttingDown) {
         console.log("Shutting down, skipping GitHub data processing");
         break;
       }
 
+      if (scrap.pull_request) {
+        console.log(
+          `Processing GitHub scrap: ${scrap.name} \n ${JSON.stringify(scrap)}`
+        );
+      }
+
       const repoObj = {
-        scrap_id: helpers.scrapToUUID("github" + repo.id),
+        scrap_id: helpers.scrapToUUID("github" + scrap.id),
         source: "github",
-        // title: `${repo.name}`,
-        content: `${repo.name} ${repo.description}`,
-        created_at: repo.created_at,
-        updated_at: repo.updated_at,
-        tags: repo.topics,
+        content: helpers.getHumanReadableContent(scrap),
+        created_at: scrap.created_at || scrap.created,
+        updated_at: scrap.updated_at || scrap.updated,
+        tags: scrap.topics || [],
         metadata: {
-          name: repo.name,
-          full_name: repo.full_name,
-          html_url: repo.html_url,
-          language: repo.language,
-          stargazers_count: repo.stargazers_count,
-          forks_count: repo.forks_count,
+          name: scrap.name,
+          full_name: scrap.full_name,
+          href: scrap.html_url,
+          image: scrap.hero || null,
+          language: scrap.language,
+          stargazers_count: scrap.stargazers_count,
+          forks_count: scrap.forks_count,
+          hero: scrap.hero || null,
         },
       };
 
@@ -488,7 +510,7 @@ async function generateWebpageScreenshot(webUrl) {
     await ensureDirectoryExists(screenshotDir);
     const screenshotPath = path.join(screenshotDir, `${filename}.png`);
 
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await page.screenshot({ path: screenshotPath, fullPage: false });
     console.log(`Screenshot saved: ${screenshotPath}`);
 
     // Display screenshot in terminal (if running in a terminal that supports it)
