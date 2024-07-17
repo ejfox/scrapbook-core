@@ -4,6 +4,24 @@ import cheerio from "cheerio";
 import puppeteer from "puppeteer";
 import llamaTokenizer from "llama-tokenizer-js";
 
+export const getHumanReadableContent = (scrap) => {
+  if (scrap.pull_request) {
+    return `User created a new pull request: ${scrap.title}`;
+  } else if (scrap.issue) {
+    return `User created a new issue: ${scrap.title}`;
+  } else if (scrap.repository) {
+    return `User created a new repository: ${scrap.name}`;
+  } else if (scrap.gist) {
+    return `User created a new gist: ${scrap.description || "No description"}`;
+  } else if (scrap.release) {
+    return `User created a new release: ${scrap.name}`;
+  } else if (scrap.starred) {
+    return `User starred a repository: ${scrap.full_name}`;
+  } else {
+    return `Unknown action`;
+  }
+};
+
 export function generateShortId(data, length = 8) {
   const hash = CryptoJS.SHA256(data);
   const base64 = CryptoJS.enc.Base64.stringify(hash)

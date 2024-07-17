@@ -6,6 +6,7 @@ import Bottleneck from "bottleneck";
 import llamaTokenizer from "llama-tokenizer-js";
 import { breakContentIntoChunks } from "../helpers.js";
 import dotenv from "dotenv";
+import cheerio from "cheerio";
 
 dotenv.config();
 
@@ -23,16 +24,21 @@ function chooseLLMService() {
 }
 
 export default async function extractLocation(content, options = {}) {
+  const { url, rawHtml } = options;
   const chunkSizeTokens = 6144;
 
   if (!content) {
     console.error("No content provided");
     return { location: null, latitude: null, longitude: null };
   }
-  const flatChunks = breakContentIntoChunks(content, chunkSizeTokens);
+
+  const contextualInfo = await gatherContextualInfo(url, rawHtml);
+  const enhancedContent = `${contextualInfo}\n\n${content}`;
+
+  const flatChunks = breakContentIntoChunks(enhancedContent, chunkSizeTokens);
 
   console.log(
-    `Broke ${content.length} characters into ${flatChunks.length} chunks...`
+    `Broke ${enhancedContent.length} characters into ${flatChunks.length} chunks...`
   );
 
   const avgTokensPerChunk = flatChunks.reduce((acc, chunk) => {
@@ -51,17 +57,13 @@ export default async function extractLocation(content, options = {}) {
   console.log("⚡️ Locations:");
   console.log(locations);
 
-  // if either of the locations is null, or N/A, or "unknown", return null for everything
-  if (locations[0] === null)
-    return { location: null, latitude: null, longitude: null };
-  if (locations[0] === "null")
-    return { location: null, latitude: null, longitude: null };
-  if (locations[0] === "N/A")
-    return { location: null, latitude: null, longitude: null };
-  if (locations[0] === "unknown")
-    return { location: null, latitude: null, longitude: null };
-
-  const filteredLocations = locations.filter((location) => location !== null);
+  const filteredLocations = locations.filter(
+    (location) =>
+      location !== null &&
+      location !== "null" &&
+      location !== "N/A" &&
+      location !== "unknown"
+  );
 
   if (filteredLocations.length === 0) {
     console.log("No location found in the content.");
@@ -79,6 +81,46 @@ export default async function extractLocation(content, options = {}) {
   return { location, latitude, longitude };
 }
 
+async function gatherContextualInfo(url, rawHtml) {
+  let contextualInfo = "";
+
+  if (url) {
+    const domainInfo = extractDomainInfo(url);
+    contextualInfo += `URL: ${url}\nDomain: ${domainInfo.domain}\nTLD: ${domainInfo.tld}\n`;
+  }
+
+  if (rawHtml) {
+    const metaInfo = extractMetaInfo(rawHtml);
+    contextualInfo += `\nMeta Information:\n${metaInfo}\n`;
+  }
+
+  return contextualInfo;
+}
+
+function extractDomainInfo(url) {
+  const parsedUrl = new URL(url);
+  const domainParts = parsedUrl.hostname.split(".");
+  return {
+    domain: domainParts[domainParts.length - 2],
+    tld: domainParts[domainParts.length - 1],
+  };
+}
+
+function extractMetaInfo(rawHtml) {
+  const $ = cheerio.load(rawHtml);
+  let metaInfo = "";
+
+  $("meta").each((i, elem) => {
+    const name = $(elem).attr("name") || $(elem).attr("property");
+    const content = $(elem).attr("content");
+    if (name && content) {
+      metaInfo += `${name}: ${content}\n`;
+    }
+  });
+
+  return metaInfo;
+}
+
 export async function extractLocationFromString(content) {
   const llmService = chooseLLMService();
 
@@ -92,8 +134,13 @@ export async function extractLocationFromString(content) {
 async function extractLocationOpenAI(content) {
   const messages = [
     {
+      role: "system",
+      content:
+        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. If no location is mentioned, you may make a logical guess based clues in teh text, if any. If no clear location can be found, return null.",
+    },
+    {
       role: "user",
-      content: `Extract a single geographic location from this content. If there is no location, simply return null. 
+      content: `Extract a single geographic location from this content. If there is no clear location, return null. 
       # Content
       ${content}`,
     },
@@ -109,7 +156,7 @@ async function extractLocationOpenAI(content) {
           properties: {
             city: {
               type: "string",
-              description: "The name of the city",
+              description: "The name of the city, if applicable",
             },
             state: {
               type: "string",
@@ -117,7 +164,7 @@ async function extractLocationOpenAI(content) {
             },
             country: {
               type: "string",
-              description: "The name of the country",
+              description: "The name of the country, if applicable",
             },
           },
           required: ["city", "country"],
@@ -149,21 +196,15 @@ async function extractLocationOpenAI(content) {
           return null;
         }
 
-        if (city === "unknown" || city === "n/a") {
-          city = null;
-        }
-
-        if (country === "unknown" || country === "n/a") {
-          country = null;
-        }
-
-        let formattedLocation = city;
+        let formattedLocation = city !== "null" ? city : "";
         if (state && state !== "null") {
-          formattedLocation += `, ${state}`;
+          formattedLocation += formattedLocation ? `, ${state}` : state;
         }
-        formattedLocation += `, ${country}`;
+        if (country !== "null") {
+          formattedLocation += formattedLocation ? `, ${country}` : country;
+        }
 
-        return formattedLocation;
+        return formattedLocation || null;
       }
     }
 
@@ -179,7 +220,7 @@ async function extractLocationLocal(content) {
     {
       role: "system",
       content:
-        "You need to extract a single geographic location from this content. If multiple locations are found, return the first one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no location is found, return 'null'. These must be real, existing locations on earth. If they aren't, return 'null'. If no locations are mentioned, return 'null'. Respond with ONLY the location, no other chatter, introduction, or conclusion.",
+        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no clear location is found, return 'null'. These must be real, existing locations on earth. Respond with ONLY the location, no other text.",
     },
     {
       role: "user",
@@ -204,7 +245,7 @@ async function extractLocationLocal(content) {
     return extractedLocation === "null" ? null : extractedLocation;
   } catch (error) {
     console.error("Error in local LLM service:", error);
-    return `Error: ${error.message}`;
+    return null;
   }
 }
 
