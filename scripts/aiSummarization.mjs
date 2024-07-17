@@ -51,9 +51,6 @@ export async function summarizeContent(content, options = {}) {
     flatChunks.map((chunk) => limiter.schedule(() => summarizeString(chunk)))
   );
 
-  console.log("⚡️ Summaries:");
-  console.log(summaries);
-
   let summary = summaries.join("\n");
   console.log("Summary:", summary);
 
