@@ -51,6 +51,16 @@ export default async function extractLocation(content, options = {}) {
   console.log("⚡️ Locations:");
   console.log(locations);
 
+  // if either of the locations is null, or N/A, or "unknown", return null for everything
+  if (locations[0] === null)
+    return { location: null, latitude: null, longitude: null };
+  if (locations[0] === "null")
+    return { location: null, latitude: null, longitude: null };
+  if (locations[0] === "N/A")
+    return { location: null, latitude: null, longitude: null };
+  if (locations[0] === "unknown")
+    return { location: null, latitude: null, longitude: null };
+
   const filteredLocations = locations.filter((location) => location !== null);
 
   if (filteredLocations.length === 0) {

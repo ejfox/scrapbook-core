@@ -18,6 +18,17 @@ Scrapbook Core is a comprehensive data management system designed to accumulate 
 - Syncs data with both Supabase and SQLite databases
 - Includes an Alfred Workflow for quick local database searches
 
+Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) tool.
+
+Also visible on [my website's scrapbook](https://ejfox.com/scrapbook/)
+
+I also use it in combination with an Alfred Workflow and a local SQLite database for quick searching:
+- <scripts/setup_sqlite.mjs>
+- <scripts/sync_supabase_to_sqlite.js>
+- <scripts/search_sqlite_scraps.js>
+- <Local\ Scrap\ Search.1.1.alfredworkflow.zip>
+
+
 ## System Architecture
 
 ```mermaid
