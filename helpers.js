@@ -243,3 +243,66 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
   // Return the array of chunks
   return chunks;
 }
+
+/**
+ * Splits content into chunks of a specified maximum size.
+ * @param {string} content - The text content to be split into chunks.
+ * @param {Object} options - Configuration options.
+ * @param {number} [options.chunkMaxChars=2048] - Maximum number of characters per chunk.
+ * @returns {string[]} An array of content chunks.
+ */
+export function contentToChunks(content, options = {}) {
+  const { chunkMaxChars = 2048 } = options;
+  const chunks = [];
+  let currentChunk = "";
+
+  // Split the content into paragraphs
+  const paragraphs = content.split("\n");
+
+  /**
+   * Helper function to add the current chunk to the chunks array and reset it.
+   */
+  const addChunk = () => {
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+      currentChunk = "";
+    }
+  };
+
+  /**
+   * Helper function to split a long paragraph into smaller chunks.
+   * @param {string} paragraph - The paragraph to split.
+   */
+  const splitLongParagraph = (paragraph) => {
+    const words = paragraph.split(" ");
+    for (const word of words) {
+      if (currentChunk.length + word.length > chunkMaxChars) {
+        addChunk();
+      }
+      currentChunk += (currentChunk ? " " : "") + word;
+    }
+    addChunk();
+  };
+
+  // Process each paragraph
+  for (const paragraph of paragraphs) {
+    if (currentChunk.length + paragraph.length <= chunkMaxChars) {
+      // If the paragraph fits in the current chunk, add it
+      currentChunk += (currentChunk ? "\n" : "") + paragraph;
+    } else {
+      // If it doesn't fit, add the current chunk and process the paragraph
+      addChunk();
+      if (paragraph.length <= chunkMaxChars) {
+        currentChunk = paragraph;
+      } else {
+        splitLongParagraph(paragraph);
+      }
+    }
+  }
+
+  // Add any remaining content in the current chunk
+  addChunk();
+
+  console.log(`Chunks: ${chunks.length}`);
+  return chunks;
+}

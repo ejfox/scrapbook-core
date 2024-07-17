@@ -121,6 +121,34 @@ const fetchGithubData = async () => {
   }
 };
 
+/**
+ * 
+ * @example
+ * const repoInfo = await fetchGithubRepoInfo(repo.full_name);
+
+      // extract relationships based on collaborators, contributor, and repo data
+      const repoInfoObj = {
+        contributors: repoInfo, 
+        owner: repoInfo.owner,
+        languages: repoInfo.languages,
+      }
+        
+ */
+function fetchGithubRepoInfo(repoFullName) {
+  return axios
+    .get(`https://api.github.com/repos/${repoFullName}`, {
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    })
+    .then((response) => response.data)
+    .catch((error) => {
+      console.error("Error fetching repo info:", error.message);
+      return null;
+    });
+}
+
 const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
 const filePath = path.join(dirPath, "github.json");
 
@@ -134,4 +162,4 @@ const saveGithubData = async (githubData) => {
   }
 };
 
-export { fetchGithubData, saveGithubData };
+export { fetchGithubData, saveGithubData, fetchGithubRepoInfo };

@@ -78,6 +78,31 @@ async function generateEmbedding(text) {
   }
 }
 
+async function extractAndAddRelationships(scrapObj) {
+  try {
+    const content = scrapObj.summary || scrapObj.content;
+    if (!content) {
+      console.log(
+        `No content available for scrap ${scrapObj.scrap_id}, skipping relationship extraction.`
+      );
+      return scrapObj;
+    }
+
+    const relationshipsData = await limiter.schedule(() =>
+      extractRelationships(content, { isRawText: !scrapObj.summary })
+    );
+
+    scrapObj.relationships = relationshipsData.relationships;
+    return scrapObj;
+  } catch (error) {
+    console.error(
+      `Error extracting relationships for scrap ${scrapObj.scrap_id}:`,
+      error
+    );
+    return scrapObj;
+  }
+}
+
 async function ensureDirectoryExists(dirPath) {
   try {
     await mkdir(dirPath, { recursive: true });
@@ -170,7 +195,7 @@ async function upsertScrap(scrap, newOnly = false) {
 
 async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
   try {
-    console.log("Fetching Pinboard bookmarks...");
+    console.log(`Fetching Pinboard bookmarks since ${lastScrapTime}...`);
     const pinboardBookmarks = await fetchBookmarksWithCache(false);
     log(`Fetched ${pinboardBookmarks.length} Pinboard bookmarks`);
 
@@ -185,10 +210,6 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
         console.log("Shutting down, skipping bookmark processing");
         break;
       }
-
-      console.log("\nRAW BOOKMARK!!!");
-      console.log(bookmark);
-      console.log("\n");
 
       if (!lastScrapTime || new Date(bookmark.time) > new Date(lastScrapTime)) {
         const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
@@ -239,13 +260,8 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
           });
         }
 
-        // Extract relationships
-        const relationshipsData = await limiter.schedule(() =>
-          extractRelationships(pageContent || summary)
-        );
-
-        const bookmarkObj = {
-          title: bookmark.title,
+        let bookmarkObj = {
+          // title: bookmark.title,
           scrap_id: scrapId,
           source: "pinboard",
           content: bookmark.description,
@@ -261,8 +277,10 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
             latitude: latitude,
             longitude: longitude,
           },
-          relationships: relationshipsData.relationships,
         };
+
+        // Extract and add relationships
+        bookmarkObj = await extractAndAddRelationships(bookmarkObj);
 
         await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
       }
@@ -303,7 +321,7 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
       ) {
         const statusObj = {
           scrap_id: helpers.scrapToUUID("mastodon" + status.id),
-          title: status.content,
+          // title: status.content,
           source: "mastodon",
           content: status.content,
           created_at: status.created_at,
@@ -353,7 +371,7 @@ async function fetchAndUpsertArenaBlocks(lastScrapTime) {
       ) {
         const blockObj = {
           scrap_id: helpers.scrapToUUID("arena" + block.id),
-          title: block.title,
+          // title: block.title,
           source: "arena",
           content: block.content,
           created_at: block.created_at,
@@ -416,7 +434,7 @@ async function fetchAndUpsertGithubData() {
       const repoObj = {
         scrap_id: helpers.scrapToUUID("github" + repo.id),
         source: "github",
-        title: `${repo.name}`,
+        // title: `${repo.name}`,
         content: `${repo.name} ${repo.description}`,
         created_at: repo.created_at,
         updated_at: repo.updated_at,
@@ -456,40 +474,52 @@ function splitQueryParams(url) {
 }
 
 async function generateWebpageScreenshot(webUrl) {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
   await page.setViewport({ width: 1080, height: 1920 });
 
   try {
+    console.log(`Navigating to: ${webUrl}`);
     await page.goto(webUrl, { waitUntil: "networkidle0", timeout: 60000 });
+
     const { baseUrl } = splitQueryParams(webUrl);
     const filename = cleanAndFormatFilename(baseUrl);
     const screenshotDir = "./screenshots";
     await ensureDirectoryExists(screenshotDir);
-    const screenshotPath = `${screenshotDir}/${filename}.png`;
+    const screenshotPath = path.join(screenshotDir, `${filename}.png`);
+
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`Screenshot saved: ${screenshotPath}`);
+
+    // Display screenshot in terminal (if running in a terminal that supports it)
+    try {
+      console.log(await terminalImage.file(screenshotPath, { width: "50%" }));
+    } catch (error) {
+      console.log("Unable to display screenshot in terminal.");
+    }
 
     // Upload screenshot to Supabase
     const screenshotBuffer = await fs.readFile(screenshotPath);
     const { data, error } = await supabase.storage
-      .from("screenshots")
-      .upload(`public/${filename}.png`, screenshotBuffer, {
+      .from("scrap_screenshots")
+      .upload(`${filename}.png`, screenshotBuffer, {
+        contentType: "image/png",
         cacheControl: "3600",
-        upsert: true,
+        // upsert: true,
       });
 
     if (error) {
-      console.error("Error uploading screenshot to Supabase:", error);
-      return null;
+      throw new Error(
+        `Error uploading screenshot to Supabase: ${error.message}`
+      );
     }
 
-    const { publicURL } = supabase.storage
-      .from("screenshots")
-      .getPublicUrl(`public/${filename}.png`);
+    const { data: urlData } = supabase.storage
+      .from("scrap_screenshots")
+      .getPublicUrl(`${filename}.png`);
 
-    console.log(`Screenshot URL: ${publicURL}`);
-    return publicURL;
+    console.log(`Screenshot URL: ${urlData.publicUrl}`);
+    return urlData.publicUrl;
   } catch (error) {
     console.error(`Error capturing screenshot for ${webUrl}:`, error);
     return null;
@@ -498,44 +528,92 @@ async function generateWebpageScreenshot(webUrl) {
   }
 }
 
-async function main(options) {
-  console.log("Main function started");
+async function gracefulShutdown() {
+  console.log("\nInitiating graceful shutdown...");
+  isShuttingDown = true;
+
+  // Cancel any pending limiter jobs
+  limiter.stop({ dropWaitingJobs: true });
+  upsertLimiter.stop({ dropWaitingJobs: true });
+  browserLimiter.stop({ dropWaitingJobs: true });
+
+  // Wait for ongoing operations to complete
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  console.log("Shutdown complete.");
+  process.exit(0);
+}
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  gracefulShutdown();
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  gracefulShutdown();
+});
+
+async function main(options = {}) {
+  options = {
+    useManifest: true,
+    newOnly: true,
+    ...options,
+  };
+
+  console.log("🚀 Scrapbook Core: Main function started");
+  console.log("📊 Options:", JSON.stringify(options, null, 2));
+
   const checkpoint = await loadCheckpoint();
+  console.log("📍 Loaded checkpoint:", JSON.stringify(checkpoint, null, 2));
 
-  process.on("SIGINT", async () => {
-    console.log("\nGracefully shutting down...");
-    isShuttingDown = true;
+  process.on("SIGINT", gracefulShutdown);
+  process.on("SIGTERM", gracefulShutdown);
 
-    // Give ongoing operations a chance to complete
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+  const sources = [
+    { name: "pinboard", func: fetchAndUpsertPinboardBookmarks },
+    { name: "mastodon", func: fetchAndUpsertMastodonStatuses },
+    { name: "arena", func: fetchAndUpsertArenaBlocks },
+    { name: "github", func: fetchAndUpsertGithubData },
+  ];
 
-    console.log("Shutdown complete.");
-    process.exit(0);
-  });
-
-  if (options.pinboard || options.all) {
-    checkpoint.pinboard = await fetchAndUpsertPinboardBookmarks(
-      checkpoint.pinboard,
-      options.newOnly
-    );
-  }
-
-  if (options.mastodon || options.all) {
-    checkpoint.mastodon = await fetchAndUpsertMastodonStatuses(
-      checkpoint.mastodon
-    );
-  }
-
-  if (options.arena || options.all) {
-    checkpoint.arena = await fetchAndUpsertArenaBlocks(checkpoint.arena);
-  }
-
-  if (options.github || options.all) {
-    checkpoint.github = await fetchAndUpsertGithubData();
+  for (const source of sources) {
+    if (options[source.name] || options.all) {
+      console.log(`\n📦 Processing ${source.name.toUpperCase()}...`);
+      try {
+        console.time(`${source.name} processing time`);
+        const result = await source.func(
+          checkpoint[source.name],
+          options.newOnly
+        );
+        checkpoint[source.name] = result;
+        console.timeEnd(`${source.name} processing time`);
+        console.log(
+          `✅ ${source.name.toUpperCase()} processing completed successfully`
+        );
+      } catch (error) {
+        console.error(
+          `❌ Error processing ${source.name.toUpperCase()}:`,
+          error
+        );
+      }
+    } else {
+      console.log(`⏭️  Skipping ${source.name.toUpperCase()} (not selected)`);
+    }
   }
 
   await saveCheckpoint(checkpoint);
-  console.log("Main function completed");
+  console.log("\n📍 Updated checkpoint:", JSON.stringify(checkpoint, null, 2));
+
+  console.log("\n🏁 Scrapbook Core: Main function completed");
+  console.log("📊 Summary:");
+  sources.forEach((source) => {
+    console.log(
+      `  - ${source.name.toUpperCase()}: ${
+        options[source.name] || options.all ? "✅ Processed" : "⏭️  Skipped"
+      }`
+    );
+  });
 }
 
 program
