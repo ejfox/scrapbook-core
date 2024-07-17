@@ -417,7 +417,7 @@ async function fetchAndUpsertGithubData() {
         scrap_id: helpers.scrapToUUID("github" + repo.id),
         source: "github",
         title: `${repo.name}`,
-        content: repo.description,
+        content: `${repo.name} ${repo.description}`,
         created_at: repo.created_at,
         updated_at: repo.updated_at,
         tags: repo.topics,
