@@ -1,11 +1,15 @@
 {
-  "lastUpdateTimestamp": 1720398005203,
+  "lastUpdateTimestamp": 1721229478003,
   "pinboard": {
-    "lastFetch": "2024-07-08T02:17:50.178Z",
+    "lastFetch": "2024-07-17T15:26:54.925Z",
     "errors": []
   },
   "mastodon": {
-    "lastFetch": "2024-07-08T01:36:52.696Z",
+    "lastFetch": "2024-07-10T03:51:25.353Z",
+    "errors": []
+  },
+  "arena": {
+    "lastFetch": "2024-07-17T15:13:24.731Z",
     "errors": []
   }
 }

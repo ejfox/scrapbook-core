@@ -109,7 +109,11 @@ async function search(query) {
 function formatScrapForCopy(result, metadata) {
   const url = metadata?.href || "";
   const domain = url ? new URL(url).hostname.replace(/^www\./, "") : "";
-  const title = result?.content || "No title";
+  // const title = result?.content || "No title";
+  const title = truncate(
+    result.title || metadata.title || result.content || "No title",
+    100
+  );
   const subtitle = formatSubtitle(result, metadata, domain);
   // const tags = result?.tags?.join(", ") || "No tags";
   const created = result?.created_at || "Unknown";
