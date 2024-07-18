@@ -13,6 +13,11 @@ import Bottleneck from "bottleneck";
 import fs, { mkdir } from "fs/promises";
 import axios from "axios";
 import { summarizeContent, metaSummaryToTags } from "./aiSummarization.mjs";
+import {
+  summarizeGitHubActivity,
+  gitHubSummaryToTags,
+} from "./aiGithubSummarization.mjs";
+import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import path from "path";
 import terminalImage from "terminal-image";
 import extractLocation from "./aiGeolocation.mjs";
@@ -327,13 +332,21 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
             description: attachment.description,
           }));
 
+        // Generate tags
+        const aiGeneratedTags = await generateMastodonTags(status);
+
         const statusObj = {
           scrap_id: helpers.scrapToUUID("mastodon" + status.id),
           source: "mastodon",
           content: status.content,
           created_at: status.created_at,
           updated_at: new Date().toISOString(),
-          tags: status.tags.map((tag) => tag.name),
+          tags: [
+            ...new Set([
+              ...status.tags.map((tag) => tag.name),
+              ...aiGeneratedTags,
+            ]),
+          ],
           metadata: {
             url: status.url,
             visibility: status.visibility,
@@ -467,13 +480,24 @@ async function fetchAndUpsertGithubData() {
         content = scrap.description || "";
       }
 
+      let summary = "";
+      let aiGeneratedTags = [];
+      // Generate summary and tags
+      try {
+        summary = await summarizeGitHubActivity(scrap);
+        aiGeneratedTags = await gitHubSummaryToTags(summary);
+      } catch (error) {
+        console.error("Error in generating summary and tags:", error);
+      }
+
       const scrapObj = {
         scrap_id: helpers.scrapToUUID("github" + scrap.id),
         source: "github",
         content: content,
+        summary: summary,
         created_at: scrap.created_at,
         updated_at: scrap.updated_at,
-        tags: scrap.topics || [],
+        tags: [...new Set([...(scrap.topics || []), ...aiGeneratedTags])],
         metadata: {
           type: scrap.type,
           name: scrap.name || scrap.title,
