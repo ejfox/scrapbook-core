@@ -171,23 +171,48 @@ const fetchGithubData = async () => {
         try {
           console.log(`Processing PR #${pr.number}`);
 
-          console.log("PR body:", JSON.stringify(pr.body, null, 2));
           const mediaUrls = extractMediaUrl(pr.body);
           const images = mediaUrls.map((url) => ({
             url,
-            preview_url: url, // GitHub doesn't provide separate preview URLs
+            preview_url: url,
             description: `Image from PR #${pr.number}`,
           }));
 
+          // Extract repo information safely
+          let repoInfo = {
+            name: null,
+            full_name: null,
+          };
+
+          if (pr.base && pr.base.repo) {
+            repoInfo = {
+              name: pr.base.repo.name,
+              full_name: pr.base.repo.full_name,
+            };
+          } else if (pr.head && pr.head.repo) {
+            repoInfo = {
+              name: pr.head.repo.name,
+              full_name: pr.head.repo.full_name,
+            };
+          }
+
           return {
-            ...pr,
-            images,
+            id: pr.id,
+            number: pr.number,
+            title: pr.title,
+            body: pr.body,
+            html_url: pr.html_url,
+            created_at: pr.created_at,
+            updated_at: pr.updated_at,
+            state: pr.state,
+            repo: repoInfo,
+            images: images,
+            user: {
+              login: pr.user.login,
+              avatar_url: pr.user.avatar_url,
+            },
           };
         } catch (error) {
-          if (error.status === 404) {
-            console.warn(`PR ${pr.number} not found or is private.`);
-            return null;
-          }
           console.error(`Error processing PR ${pr.number}:`, error);
           return null;
         }
