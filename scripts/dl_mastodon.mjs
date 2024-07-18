@@ -59,9 +59,13 @@ const processStatus = (status) => {
   const processedStatus = { ...status };
 
   if (status.media_attachments && status.media_attachments.length > 0) {
-    processedStatus.image_urls = status.media_attachments
+    processedStatus.images = status.media_attachments
       .filter((attachment) => attachment.type === "image")
-      .map((attachment) => attachment.url);
+      .map((attachment) => ({
+        url: attachment.url,
+        preview_url: attachment.preview_url,
+        description: attachment.description,
+      }));
   }
 
   return processedStatus;
