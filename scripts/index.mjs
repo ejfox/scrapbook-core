@@ -319,9 +319,16 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
         !lastScrapTime ||
         new Date(status.created_at) > new Date(lastScrapTime)
       ) {
+        const images = status.media_attachments
+          .filter((attachment) => attachment.type === "image")
+          .map((attachment) => ({
+            url: attachment.url,
+            preview_url: attachment.preview_url,
+            description: attachment.description,
+          }));
+
         const statusObj = {
           scrap_id: helpers.scrapToUUID("mastodon" + status.id),
-          // title: status.content,
           source: "mastodon",
           content: status.content,
           created_at: status.created_at,
@@ -332,6 +339,7 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
             visibility: status.visibility,
             favourites_count: status.favourites_count,
             reblogs_count: status.reblogs_count,
+            images: images,
           },
         };
 
@@ -462,12 +470,12 @@ async function fetchAndUpsertGithubData() {
         metadata: {
           name: scrap.name,
           full_name: scrap.full_name,
+          repo: scrap.repo || null,
           href: scrap.html_url,
-          image: scrap.hero || null,
+          images: scrap.images || [],
           language: scrap.language,
           stargazers_count: scrap.stargazers_count,
           forks_count: scrap.forks_count,
-          hero: scrap.hero || null,
         },
       };
 

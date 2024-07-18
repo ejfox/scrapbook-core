@@ -3662,3 +3662,73 @@
 2024-07-17T18:21:54.120Z [INFO]: Retrying due to error (attempt 3/3)
 2024-07-17T18:21:55.121Z [INFO]: Using openai service for relationship extraction
 2024-07-17T18:21:56.823Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:25:17.554Z [INFO]: Starting relationship extraction process
+2024-07-18T14:25:17.555Z [INFO]: Processing pre-summarized content
+2024-07-18T14:25:17.555Z [INFO]: Processing chunk 1/1
+2024-07-18T14:25:17.557Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:25:19.112Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:25:19.113Z [INFO]: Retrying due to error (attempt 1/3)
+2024-07-18T14:25:20.114Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:25:21.692Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:25:21.693Z [INFO]: Retrying due to error (attempt 2/3)
+2024-07-18T14:25:22.694Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:25:24.342Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:25:24.342Z [INFO]: Retrying due to error (attempt 3/3)
+2024-07-18T14:25:25.343Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:25:26.857Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:25:58.644Z [INFO]: Starting relationship extraction process
+2024-07-18T14:25:58.645Z [INFO]: Processing pre-summarized content
+2024-07-18T14:25:58.645Z [INFO]: Processing chunk 1/1
+2024-07-18T14:25:58.648Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:00.428Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:00.428Z [INFO]: Retrying due to error (attempt 1/3)
+2024-07-18T14:26:01.429Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:02.953Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:02.953Z [INFO]: Retrying due to error (attempt 2/3)
+2024-07-18T14:26:03.954Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:05.794Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:05.794Z [INFO]: Retrying due to error (attempt 3/3)
+2024-07-18T14:26:06.795Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:08.439Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:22.965Z [INFO]: Starting relationship extraction process
+2024-07-18T14:26:22.965Z [INFO]: Processing pre-summarized content
+2024-07-18T14:26:22.965Z [INFO]: Processing chunk 1/1
+2024-07-18T14:26:22.969Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:24.829Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:24.830Z [INFO]: Retrying due to error (attempt 1/3)
+2024-07-18T14:26:25.833Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:27.738Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:27.738Z [INFO]: Retrying due to error (attempt 2/3)
+2024-07-18T14:26:28.738Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:30.552Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:26:30.552Z [INFO]: Retrying due to error (attempt 3/3)
+2024-07-18T14:26:31.553Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:26:33.382Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:00.351Z [INFO]: Starting relationship extraction process
+2024-07-18T14:27:00.351Z [INFO]: Processing pre-summarized content
+2024-07-18T14:27:00.351Z [INFO]: Processing chunk 1/1
+2024-07-18T14:27:00.355Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:01.961Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:01.961Z [INFO]: Retrying due to error (attempt 1/3)
+2024-07-18T14:27:02.963Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:04.568Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:04.568Z [INFO]: Retrying due to error (attempt 2/3)
+2024-07-18T14:27:05.569Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:07.164Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:07.164Z [INFO]: Retrying due to error (attempt 3/3)
+2024-07-18T14:27:08.164Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:09.795Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:33.685Z [INFO]: Starting relationship extraction process
+2024-07-18T14:27:33.685Z [INFO]: Processing pre-summarized content
+2024-07-18T14:27:33.685Z [INFO]: Processing chunk 1/1
+2024-07-18T14:27:33.689Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:35.339Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:35.340Z [INFO]: Retrying due to error (attempt 1/3)
+2024-07-18T14:27:36.340Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:37.891Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:37.891Z [INFO]: Retrying due to error (attempt 2/3)
+2024-07-18T14:27:38.893Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:40.602Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-18T14:27:40.603Z [INFO]: Retrying due to error (attempt 3/3)
+2024-07-18T14:27:41.605Z [INFO]: Using openai service for relationship extraction
+2024-07-18T14:27:43.170Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.

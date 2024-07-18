@@ -140,10 +140,16 @@ const fetchGithubData = async () => {
             )
             .map((file) => file.download_url);
 
+          const images = imageFiles.map((url) => ({
+            url,
+            preview_url: url, // GitHub doesn't provide separate preview URLs
+            description: `Image from ${repo.name} repository`,
+          }));
+
           return {
             ...repo,
             readme,
-            images: imageFiles,
+            images,
           };
         } catch (error) {
           if (error.status === 404) {
@@ -166,22 +172,16 @@ const fetchGithubData = async () => {
           console.log(`Processing PR #${pr.number}`);
 
           console.log("PR body:", JSON.stringify(pr.body, null, 2));
-          const mediaUrlsFromDescription = extractMediaUrl(pr.body);
-
-          const mediaUrl = mediaUrlsFromDescription.find(
-            (url) =>
-              /\.(png|jpe?g|gif|mp4|webm)$/i.test(url) || /\/assets\//.test(url)
-          );
-
-          console.log(`Media URL for PR #${pr.number}:`, mediaUrl);
-
-          if (!mediaUrl) {
-            console.warn(`No media URL found in PR #${pr.number}`);
-          }
+          const mediaUrls = extractMediaUrl(pr.body);
+          const images = mediaUrls.map((url) => ({
+            url,
+            preview_url: url, // GitHub doesn't provide separate preview URLs
+            description: `Image from PR #${pr.number}`,
+          }));
 
           return {
             ...pr,
-            hero: mediaUrl,
+            images,
           };
         } catch (error) {
           if (error.status === 404) {
