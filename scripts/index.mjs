@@ -434,17 +434,17 @@ async function fetchAndUpsertGithubData() {
     }
 
     const allScraps = [
-      ...githubData.userRepos.map((repo) => ({ ...repo, repository: true })),
-      ...githubData.userPRs.map((pr) => ({ ...pr, pull_request: true })),
-      ...githubData.userIssues.map((issue) => ({ ...issue, issue: true })),
-      ...githubData.userGists.map((gist) => ({ ...gist, gist: true })),
+      ...githubData.userRepos.map((repo) => ({ ...repo, type: "repository" })),
+      ...githubData.userPRs.map((pr) => ({ ...pr, type: "pull_request" })),
+      ...githubData.userIssues.map((issue) => ({ ...issue, type: "issue" })),
+      ...githubData.userGists.map((gist) => ({ ...gist, type: "gist" })),
       ...githubData.userReleases.map((release) => ({
         ...release,
-        release: true,
+        type: "release",
       })),
       ...githubData.starredRepos.map((starred) => ({
         ...starred,
-        starred: true,
+        type: "starred",
       })),
     ];
 
@@ -454,35 +454,57 @@ async function fetchAndUpsertGithubData() {
         break;
       }
 
-      if (scrap.pull_request) {
-        console.log(
-          `Processing GitHub scrap: ${scrap.name} \n ${JSON.stringify(scrap)}`
-        );
+      let content = "";
+      if (scrap.type === "pull_request" || scrap.type === "issue") {
+        content = scrap.body || "";
+      } else if (scrap.type === "repository") {
+        content = scrap.description || "";
+      } else if (scrap.type === "gist") {
+        content = scrap.description || "";
+      } else if (scrap.type === "release") {
+        content = scrap.body || "";
+      } else if (scrap.type === "starred") {
+        content = scrap.description || "";
       }
 
-      const repoObj = {
+      const scrapObj = {
         scrap_id: helpers.scrapToUUID("github" + scrap.id),
         source: "github",
-        content: helpers.getHumanReadableContent(scrap),
-        created_at: scrap.created_at || scrap.created,
-        updated_at: scrap.updated_at || scrap.updated,
+        content: content,
+        created_at: scrap.created_at,
+        updated_at: scrap.updated_at,
         tags: scrap.topics || [],
         metadata: {
-          name: scrap.name,
-          full_name: scrap.full_name,
+          type: scrap.type,
+          name: scrap.name || scrap.title,
+          full_name:
+            scrap.full_name || (scrap.repo && scrap.repo.full_name) || null,
           repo: scrap.repo || null,
           href: scrap.html_url,
           images: scrap.images || [],
           language: scrap.language,
           stargazers_count: scrap.stargazers_count,
           forks_count: scrap.forks_count,
+          number: scrap.number,
+          state: scrap.state,
+          user: scrap.user,
         },
       };
 
-      await upsertLimiter.schedule(() => upsertScrap(repoObj));
+      try {
+        await upsertLimiter.schedule(() => upsertScrap(scrapObj));
+        console.log(
+          `Scrap processed: ${scrapObj.scrap_id} ${scrapObj.content.substring(
+            0,
+            50
+          )}... ${scrapObj.source}`
+        );
+      } catch (error) {
+        console.error(`Error processing scrap:`, error);
+      }
     }
 
-    console.log(`GitHub data processed and upserted.`);
+    console.log(`GitHub data processed.`);
 
     return new Date().toISOString();
   } catch (error) {
