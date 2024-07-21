@@ -41,5 +41,3 @@ jobs:
         USE_OPENAI: "true"
       run: |
         node scripts/index.mjs --all --new-only
-
-    # Commit and push step is omitted as it is not necessary
