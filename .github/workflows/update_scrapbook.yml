@@ -41,3 +41,13 @@ jobs:
         USE_OPENAI: "true"
       run: |
         node scripts/index.mjs --all --new-only
+
+    - name: Commit and Push Changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -A
+        git commit -m "chore(scrapbook): update checkpoint and manifest $(date +%Y-%m-%d-%H)" || exit 0  # exit gracefully if no changes
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
