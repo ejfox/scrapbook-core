@@ -45,18 +45,47 @@ export async function summarizeGitHubActivity(activity, options = {}) {
 
 function formatGitHubActivityForSummary(activity) {
   let formattedContent = "";
+  // add the type
+  formattedContent += `Type: ${activity.type}\n`;
+
+  // add the author
+  formattedContent += `Author: ${activity.user?.login || ""}\n`;
 
   if (activity.type === "repository") {
     formattedContent = `Repository: ${activity.name}\n`;
     formattedContent += `Description: ${
       activity.description || "No description"
     }\n`;
+
+    // add the readme of the repo the PR is to
+    formattedContent += `Repository README: ${
+      activity.repo?.readme || "No README"
+    }\n`;
+
     formattedContent += `Language: ${activity.language || "Not specified"}\n`;
     formattedContent += `Stars: ${activity.stargazers_count || 0}\n`;
     formattedContent += `Forks: ${activity.forks_count || 0}\n`;
     formattedContent += `Last Updated: ${activity.updated_at || "Unknown"}\n`;
+    formattedContent += `README: ${activity.readme || ""}\n`;
+  } else if (activity.type === "gist") {
+    formattedContent = `Gist: ${activity.name}\n`;
+    formattedContent += `Files: ${activity.files || 0}\n`;
+    formattedContent += `Content: ${activity.content || ""}\n`;
   } else if (activity.type === "pull_request") {
     formattedContent = `Pull Request: ${activity.title}\n`;
+    // author
+    formattedContent += `Author: ${activity.user?.login || "Unknown Author"}\n`;
+
+    // add the pr body
+    formattedContent += `PR Description: ${
+      activity.body || "No description"
+    }\n`;
+
+    // add the list of changed files
+    if (activity.changed_files) {
+      formattedContent += `Changed Files: ${activity.changed_files}\n`;
+    }
+
     formattedContent += `Repository: ${
       activity.repo?.full_name || "Unknown"
     }\n`;
@@ -87,7 +116,7 @@ async function summarizeGitHubString(content) {
     },
     {
       role: "user",
-      content: `${content}\nCan you summarize this GitHub activity please? Be sure to mention the author, the intention of the code, and any unique or interesting details. Keep it concise and informative.`,
+      content: `${content}\nCan you summarize this GitHub activity please? Be sure to mention the author, the intention of the code, and any unique or interesting details. Keep it concise and informative. DO NOT include any other text, parantheticals, or introduction. Respond ONLY with the summary.`,
     },
   ];
 
