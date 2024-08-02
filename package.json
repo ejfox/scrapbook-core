@@ -4,7 +4,7 @@
   "description": "A comprehensive personal knowledge management system for digital ephemera",
   "main": "index.mjs",
   "scripts": {
-    "start": "node scripts/index.mjs",
+    "start": "node scripts/index.mjs --all --new-only",
     "fetch:all": "node scripts/index.mjs --all",
     "fetch:pinboard": "node scripts/index.mjs --pinboard",
     "fetch:mastodon": "node scripts/index.mjs --mastodon",
