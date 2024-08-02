@@ -107,9 +107,21 @@ async function extractRelationshipsFromChunk(chunk, retryCount = 0) {
       role: "system",
       content: `Extract entities and identify relationship types from the given text. Limit to ${MAX_RELATIONSHIPS} relationships. Focus on connections between technologies, people, organizations, and other relevant entities. Output each relationship on a new line using this format: [entity1_type:entity1_name] -[:RELATIONSHIP_TYPE]-> [entity2_type:entity2_name]`,
     },
+    // give an example exchange
     {
       role: "user",
-      content: `Use ONLY these entity types (exactly as written, with no spaces):
+      content: `Can you give me a few example relationships?`,
+    },
+    {
+      role: "assistant",
+      content: `[Person:Stewart Brand] -[:CreatedBy]-> [Publication:Whole Earth Catalog]
+[Person:Steve Jobs] -[:InfluencedBy]-> [Publication:Whole Earth Catalog]`,
+    },
+    {
+      role: "user",
+      content: `Perfect!
+      
+Use ONLY these entity types (exactly as written, with no spaces):
 Person, Organization, Event, Product, Technology, Startup, ResearchGroup, Investor, Conference, Publication, GovernmentAgency, NonProfitOrganization, EducationalInstitution, Concept, Framework, IndustryGroup, Influencer, Platform, Standard, Protocol, FundingRound, Location, JobTitle, Award, MediaContent, Service, MedicalCondition, ChemicalSubstance, Device, Software, Sport, Animal, Plant, ArtMovement, HistoricalPeriod, PoliticalMovement, CulturalMovement
 
 And ONLY these relationship types (exactly as written, with no spaces):
