@@ -4,7 +4,7 @@ import { program } from "commander";
 import { fetchAllBlocks } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache } from "./dl_pinboard.mjs";
-import { fetchGithubData } from "./dl_github.mjs";
+import { fetchGithubData, getRepoReadme } from "./dl_github.mjs";
 import * as helpers from "../helpers.js";
 import { updateManifest } from "./manifestHelpers.mjs";
 import { createClient } from "@supabase/supabase-js";
@@ -478,6 +478,19 @@ async function fetchAndUpsertGithubData() {
         content = scrap.body || "";
       } else if (scrap.type === "starred") {
         content = scrap.description || "";
+      }
+
+      // if it's a repo, fetch the README content to summarize
+      // we need the owner and repo name
+      if (scrap.type === "repository") {
+        // console.log("Getting README for", scrap.full_name);
+
+        const [owner, repo] = scrap.full_name.split("/");
+        const readmeText = await getRepoReadme(owner, repo);
+        scrap.readme = readmeText;
+
+        // console.log("README TEXT!");
+        // console.log(readmeText);
       }
 
       let summary = "";
