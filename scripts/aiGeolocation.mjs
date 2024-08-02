@@ -136,7 +136,7 @@ async function extractLocationOpenAI(content) {
     {
       role: "system",
       content:
-        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. If no location is mentioned, you may make a logical guess based clues in teh text, if any. If no clear location can be found, return null.",
+        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. You must pick a single location that best represents the content of the article. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. If no location is mentioned, you may make a logical guess based clues in the text, if any. If no clear location can be found, return null.",
     },
     {
       role: "user",
