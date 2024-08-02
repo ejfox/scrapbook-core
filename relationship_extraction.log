@@ -3732,3 +3732,1634 @@
 2024-07-18T14:27:40.603Z [INFO]: Retrying due to error (attempt 3/3)
 2024-07-18T14:27:41.605Z [INFO]: Using openai service for relationship extraction
 2024-07-18T14:27:43.170Z [ERROR]: Error in openai service: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.
+2024-07-30T18:55:56.989Z [INFO]: Starting relationship extraction process
+2024-07-30T18:55:56.990Z [INFO]: Processing pre-summarized content
+2024-07-30T18:55:56.990Z [INFO]: Processing chunk 1/1
+2024-07-30T18:55:56.994Z [INFO]: Using local service for relationship extraction
+2024-07-30T18:56:16.675Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T18:56:16.675Z [WARN]: Invalid relationship format: 1. Person:David Kleiman -[:DIED_AT]-> Event
+2024-07-30T18:56:16.675Z [WARN]: Invalid relationship format: 2. Person:Craig Wright -[:CREATED_MEDIA_CONTENT]-> MediaContent
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 3. Concept:Satoshi Nakamoto -[:OCCURRED_AT]-> Location:Eastern Standard Time (US)
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 4. Person:Satoshi Nakamoto -[:USED_IN]-> Concept:British spelling of some words
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 5. Person:David Kleiman -[:PUBLISHED_BY]-> Publication
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 6. Person:Craig Wright -[:CREATED_WITH]-> Person:David Kleiman
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 7. Person:Ian Grigg -[:CLAIMED_THAT]-> Person:Craig Wright and Person:David Kleiman were members of the original bitcoin team
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 8. Person:Satoshi Nakamoto -[:USED_IN]-> Technology:block #9 (using private key)
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 9. Concept:Craig Wright -[:CONSIDERED_A_CANDIDATE_FOR]-> Position:Founder of Bitcoin 
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 10. Person:David Kleiman -[:DIED_AT]-> Event:Event in 2013, which coincided with a massive price spike in Product:Bitcoin
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 11. Person:Satoshi Nakamoto -[:SENT_TRANSACTION_TO]-> Person:Hal Finney
+2024-07-30T18:56:16.676Z [WARN]: Invalid relationship format: 12. Concept:Craig Wright -[:T
+2024-07-30T18:56:16.676Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:David Kleiman -[:DIED_AT]-> Event
+2. Person:Craig Wright -[:CREATED_MEDIA_CONTENT]-> MediaContent
+3. Concept:Satoshi Nakamoto -[:OCCURRED_AT]-> Location:Eastern Standard Time (US)
+4. Person:Satoshi Nakamoto -[:USED_IN]-> Concept:British spelling of some words
+5. Person:David Kleiman -[:PUBLISHED_BY]-> Publication
+6. Person:Craig Wright -[:CREATED_WITH]-> Person:David Kleiman
+7. Person:Ian Grigg -[:CLAIMED_THAT]-> Person:Craig Wright and Person:David Kleiman were members of the original bitcoin team
+8. Person:Satoshi Nakamoto -[:USED_IN]-> Technology:block #9 (using private key)
+9. Concept:Craig Wright -[:CONSIDERED_A_CANDIDATE_FOR]-> Position:Founder of Bitcoin 
+10. Person:David Kleiman -[:DIED_AT]-> Event:Event in 2013, which coincided with a massive price spike in Product:Bitcoin
+11. Person:Satoshi Nakamoto -[:SENT_TRANSACTION_TO]-> Person:Hal Finney
+12. Concept:Craig Wright -[:T
+2024-07-30T18:56:16.676Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T18:56:17.677Z [INFO]: Using local service for relationship extraction
+2024-07-30T18:56:25.185Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: David Kleiman -[:CreatedBy]-> ResearchGroup
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: Craig Wright -[:InvestedIn]-> ResearchGroup 
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: ResearchGroup -[:CollaboratedWith]-> David Kleiman
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: David Kleiman -[:ParticipatedIn]-> Event
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: Event -[:OccurredAt]-> Location
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: Craig Wright -[:PublishedBy]-> Publication
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: Publication -[:DocumentedBy]-> Person
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: David Kleiman -[:SupportedBy]-> Organization
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: Organization -[:MaintainedBy]-> ResearchGroup 
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: ResearchGroup -[:UsedIn]-> Product 
+2024-07-30T18:56:25.186Z [WARN]: Invalid relationship format: Product -[:DependentOn]-> Technology
+2024-07-30T18:56:25.186Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+David Kleiman -[:CreatedBy]-> ResearchGroup
+Craig Wright -[:InvestedIn]-> ResearchGroup 
+ResearchGroup -[:CollaboratedWith]-> David Kleiman
+David Kleiman -[:ParticipatedIn]-> Event
+Event -[:OccurredAt]-> Location
+Craig Wright -[:PublishedBy]-> Publication
+Publication -[:DocumentedBy]-> Person
+David Kleiman -[:SupportedBy]-> Organization
+Organization -[:MaintainedBy]-> ResearchGroup 
+ResearchGroup -[:UsedIn]-> Product 
+Product -[:DependentOn]-> Technology
+2024-07-30T18:56:25.186Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T18:56:26.187Z [INFO]: Using local service for relationship extraction
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 1. Person:David_Kleiman -[:Died_In]-> Event:_death
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 2. Person:Craig_Wright -[:Published_MediaContent->> MediaContent:YouTube_post
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 3. Concept:Satoshi_Nakamoto -[:Occurred_At]-> Location:EASTERN_STANDARD_TIME
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 4. Concept:Satoshi_Nakamoto -[:Used_Spelling->> Language:British_English
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 5. Person:David_Kleiman -[:Collaborated_With]-> Person:Craig_Wright -[:PublishedBy]-> Publication:_paper
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 6. Person:Ian_Grigg -[:Claimed->> Concept:Satoshi_Nakamoto -[:Was_Member_Of->> Organization:original_bitcoin_team
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 7. Concept:Satoshi_Nakamoto -[:Sent_Transaction_To]-> Person:Hal_Finney
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 8. Person:Craig_Wright -[:Is_Candidate_For->> Concept:Satoshi_Nakamoto -[:Founded->> Product:Bitcoin
+2024-07-30T18:56:41.454Z [WARN]: Invalid relationship format: 9. Person:David_Kleiman -[:Died_In]-> Event:_death -[:Occurred_At]-> Time:_2013
+2024-07-30T18:56:41.454Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:David_Kleiman -[:Died_In]-> Event:_death
+2. Person:Craig_Wright -[:Published_MediaContent->> MediaContent:YouTube_post
+3. Concept:Satoshi_Nakamoto -[:Occurred_At]-> Location:EASTERN_STANDARD_TIME
+4. Concept:Satoshi_Nakamoto -[:Used_Spelling->> Language:British_English
+5. Person:David_Kleiman -[:Collaborated_With]-> Person:Craig_Wright -[:PublishedBy]-> Publication:_paper
+6. Person:Ian_Grigg -[:Claimed->> Concept:Satoshi_Nakamoto -[:Was_Member_Of->> Organization:original_bitcoin_team
+7. Concept:Satoshi_Nakamoto -[:Sent_Transaction_To]-> Person:Hal_Finney
+8. Person:Craig_Wright -[:Is_Candidate_For->> Concept:Satoshi_Nakamoto -[:Founded->> Product:Bitcoin
+9. Person:David_Kleiman -[:Died_In]-> Event:_death -[:Occurred_At]-> Time:_2013
+2024-07-30T18:56:41.454Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T18:56:42.455Z [INFO]: Using local service for relationship extraction
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 1. Person:David_Kleiman -[:DiedIn]-> Event
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 2. Person:Craig_Wright -[:PostedOn]-> MediaContent:Event
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 3. Person:Satoshi_Nakamoto -[:TypicallySleepsAt]-> Location
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 4. Person:Satoshi_Nakamoto -[:UsedSpellingOf]-> Concept:Language
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 5. Person:David_Kleiman, Person:Craig_Wright -[:CreatedBy]-> Publication
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 6. Person:Ian_Grigg -[:ClaimsThat]-> Relationship:CollaboratedWith(Person:Craig_Wright,Person:David_Kleiman)
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 7. Person:Satoshi_Nakamoto -[:SentTransactionTo]-> Person:Hal_Finney
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 8. Person:Craig_Wright -[:ConsideredAs]-> Concept:FounderOf(Bitcoin)
+2024-07-30T18:56:56.538Z [WARN]: Invalid relationship format: 9. Event:Event, Person:David_Kleiman -[:CoordinatedWith]-> Event:Event (Note: This is a complex relationship and may not be exact match with the given relationship types)
+2024-07-30T18:56:56.538Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:David_Kleiman -[:DiedIn]-> Event
+2. Person:Craig_Wright -[:PostedOn]-> MediaContent:Event
+3. Person:Satoshi_Nakamoto -[:TypicallySleepsAt]-> Location
+4. Person:Satoshi_Nakamoto -[:UsedSpellingOf]-> Concept:Language
+5. Person:David_Kleiman, Person:Craig_Wright -[:CreatedBy]-> Publication
+6. Person:Ian_Grigg -[:ClaimsThat]-> Relationship:CollaboratedWith(Person:Craig_Wright,Person:David_Kleiman)
+7. Person:Satoshi_Nakamoto -[:SentTransactionTo]-> Person:Hal_Finney
+8. Person:Craig_Wright -[:ConsideredAs]-> Concept:FounderOf(Bitcoin)
+9. Event:Event, Person:David_Kleiman -[:CoordinatedWith]-> Event:Event (Note: This is a complex relationship and may not be exact match with the given relationship types)
+2024-07-30T18:56:56.538Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T18:56:56.540Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T18:59:15.928Z [INFO]: Starting relationship extraction process
+2024-07-30T18:59:15.928Z [INFO]: Processing pre-summarized content
+2024-07-30T18:59:15.928Z [INFO]: Processing chunk 1/1
+2024-07-30T18:59:15.932Z [INFO]: Using local service for relationship extraction
+2024-07-30T18:59:34.346Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T18:59:34.346Z [WARN]: Invalid relationship format: 1. Person:J.D.Vance -[:ParticipatedIn]-> Event:2024 US Presidential Election
+2024-07-30T18:59:34.346Z [WARN]: Invalid relationship format: 2. Person:Peter Thiel -[:SupportedBy]-> Person:Donald Trump
+2024-07-30T18:59:34.346Z [WARN]: Invalid relationship format: 3. Organization:The Rockbridge Network -[:CreatedBy]-> [Person:Chris Buskirk, Person:J.D.Vance]
+2024-07-30T18:59:34.346Z [WARN]: Invalid relationship format: 4. Organization:The Rockbridge Network -[:InvestedIn]-> FundingRound:Funding from Peter Thiel and Rebekah Mercer
+2024-07-30T18:59:34.346Z [WARN]: Invalid relationship format: 5. Person:Peter Thiel -[:ImplementedBy]-> Technology:Palantir
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 6. Technology:Cambridge Analytica -[:UsedIn]-> Product:Social network Parler
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 7. Person:J.D.Vance -[:InvestedIn]-> Organization:Rumble
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 8. Organization:The Rockbridge Network -[:SupportedBy]-> [Person:Peter Thiel, Person:Rebekah Mercer]
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 9. Organization:America PAC -[:InvestedIn]-> FundingRound:Funding by Elon Musk (denied)
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 10. Person:Elon Musk -[:ParticipatedIn]-> Event:America PAC formation
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 11. Organization:GTV Media -[:MaintainedBy]-> Person:Steve Bannon's partner Guo Wengui
+2024-07-30T18:59:34.347Z [WARN]: Invalid relationship format: 12. Person:Peter
+2024-07-30T18:59:34.347Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:J.D.Vance -[:ParticipatedIn]-> Event:2024 US Presidential Election
+2. Person:Peter Thiel -[:SupportedBy]-> Person:Donald Trump
+3. Organization:The Rockbridge Network -[:CreatedBy]-> [Person:Chris Buskirk, Person:J.D.Vance]
+4. Organization:The Rockbridge Network -[:InvestedIn]-> FundingRound:Funding from Peter Thiel and Rebekah Mercer
+5. Person:Peter Thiel -[:ImplementedBy]-> Technology:Palantir
+6. Technology:Cambridge Analytica -[:UsedIn]-> Product:Social network Parler
+7. Person:J.D.Vance -[:InvestedIn]-> Organization:Rumble
+8. Organization:The Rockbridge Network -[:SupportedBy]-> [Person:Peter Thiel, Person:Rebekah Mercer]
+9. Organization:America PAC -[:InvestedIn]-> FundingRound:Funding by Elon Musk (denied)
+10. Person:Elon Musk -[:ParticipatedIn]-> Event:America PAC formation
+11. Organization:GTV Media -[:MaintainedBy]-> Person:Steve Bannon's partner Guo Wengui
+12. Person:Peter
+2024-07-30T18:59:34.348Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T18:59:35.350Z [INFO]: Using local service for relationship extraction
+2024-07-30T18:59:50.192Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T18:59:50.192Z [WARN]: Invalid relationship format: 1. Person:J. D. Vance -[:CREATED_BY]-> Event:2024 Election
+2024-07-30T18:59:50.192Z [WARN]: Invalid relationship format: 2. Person:Peter Thiel -[:INVESTED_IN]-> Organization:Rockbridge Network
+2024-07-30T18:59:50.192Z [WARN]: Invalid relationship format: 3. Person:Carole Cadwalladr -[:USED_IN]-> Text:"tech broligarch"
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 4. Person:Elon Musk -[:SUPPORTED_BY]-> Person:Donald Trump
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 5. Person:Chris Buskirk -[:CREATED_BY]-> Organization:The Rockbridge Network
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 6. Person:J. D. Vance -[:COLLABORATED_WITH]-> Person:Peter Thiel
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 7. Person:Rebekah Mercer -[:INVESTED_IN]-> Organization:Project 2025
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 8. Organization:Palantir -[:USED_IN]-> Event:Cambidge Analytica scandal
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 9. Person:J. D. Vance -[:SUPPORTED_BY]-> Organization:Parler
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 10. Person:Peter Thiel -[:INVESTED_IN]-> Organization:The Rockbridge Network
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 11. Person:Darren Blanton -[:INVESTED_IN]-> Organization:Rumble
+2024-07-30T18:59:50.193Z [WARN]: Invalid relationship format: 12. Person:Elon Musk -[:PARTICIPATED_IN]-> Event:Funding of America PAC
+2024-07-30T18:59:50.193Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:J. D. Vance -[:CREATED_BY]-> Event:2024 Election
+2. Person:Peter Thiel -[:INVESTED_IN]-> Organization:Rockbridge Network
+3. Person:Carole Cadwalladr -[:USED_IN]-> Text:"tech broligarch"
+4. Person:Elon Musk -[:SUPPORTED_BY]-> Person:Donald Trump
+5. Person:Chris Buskirk -[:CREATED_BY]-> Organization:The Rockbridge Network
+6. Person:J. D. Vance -[:COLLABORATED_WITH]-> Person:Peter Thiel
+7. Person:Rebekah Mercer -[:INVESTED_IN]-> Organization:Project 2025
+8. Organization:Palantir -[:USED_IN]-> Event:Cambidge Analytica scandal
+9. Person:J. D. Vance -[:SUPPORTED_BY]-> Organization:Parler
+10. Person:Peter Thiel -[:INVESTED_IN]-> Organization:The Rockbridge Network
+11. Person:Darren Blanton -[:INVESTED_IN]-> Organization:Rumble
+12. Person:Elon Musk -[:PARTICIPATED_IN]-> Event:Funding of America PAC
+2024-07-30T18:59:50.193Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T18:59:51.194Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 1. Person:J. D. Vance -[:AnnouncedBy]-> Event
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 2. Person:Peter Thiel -[:CalledBy]-> Person:Carole Cadwalladr
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 3. Organization:The Rockbridge Network -[:CoFoundedBy]-> Person:Chris Buskirk 
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 4. Organization:The Rockbridge Network -[:CoFoundedBy]-> Person:J. D. Vance 
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 5. Organization:Project 2025 -[:FundedBy]-> Person:Rebekah Mercer 
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 6. Organization:Palantir -[:InvolvedIn]-> Organization:Cambridge Analytica
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 7. Organization:Palantir -[:FundedBy]-> Person:Peter Thiel 
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 8. Organization:Parler -[:InvestedInBy]-> Person:J. D. Vance
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 9. Organization:Rumble -[:InvestorIs]-> Person:J. D. Vance
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 10. Organization:The Rockbridge Network -[:IncludesDonors-> Person:Peter Thiel
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 11. Organization:The Rockbridge Network -[:IncludesDonors-> Person:Rebekah Mercer
+2024-07-30T19:00:05.849Z [WARN]: Invalid relationship format: 12. Organization:America PAC -[:CommittedToDonateBy]-> Person:Elon Musk
+2024-07-30T19:00:05.849Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:J. D. Vance -[:AnnouncedBy]-> Event
+2. Person:Peter Thiel -[:CalledBy]-> Person:Carole Cadwalladr
+3. Organization:The Rockbridge Network -[:CoFoundedBy]-> Person:Chris Buskirk 
+4. Organization:The Rockbridge Network -[:CoFoundedBy]-> Person:J. D. Vance 
+5. Organization:Project 2025 -[:FundedBy]-> Person:Rebekah Mercer 
+6. Organization:Palantir -[:InvolvedIn]-> Organization:Cambridge Analytica
+7. Organization:Palantir -[:FundedBy]-> Person:Peter Thiel 
+8. Organization:Parler -[:InvestedInBy]-> Person:J. D. Vance
+9. Organization:Rumble -[:InvestorIs]-> Person:J. D. Vance
+10. Organization:The Rockbridge Network -[:IncludesDonors-> Person:Peter Thiel
+11. Organization:The Rockbridge Network -[:IncludesDonors-> Person:Rebekah Mercer
+12. Organization:America PAC -[:CommittedToDonateBy]-> Person:Elon Musk
+2024-07-30T19:00:05.849Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:00:06.850Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 1. Person:J.D.Vance -[:AnnouncedBy]-> Event:2024_Election
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 2. Person:Carole_Cadwalladr -[:CalledOutBy]-> Person:Peter_Thiel
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 3. Person:Chris_Buskirk and Person:J.D.Vance -[:CoFoundedWith]-> Organization:The_Rockbridge_Network
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 4. Person:Rebekah_Mercer -[:InvestedIn]-> Organization:Cambridge_Analytica
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 5. Person:J.D.Vance -[:Advised]-> Person:Rebekah_Mercer
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 6. Person:J.D.Vance -[:InvestedIn]-> Product:Rumble_Platform
+2024-07-30T19:00:19.886Z [WARN]: Invalid relationship format: 7. Person:Peter_Thiel and Person:Rebekah_Mercer -[:DonatedTo]-> Organization:The_Rockbridge_Network
+2024-07-30T19:00:19.887Z [WARN]: Invalid relationship format: 8. Person:Darren_Blanton -[:InvestedIn]-> Product:GTV_Media
+2024-07-30T19:00:19.887Z [WARN]: Invalid relationship format: 9. Person:Elon_Musk -[:CommittedToDonate]-> Organization:America_PAC
+2024-07-30T19:00:19.887Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:J.D.Vance -[:AnnouncedBy]-> Event:2024_Election
+2. Person:Carole_Cadwalladr -[:CalledOutBy]-> Person:Peter_Thiel
+3. Person:Chris_Buskirk and Person:J.D.Vance -[:CoFoundedWith]-> Organization:The_Rockbridge_Network
+4. Person:Rebekah_Mercer -[:InvestedIn]-> Organization:Cambridge_Analytica
+5. Person:J.D.Vance -[:Advised]-> Person:Rebekah_Mercer
+6. Person:J.D.Vance -[:InvestedIn]-> Product:Rumble_Platform
+7. Person:Peter_Thiel and Person:Rebekah_Mercer -[:DonatedTo]-> Organization:The_Rockbridge_Network
+8. Person:Darren_Blanton -[:InvestedIn]-> Product:GTV_Media
+9. Person:Elon_Musk -[:CommittedToDonate]-> Organization:America_PAC
+2024-07-30T19:00:19.890Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:00:19.892Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:08:07.283Z [INFO]: Starting relationship extraction process
+2024-07-30T19:08:07.283Z [INFO]: Processing pre-summarized content
+2024-07-30T19:08:07.283Z [INFO]: Processing chunk 1/1
+2024-07-30T19:08:07.287Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 1. Person:Ludwig Von Koopa -[:CREATED_BY]-> Product:KoopaTV
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 2. Organization:Fandom -[:INVESTED_IN]-> Startup:Indie Wiki Buddy 
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 3. Person:A user -[:PARTICIPATED_IN]-> Event:Event on Disney Wiki (vandalizing articles)
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 4. Person:A user -[:COLLABORATED_WITH]-> Organization:Fandom
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 5. Concept:Ludwig Von Koopa's suggestion -[:INFLUENCED_BY]-> Person:A user
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 6. Person:User -[:USED_IN]-> Service:Fandom 
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 7. Event:Event on YouTube (video view increase) -[:OCCURRED_AT]-> Location:YouTube
+2024-07-30T19:08:21.505Z [WARN]: Invalid relationship format: 8. Event:Event on YouTube (video view decrease) -[:OCCURRED_AT]-> Location:YouTube
+2024-07-30T19:08:21.506Z [WARN]: Invalid relationship format: 9. Organization:KoopaTV -[:IMPLEMENTED_BY]-> Technology:Email service
+2024-07-30T19:08:21.506Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Ludwig Von Koopa -[:CREATED_BY]-> Product:KoopaTV
+2. Organization:Fandom -[:INVESTED_IN]-> Startup:Indie Wiki Buddy 
+3. Person:A user -[:PARTICIPATED_IN]-> Event:Event on Disney Wiki (vandalizing articles)
+4. Person:A user -[:COLLABORATED_WITH]-> Organization:Fandom
+5. Concept:Ludwig Von Koopa's suggestion -[:INFLUENCED_BY]-> Person:A user
+6. Person:User -[:USED_IN]-> Service:Fandom 
+7. Event:Event on YouTube (video view increase) -[:OCCURRED_AT]-> Location:YouTube
+8. Event:Event on YouTube (video view decrease) -[:OCCURRED_AT]-> Location:YouTube
+9. Organization:KoopaTV -[:IMPLEMENTED_BY]-> Technology:Email service
+2024-07-30T19:08:21.506Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:08:22.507Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:08:33.787Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:08:33.787Z [WARN]: Invalid relationship format: Organization:Fandom -[:InvestedIn]-> Product:Indie Wiki Buddy
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Organization:Red Ventures -[:SupportedBy]-> Organization:Fandom
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Person:User -[:CollaboratedWith]-> Organization:Fandom
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Person:Ludwig Von Koopa -[:InfluencedBy]-> Concept:Independence
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Location:YouTube -[:OccurredAt]-> Event:Video views increase
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Event:Video views increase -[:OccurredAt]-> Location:2014
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Event:Video views decrease -[:OccurredAt]-> Location:2022
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Organization:Fandom -[:SupportedBy]-> Organization:Disney Wiki
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Person:User -[:ParticipatedIn]-> Product:Fandom wikis
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Person:Ludwig Von Koopa -[:InfluencedBy]-> Concept:Independence
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Product:KoopaTV -[:ImplementedBy]-> Person:Unknown
+2024-07-30T19:08:33.788Z [WARN]: Invalid relationship format: Organization:Fandom -[:PublishedBy]-> MediaContent:Videos on YouTube
+2024-07-30T19:08:33.788Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+Organization:Fandom -[:InvestedIn]-> Product:Indie Wiki Buddy
+Organization:Red Ventures -[:SupportedBy]-> Organization:Fandom
+Person:User -[:CollaboratedWith]-> Organization:Fandom
+Person:Ludwig Von Koopa -[:InfluencedBy]-> Concept:Independence
+Location:YouTube -[:OccurredAt]-> Event:Video views increase
+Event:Video views increase -[:OccurredAt]-> Location:2014
+Event:Video views decrease -[:OccurredAt]-> Location:2022
+Organization:Fandom -[:SupportedBy]-> Organization:Disney Wiki
+Person:User -[:ParticipatedIn]-> Product:Fandom wikis
+Person:Ludwig Von Koopa -[:InfluencedBy]-> Concept:Independence
+Product:KoopaTV -[:ImplementedBy]-> Person:Unknown
+Organization:Fandom -[:PublishedBy]-> MediaContent:Videos on YouTube
+2024-07-30T19:08:33.788Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:08:34.790Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:08:45.876Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:08:45.876Z [WARN]: Invalid relationship format: KoopaTV -[:SupportedBy]-> Person:Ludwig Von Koopa
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: Fandom -[:ParticipatedIn]-> Event:Acquisition
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: Fandom -[:ImplementedBy]-> Product:Browser extension (Indie Wiki Buddy)
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: User -[:CollaboratedWith]-> Organization:Fandom
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: Disney Wiki -[:OccurredAt]-> Location:Online community
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: Organization:Fandom -[:InvestedIn]-> User:Wrongfully accused user
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: KoopaTV -[:SupportedBy]-> Person:Ludwig Von Koopa
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: YouTube -[:UsedIn]-> Service:Video hosting platform
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: FundingRound (not specified) -[:OccurredAt]-> Organization:Fandom
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: User -[:InfluencedBy]-> Event:Experiences with Fandom users
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: KoopaTV -[:ImplementedBy]-> Technology:Email service
+2024-07-30T19:08:45.877Z [WARN]: Invalid relationship format: Organization:Red Ventures -[:ParticipatedIn]-> Event:Acquisition
+2024-07-30T19:08:45.877Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+KoopaTV -[:SupportedBy]-> Person:Ludwig Von Koopa
+Fandom -[:ParticipatedIn]-> Event:Acquisition
+Fandom -[:ImplementedBy]-> Product:Browser extension (Indie Wiki Buddy)
+User -[:CollaboratedWith]-> Organization:Fandom
+Disney Wiki -[:OccurredAt]-> Location:Online community
+Organization:Fandom -[:InvestedIn]-> User:Wrongfully accused user
+KoopaTV -[:SupportedBy]-> Person:Ludwig Von Koopa
+YouTube -[:UsedIn]-> Service:Video hosting platform
+FundingRound (not specified) -[:OccurredAt]-> Organization:Fandom
+User -[:InfluencedBy]-> Event:Experiences with Fandom users
+KoopaTV -[:ImplementedBy]-> Technology:Email service
+Organization:Red Ventures -[:ParticipatedIn]-> Event:Acquisition
+2024-07-30T19:08:45.878Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:08:46.879Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:09:01.076Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:09:01.076Z [WARN]: Invalid relationship format: MediaContent:"KoopaTV" -[:UsedIn]-> IndustryGroup:"videogame industry"
+2024-07-30T19:09:01.076Z [WARN]: Invalid relationship format: Organization:Fandom -[:InvestedIn]-> Organization:Red Ventures
+2024-07-30T19:09:01.076Z [WARN]: Invalid relationship format: Product:"Indie Wiki Buddy browser extension" -[:CompatibleWith]-> Platform:"Fandom wikis"
+2024-07-30T19:09:01.076Z [WARN]: Invalid relationship format: Person -[:ParticipatedIn]-> Event:"wrongful accusation of vandalizing articles on a Disney Wiki"
+2024-07-30T19:09:01.076Z [WARN]: Invalid relationship format: Person -[:CollaboratedWith]-> Person:Ludwig Von Koopa
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Concept:Fandom community -[:DependentOn]-> Concept:Independence
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: MediaContent:"Wii U: Nintendo's Innovative Console" -[:UsedIn]-> Platform:YouTube
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Location -[:OccurredAt]-> Event:"increase in views by 12% in 2015"
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Location -[:OccurredAt]-> Event:"decrease in views by 5% in December 2022"
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Organization:Fandom -[:SupportedBy]-> Person:"admins on a Disney Wiki"
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Person -[:InfluencedBy]-> Experience:"wrongful accusations and deleted messages"
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Concept:Independence -[:InfluencedBy]-> Person:Ludwig Von Koopa
+2024-07-30T19:09:01.077Z [WARN]: Invalid relationship format: Service:email subscription -[:UsedIn]-> Organization:KoopaTV
+2024-07-30T19:09:01.077Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+MediaContent:"KoopaTV" -[:UsedIn]-> IndustryGroup:"videogame industry"
+Organization:Fandom -[:InvestedIn]-> Organization:Red Ventures
+Product:"Indie Wiki Buddy browser extension" -[:CompatibleWith]-> Platform:"Fandom wikis"
+Person -[:ParticipatedIn]-> Event:"wrongful accusation of vandalizing articles on a Disney Wiki"
+Person -[:CollaboratedWith]-> Person:Ludwig Von Koopa
+Concept:Fandom community -[:DependentOn]-> Concept:Independence
+MediaContent:"Wii U: Nintendo's Innovative Console" -[:UsedIn]-> Platform:YouTube
+Location -[:OccurredAt]-> Event:"increase in views by 12% in 2015"
+Location -[:OccurredAt]-> Event:"decrease in views by 5% in December 2022"
+Organization:Fandom -[:SupportedBy]-> Person:"admins on a Disney Wiki"
+Person -[:InfluencedBy]-> Experience:"wrongful accusations and deleted messages"
+Concept:Independence -[:InfluencedBy]-> Person:Ludwig Von Koopa
+Service:email subscription -[:UsedIn]-> Organization:KoopaTV
+2024-07-30T19:09:01.078Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:09:01.078Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:10:10.614Z [INFO]: Starting relationship extraction process
+2024-07-30T19:10:10.614Z [INFO]: Processing pre-summarized content
+2024-07-30T19:10:10.614Z [INFO]: Processing chunk 1/1
+2024-07-30T19:10:10.616Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:10:28.054Z [WARN]: Invalid relationship format: Here are 12 extracted relationships:
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 1. Organization:New York State Board of Elections -[: WarnedBy]-> Person:County board of elections staff
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 2. Person:Eagle AI founder -[: CreatedBy]-> Product:Eagle AI product
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 3. Technology:Eagle AI product -[: ImplementedBy]-> Organization:Eagle AI
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 4. Organization:Eagle AI -[: FundedBy]-> Person:Wealthy conservatives
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 5. Person:Conservative activists -[: EndorsedBy]-> Product:Eagle AI product
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 6. Event:2021 Georgia voter registration challenges -[: OccurredAt]-> Location:Georgia
+2024-07-30T19:10:28.055Z [WARN]: Invalid relationship format: 7. Event:2024 US presidential election -[: OccurredAt]-> Location:US
+2024-07-30T19:10:28.057Z [WARN]: Invalid relationship format: 8. Organization:New York State Board of Elections -[: InvestigatedBy]-> Person:County board of elections staff impersonators
+2024-07-30T19:10:28.057Z [WARN]: Invalid relationship format: 9. Organization:State governments -[: UrgedToActBy]-> Concept:Clear laws on private voter challenges
+2024-07-30T19:10:28.057Z [WARN]: Invalid relationship format: 10. Event:2021 Georgia voter registration challenges -[: ParticipatedIn]-> Person:Election vigilantes
+2024-07-30T19:10:28.057Z [WARN]: Invalid relationship format: 11. Product:Eagle AI product -[: UsedIn]-> IndustryGroup:Voting system development
+2024-07-30T19:10:28.057Z [WARN]: Invalid relationship format: 12. Organization:Eagle AI -[: SupportedBy]-> Concept:Conservative ideology
+2024-07-30T19:10:28.057Z [WARN]: No valid relationships found in response: Here are 12 extracted relationships:
+
+1. Organization:New York State Board of Elections -[: WarnedBy]-> Person:County board of elections staff
+2. Person:Eagle AI founder -[: CreatedBy]-> Product:Eagle AI product
+3. Technology:Eagle AI product -[: ImplementedBy]-> Organization:Eagle AI
+4. Organization:Eagle AI -[: FundedBy]-> Person:Wealthy conservatives
+5. Person:Conservative activists -[: EndorsedBy]-> Product:Eagle AI product
+6. Event:2021 Georgia voter registration challenges -[: OccurredAt]-> Location:Georgia
+7. Event:2024 US presidential election -[: OccurredAt]-> Location:US
+8. Organization:New York State Board of Elections -[: InvestigatedBy]-> Person:County board of elections staff impersonators
+9. Organization:State governments -[: UrgedToActBy]-> Concept:Clear laws on private voter challenges
+10. Event:2021 Georgia voter registration challenges -[: ParticipatedIn]-> Person:Election vigilantes
+11. Product:Eagle AI product -[: UsedIn]-> IndustryGroup:Voting system development
+12. Organization:Eagle AI -[: SupportedBy]-> Concept:Conservative ideology
+2024-07-30T19:10:28.057Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:10:29.059Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:10:44.050Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:10:44.050Z [WARN]: Invalid relationship format: 1. Person:Trump -[:SupportedBy]-> Organization:RepublicanParty
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 2. Location:Georgia -[:OccurredAt]-> Event:voter registration challenge
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 3. Organization:NewYorkStateBoardOfElections -[:PublishedBy]-> MediaContent:warning
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 4. Technology:Eagle AI -[:CreatedBy]-> Person:conservative activist
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 5. Organization:Eagle AI -[:InvestedIn]-> Investor:wealthy conservative
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 6. Location:Georgia -[:OccurredAt]-> Event:voter registration challenge (second instance)
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 7. Concept:voting law -[:DependentOn]-> Concept:election integrity
+2024-07-30T19:10:44.051Z [WARN]: Invalid relationship format: 8. Technology:Eagle AI -[:UsedIn]-> IndustryGroup:voter fraud prevention
+2024-07-30T19:10:44.052Z [WARN]: Invalid relationship format: 9. Person:election vigilante -[:ParticipatedIn]-> Event:voter registration challenge
+2024-07-30T19:10:44.053Z [WARN]: Invalid relationship format: 10. Organization:NewYorkStateBoardOfElections -[:SupportedBy]-> GovernmentAgency:state government
+2024-07-30T19:10:44.053Z [WARN]: Invalid relationship format: 11. Concept:private voter challenges -[:ProhibitedBy]-> Concept:open record laws
+2024-07-30T19:10:44.053Z [WARN]: Invalid relationship format: 12. Location:Georgia -[:OccurredAt]-> Event:voter registration challenge (third instance)
+2024-07-30T19:10:44.053Z [WARN]: Invalid relationship format: Note that some of these relationships may not be explicitly stated in the text, but can be inferred based on the context and meaning of the sentences.
+2024-07-30T19:10:44.053Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Trump -[:SupportedBy]-> Organization:RepublicanParty
+2. Location:Georgia -[:OccurredAt]-> Event:voter registration challenge
+3. Organization:NewYorkStateBoardOfElections -[:PublishedBy]-> MediaContent:warning
+4. Technology:Eagle AI -[:CreatedBy]-> Person:conservative activist
+5. Organization:Eagle AI -[:InvestedIn]-> Investor:wealthy conservative
+6. Location:Georgia -[:OccurredAt]-> Event:voter registration challenge (second instance)
+7. Concept:voting law -[:DependentOn]-> Concept:election integrity
+8. Technology:Eagle AI -[:UsedIn]-> IndustryGroup:voter fraud prevention
+9. Person:election vigilante -[:ParticipatedIn]-> Event:voter registration challenge
+10. Organization:NewYorkStateBoardOfElections -[:SupportedBy]-> GovernmentAgency:state government
+11. Concept:private voter challenges -[:ProhibitedBy]-> Concept:open record laws
+12. Location:Georgia -[:OccurredAt]-> Event:voter registration challenge (third instance)
+
+Note that some of these relationships may not be explicitly stated in the text, but can be inferred based on the context and meaning of the sentences.
+2024-07-30T19:10:44.053Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:10:45.053Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:10:54.978Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:10:54.978Z [WARN]: Invalid relationship format: 1. Republican -[:PoliticalMovement]-> Conservative
+2024-07-30T19:10:54.978Z [WARN]: Invalid relationship format: 2. Georgia -[:Location]-> ElectionVigilante
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 3. Eagle AI -[:Organization]-> Product 
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 4. PublicDataSet -[:Technology]-> EagleAI
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 5. NewYorkStateBoardOfElections -[:GovernmentAgency]-> Warning
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 6. CountyBoardOfElectionsStaff -[:JobTitle]-> Individual
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 7. Voter -[:Concept]-> RegistrationChallenge
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 8. Republican -[:PoliticalMovement]-> ElectionStrategy
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 9. Georgia -[:Location]-> AntiVotingLaw
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 10. EagleAI -[:Organization]-> ConservativeActivist
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 11. NewYorkStateBoardOfElections -[:GovernmentAgency]-> Warning
+2024-07-30T19:10:54.979Z [WARN]: Invalid relationship format: 12. States -[:Group-> Location -> EnactLaws
+2024-07-30T19:10:54.979Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Republican -[:PoliticalMovement]-> Conservative
+2. Georgia -[:Location]-> ElectionVigilante
+3. Eagle AI -[:Organization]-> Product 
+4. PublicDataSet -[:Technology]-> EagleAI
+5. NewYorkStateBoardOfElections -[:GovernmentAgency]-> Warning
+6. CountyBoardOfElectionsStaff -[:JobTitle]-> Individual
+7. Voter -[:Concept]-> RegistrationChallenge
+8. Republican -[:PoliticalMovement]-> ElectionStrategy
+9. Georgia -[:Location]-> AntiVotingLaw
+10. EagleAI -[:Organization]-> ConservativeActivist
+11. NewYorkStateBoardOfElections -[:GovernmentAgency]-> Warning
+12. States -[:Group-> Location -> EnactLaws
+2024-07-30T19:10:54.979Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:10:55.980Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:11:07.221Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 1. GovernmentAgency:New York State Board of Elections -[:IssuedWarning]-> Person:Election vigilantes
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 2. Organization:Eagle AI -[:CreatedBy]-> Product:Product 
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 3. Startup:Eagle AI -[:FundedBy]-> Investor:Wealthy conservatives
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 4. Organization:Eagle AI -[:EndorsedBy]-> Influencer:Conservative activists
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 5. Event:2024 election -[:OccurredAt]-> Location:Georgia
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 6. GovernmentAgency:New York State Board of Elections -[:ParticipatedIn]-> PoliticalMovement:Republican strategy
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 7. Event:Mass voter challenges -[:OccurredAt]-> Location:Georgia
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 8. Organization:New York State Board of Elections -[:SupportedBy]-> Concept:Clear laws 
+2024-07-30T19:11:07.222Z [WARN]: Invalid relationship format: 9. GovernmentAgency:New York State Board of Elections -[:ImplementedBy]-> Framework:Review open record laws
+2024-07-30T19:11:07.222Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. GovernmentAgency:New York State Board of Elections -[:IssuedWarning]-> Person:Election vigilantes
+2. Organization:Eagle AI -[:CreatedBy]-> Product:Product 
+3. Startup:Eagle AI -[:FundedBy]-> Investor:Wealthy conservatives
+4. Organization:Eagle AI -[:EndorsedBy]-> Influencer:Conservative activists
+5. Event:2024 election -[:OccurredAt]-> Location:Georgia
+6. GovernmentAgency:New York State Board of Elections -[:ParticipatedIn]-> PoliticalMovement:Republican strategy
+7. Event:Mass voter challenges -[:OccurredAt]-> Location:Georgia
+8. Organization:New York State Board of Elections -[:SupportedBy]-> Concept:Clear laws 
+9. GovernmentAgency:New York State Board of Elections -[:ImplementedBy]-> Framework:Review open record laws
+2024-07-30T19:11:07.222Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:11:07.223Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:22:45.883Z [INFO]: Starting relationship extraction process
+2024-07-30T19:22:45.884Z [INFO]: Processing pre-summarized content
+2024-07-30T19:22:45.884Z [INFO]: Processing chunk 1/1
+2024-07-30T19:22:45.888Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: 1. Framework: HOLMES -[:CREATED_BY]-> Person: Jiuzhou Han
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: 2. Organization: NUS -[:PUBLISHED_BY]-> ResearchGroup: Lin Xu et al.
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: 3. Product/Service: MAgIC -[:IMPLEMENTED_BY]-> Technology: Probabilistic Graphical Modeling
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: 4. Platform: GitHub -[:MAINTAINED_BY]-> Project: AgentGym
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: 5. Location: The University of Hong Kong -[:LOCATED_IN]-> Location: Hong Kong
+2024-07-30T19:23:04.863Z [WARN]: Invalid relationship format: 6. Organization: XLang Lab -[:PUBLISHED_BY]-> ResearchGroup: XLang Lab (The University of Hong Kong)
+2024-07-30T19:23:04.864Z [WARN]: Invalid relationship format: 7. Product/Service: OSWorld -[:IMPLEMENTED_BY]-> Technology: Unified, real computer environment
+2024-07-30T19:23:04.864Z [WARN]: Invalid relationship format: 8. Framework: AgentBench -[:CREATED_BY]-> Person: Jiuzhou Han
+2024-07-30T19:23:04.864Z [WARN]: Invalid relationship format: 9. Organization: ByteDance -[:PUBLISHED_BY]-> ResearchGroup: Lin Xu et al.
+2024-07-30T19:23:04.864Z [WARN]: Invalid relationship format: 10. Location: Stanford -[:LOCATED_IN]-> Location: California
+2024-07-30T19:23:04.864Z [WARN]: Invalid relationship format: 11. Product/Service: AgentGym -[:IMPLEMENTED_BY]-> Technology: Evolving Large Language Model-based Agents
+2024-07-30T19:23:04.865Z [WARN]: Invalid relationship format: 12. Platform: arXiv -[:MAINTAINED_BY]-> Service:
+2024-07-30T19:23:04.865Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Framework: HOLMES -[:CREATED_BY]-> Person: Jiuzhou Han
+2. Organization: NUS -[:PUBLISHED_BY]-> ResearchGroup: Lin Xu et al.
+3. Product/Service: MAgIC -[:IMPLEMENTED_BY]-> Technology: Probabilistic Graphical Modeling
+4. Platform: GitHub -[:MAINTAINED_BY]-> Project: AgentGym
+5. Location: The University of Hong Kong -[:LOCATED_IN]-> Location: Hong Kong
+6. Organization: XLang Lab -[:PUBLISHED_BY]-> ResearchGroup: XLang Lab (The University of Hong Kong)
+7. Product/Service: OSWorld -[:IMPLEMENTED_BY]-> Technology: Unified, real computer environment
+8. Framework: AgentBench -[:CREATED_BY]-> Person: Jiuzhou Han
+9. Organization: ByteDance -[:PUBLISHED_BY]-> ResearchGroup: Lin Xu et al.
+10. Location: Stanford -[:LOCATED_IN]-> Location: California
+11. Product/Service: AgentGym -[:IMPLEMENTED_BY]-> Technology: Evolving Large Language Model-based Agents
+12. Platform: arXiv -[:MAINTAINED_BY]-> Service:
+2024-07-30T19:23:04.865Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:23:05.867Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 1. Concept:Large Language Models -[:UsedIn]-> Framework:HOLMES
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 2. Person:Jiuzhou Han -[:CreatedBy]-> Publication:"Towards Uncertainty-Aware Language Agent"
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 3. ResearchGroup:NUS, ByteDance, Stanford & UC Berkeley -[:CollaboratedWith]-> Person:Lin Xu
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 4. Concept:Probabilistic Graphical Modeling -[:UsedIn]-> Framework:HOLMES
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 5. Person:Lin Xu -[:CreatedBy]-> Publication:MAgIC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 6. Organization:NUS, ByteDance, Stanford & UC Berkeley -[:PublishedBy]-> Publication:MAgIC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 7. Platform:GitHub -[:MaintainedBy]-> Framework:AgentGym
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 8. Person:XLang Lab (The University of Hong Kong) -[:CreatedBy]-> Publication:OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments
+2024-07-30T19:23:20.916Z [WARN]: Invalid relationship format: 9. Organization:The University of Hong Kong -[:PublishedBy]-> Publication:OSWorld: Benchmarking Multimodal Agents for
+2024-07-30T19:23:20.916Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Concept:Large Language Models -[:UsedIn]-> Framework:HOLMES
+2. Person:Jiuzhou Han -[:CreatedBy]-> Publication:"Towards Uncertainty-Aware Language Agent"
+3. ResearchGroup:NUS, ByteDance, Stanford & UC Berkeley -[:CollaboratedWith]-> Person:Lin Xu
+4. Concept:Probabilistic Graphical Modeling -[:UsedIn]-> Framework:HOLMES
+5. Person:Lin Xu -[:CreatedBy]-> Publication:MAgIC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration
+6. Organization:NUS, ByteDance, Stanford & UC Berkeley -[:PublishedBy]-> Publication:MAgIC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration
+7. Platform:GitHub -[:MaintainedBy]-> Framework:AgentGym
+8. Person:XLang Lab (The University of Hong Kong) -[:CreatedBy]-> Publication:OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments
+9. Organization:The University of Hong Kong -[:PublishedBy]-> Publication:OSWorld: Benchmarking Multimodal Agents for
+2024-07-30T19:23:20.916Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:23:21.918Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 1. Concept:Multimodal Large Language Models -[:DEPENDENT_ON]-> Technology:Large Language Models
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 2. Person:Jiuzhou Han -[:CREATED_BY-> Publication:Papers published by Jiuzhou Han et al.
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 3. ResearchGroup:NUS, ByteDance, Stanford & UC Berkeley -[:PARTICIPATED_IN]-> Event:Event of publishing MAgIC paper
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 4. Product:MAgIC -[:PUBLISHED_BY-> Person:Lin Xu et al.
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 5. Organization:XLang Lab (The University of Hong Kong) -[:CREATED_BY-> Publication:OSWorld papers and project page
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 6. Technology:Probabilistic Graphical Modeling -[:USED_IN-> Project:MAgIC
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 7. Product:AgentBench -[:PUBLISHED_BY-> Person:Unknown authors
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 8. Organization:XLang Lab (The University of Hong Kong) -[:CREATED_BY-> Publication:OSWorld papers and project page
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 9. ResearchGroup:XLang Lab (The University of Hong Kong) -[:MANTAINED_BY-> Product:AgentGym on GitHub
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 10. Technology:Probabilistic Graphical Modeling -[:USED_IN-> Project:MAgIC
+2024-07-30T19:23:37.010Z [WARN]: Invalid relationship format: 11
+2024-07-30T19:23:37.010Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Concept:Multimodal Large Language Models -[:DEPENDENT_ON]-> Technology:Large Language Models
+2. Person:Jiuzhou Han -[:CREATED_BY-> Publication:Papers published by Jiuzhou Han et al.
+3. ResearchGroup:NUS, ByteDance, Stanford & UC Berkeley -[:PARTICIPATED_IN]-> Event:Event of publishing MAgIC paper
+4. Product:MAgIC -[:PUBLISHED_BY-> Person:Lin Xu et al.
+5. Organization:XLang Lab (The University of Hong Kong) -[:CREATED_BY-> Publication:OSWorld papers and project page
+6. Technology:Probabilistic Graphical Modeling -[:USED_IN-> Project:MAgIC
+7. Product:AgentBench -[:PUBLISHED_BY-> Person:Unknown authors
+8. Organization:XLang Lab (The University of Hong Kong) -[:CREATED_BY-> Publication:OSWorld papers and project page
+9. ResearchGroup:XLang Lab (The University of Hong Kong) -[:MANTAINED_BY-> Product:AgentGym on GitHub
+10. Technology:Probabilistic Graphical Modeling -[:USED_IN-> Project:MAgIC
+11
+2024-07-30T19:23:37.010Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:23:38.012Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:23:49.859Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:23:49.859Z [WARN]: Invalid relationship format: Person:Jiuzhou Han -[:CreatedBy]-> Publication:"Towards Uncertainty-Aware Language Agent"
+2024-07-30T19:23:49.859Z [WARN]: Invalid relationship format: Organization:NUS -[:CollaboratedWith]-> Organization:ByteDance
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: Organization:NUS -[:CollaboratedWith]-> Organization:Stanford
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: Organization:NUS -[:CollaboratedWith]-> Organization:UC Berkeley
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: Person:Lin Xu -[:CreatedBy]-> Publication:MAgIC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: ResearchGroup:XLang Lab -[:CreatedBy]-> Publication:OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: Organization:The University of Hong Kong -[:HomeOf-> ResearchGroup:XLang Lab
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: Organization:XLang Lab -[:SupportedBy-> Organization:The University of Hong Kong
+2024-07-30T19:23:49.860Z [WARN]: Invalid relationship format: Person:Zhiheng Xi -[:CreatedBy]-> Publication:AgentGym: Evolving Large Language Model-based Agents across Diverse Environments
+2024-07-30T19:23:49.860Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+Person:Jiuzhou Han -[:CreatedBy]-> Publication:"Towards Uncertainty-Aware Language Agent"
+
+Organization:NUS -[:CollaboratedWith]-> Organization:ByteDance
+Organization:NUS -[:CollaboratedWith]-> Organization:Stanford
+Organization:NUS -[:CollaboratedWith]-> Organization:UC Berkeley
+
+Person:Lin Xu -[:CreatedBy]-> Publication:MAgIC: Investigation of Large Language Model Powered Multi-Agent in Cognition, Adaptability, Rationality and Collaboration
+
+ResearchGroup:XLang Lab -[:CreatedBy]-> Publication:OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments
+Organization:The University of Hong Kong -[:HomeOf-> ResearchGroup:XLang Lab
+Organization:XLang Lab -[:SupportedBy-> Organization:The University of Hong Kong
+
+Person:Zhiheng Xi -[:CreatedBy]-> Publication:AgentGym: Evolving Large Language Model-based Agents across Diverse Environments
+2024-07-30T19:23:49.861Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:23:49.863Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:24:48.312Z [INFO]: Starting relationship extraction process
+2024-07-30T19:24:48.312Z [INFO]: Processing pre-summarized content
+2024-07-30T19:24:48.312Z [INFO]: Processing chunk 1/1
+2024-07-30T19:24:48.316Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:25:06.381Z [WARN]: Invalid relationship format: Here are the extracted relationships in the specified format:
+2024-07-30T19:25:06.381Z [WARN]: Invalid relationship format: 1. Platform:https://www.beatmakersboutique.com -[:ImplementedBy]-> Product:Beat Maker's Boutique
+2024-07-30T19:25:06.381Z [WARN]: Invalid relationship format: 2. Person:N/A -[:CreatedBy]-> Software:N/A (Note: The software used to create the webpage is not explicitly mentioned, but it is likely a web development framework or content management system)
+2024-07-30T19:25:06.381Z [WARN]: Invalid relationship format: 3. Person:N/A -[:MaintainedBy]-> Platform:https://www.beatmakersboutique.com (Note: The person responsible for maintaining the website is not explicitly mentioned)
+2024-07-30T19:25:06.381Z [WARN]: Invalid relationship format: 4. Image://www.beatmakersboutique.com/cdn/shop/files/Beat_Makers_Boutique_Logo_Final_Smaller_6990d329-aa15-4d56-92b0-42ca14ad55fe_small.png -[:UsedIn]-> Platform:https://www.beatmakersboutique.com
+2024-07-30T19:25:06.381Z [WARN]: Invalid relationship format: 5. Person:N/A -[:ImplementedBy]-> Service:login (Note: The person responsible for implementing the login feature is not explicitly mentioned)
+2024-07-30T19:25:06.382Z [WARN]: Invalid relationship format: 6. Person:N/A -[:PublishedBy]-> MediaContent:The page you requested does not exist. (Note: The person responsible for publishing the 404 error message is not explicitly mentioned)
+2024-07-30T19:25:06.382Z [WARN]: Invalid relationship format: Please note that some of these
+2024-07-30T19:25:06.382Z [WARN]: No valid relationships found in response: Here are the extracted relationships in the specified format:
+
+1. Platform:https://www.beatmakersboutique.com -[:ImplementedBy]-> Product:Beat Maker's Boutique
+2. Person:N/A -[:CreatedBy]-> Software:N/A (Note: The software used to create the webpage is not explicitly mentioned, but it is likely a web development framework or content management system)
+3. Person:N/A -[:MaintainedBy]-> Platform:https://www.beatmakersboutique.com (Note: The person responsible for maintaining the website is not explicitly mentioned)
+4. Image://www.beatmakersboutique.com/cdn/shop/files/Beat_Makers_Boutique_Logo_Final_Smaller_6990d329-aa15-4d56-92b0-42ca14ad55fe_small.png -[:UsedIn]-> Platform:https://www.beatmakersboutique.com
+5. Person:N/A -[:ImplementedBy]-> Service:login (Note: The person responsible for implementing the login feature is not explicitly mentioned)
+6. Person:N/A -[:PublishedBy]-> MediaContent:The page you requested does not exist. (Note: The person responsible for publishing the 404 error message is not explicitly mentioned)
+
+Please note that some of these
+2024-07-30T19:25:06.382Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:25:07.384Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: Here are the extracted relationships, limited to 12:
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 1. Website -[:CREATED_BY]-> Person (implied by "Beat Maker's Boutique" as a company name)
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 2. Website -[:IMPLEMENTED_BY]-> Technology (web development framework and tools used)
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 3. Product -[:PART_OF]-> IndustryGroup (music or audio equipment industry)
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 4. Publication -[:DOCUMENTED_BY]-> Service (login feature of the website)
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 5. Image -[:USED_IN]-> Website
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 6. Error message -[:DISPLAYED_ON]-> Website
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 7. Website -[:ACCESSIBLE_AT]-> Location (https://www.beatmakersboutique.com/)
+2024-07-30T19:25:21.541Z [WARN]: Invalid relationship format: 8. Product -[:PART_OF]-> Platform (online marketplace or boutique)
+2024-07-30T19:25:21.542Z [WARN]: Invalid relationship format: 9. Service -[:IMPLEMENTED_BY]-> Technology (login feature uses web development technologies)
+2024-07-30T19:25:21.542Z [WARN]: Invalid relationship format: 10. Error message -[:DISPLAYED_ON]-> Website
+2024-07-30T19:25:21.542Z [WARN]: Invalid relationship format: 11. Publication -[:CREATED_BY]-> Person (author of the website content)
+2024-07-30T19:25:21.542Z [WARN]: Invalid relationship format: 12. Website -[:MAINTAINED_BY]-> Organization (Beat Maker's Boutique as a company)
+2024-07-30T19:25:21.542Z [WARN]: Invalid relationship format: Note: Some relationships are implied or inferred based on common practices and industry norms, rather than being explicitly stated in the text.
+2024-07-30T19:25:21.542Z [WARN]: No valid relationships found in response: Here are the extracted relationships, limited to 12:
+
+1. Website -[:CREATED_BY]-> Person (implied by "Beat Maker's Boutique" as a company name)
+2. Website -[:IMPLEMENTED_BY]-> Technology (web development framework and tools used)
+3. Product -[:PART_OF]-> IndustryGroup (music or audio equipment industry)
+4. Publication -[:DOCUMENTED_BY]-> Service (login feature of the website)
+5. Image -[:USED_IN]-> Website
+6. Error message -[:DISPLAYED_ON]-> Website
+7. Website -[:ACCESSIBLE_AT]-> Location (https://www.beatmakersboutique.com/)
+8. Product -[:PART_OF]-> Platform (online marketplace or boutique)
+9. Service -[:IMPLEMENTED_BY]-> Technology (login feature uses web development technologies)
+10. Error message -[:DISPLAYED_ON]-> Website
+11. Publication -[:CREATED_BY]-> Person (author of the website content)
+12. Website -[:MAINTAINED_BY]-> Organization (Beat Maker's Boutique as a company)
+
+Note: Some relationships are implied or inferred based on common practices and industry norms, rather than being explicitly stated in the text.
+2024-07-30T19:25:21.542Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:25:22.544Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:25:37.532Z [WARN]: Invalid relationship format: Here are 12 relationships extracted from the text:
+2024-07-30T19:25:37.532Z [WARN]: Invalid relationship format: 1. Website:beatmakersboutique -[:USES]-> Technology:image
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 2. Website:beatmakersboutique -[:CREATEDBY]-> Person:unknown
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 3. Website:beatmakersboutique -[:MAINTAINEDBY]-> Person:unknown
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 4. Website:beatmakersboutique -[:LOCATED_AT]-> Location:unknown (assuming the website is hosted on a physical server or data center)
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 5. Image:Beat_Makers_Boutique_Logo_Final_Smaller -[:USED_IN]-> Website:beatmakersboutique
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 6. Error message:The page you requested does not exist -[:DISPLAYED_ON]-> Website:beatmakersboutique
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 7. Feature:login -[:IMPLEMENTED_BY]-> Website:beatmakersboutique
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 8. Page:/collections/specialty-items/products/spo-xs-dibia-e-edition-drops-friday-9-22 -[:PARTICIPATED_IN]-> Event:unknown (assuming the webpage is related to a specific event or promotion)
+2024-07-30T19:25:37.533Z [WARN]: Invalid relationship format: 9. URL:https://www.beatmakersboutique.com/collections/specialty-items/products/spo-xs-dibia-e-edition-drops-friday-9-22 -[:LOCATED_AT]->
+2024-07-30T19:25:37.533Z [WARN]: No valid relationships found in response: Here are 12 relationships extracted from the text:
+
+1. Website:beatmakersboutique -[:USES]-> Technology:image
+2. Website:beatmakersboutique -[:CREATEDBY]-> Person:unknown
+3. Website:beatmakersboutique -[:MAINTAINEDBY]-> Person:unknown
+4. Website:beatmakersboutique -[:LOCATED_AT]-> Location:unknown (assuming the website is hosted on a physical server or data center)
+5. Image:Beat_Makers_Boutique_Logo_Final_Smaller -[:USED_IN]-> Website:beatmakersboutique
+6. Error message:The page you requested does not exist -[:DISPLAYED_ON]-> Website:beatmakersboutique
+7. Feature:login -[:IMPLEMENTED_BY]-> Website:beatmakersboutique
+8. Page:/collections/specialty-items/products/spo-xs-dibia-e-edition-drops-friday-9-22 -[:PARTICIPATED_IN]-> Event:unknown (assuming the webpage is related to a specific event or promotion)
+9. URL:https://www.beatmakersboutique.com/collections/specialty-items/products/spo-xs-dibia-e-edition-drops-friday-9-22 -[:LOCATED_AT]->
+2024-07-30T19:25:37.533Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:25:38.535Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:25:46.852Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:25:46.852Z [WARN]: Invalid relationship format: 1. https://www.beatmakersboutique.com -[:ImplementedBy]-> Beat_Makers_Boutique_Logo_Final_Smaller
+2024-07-30T19:25:46.853Z [WARN]: Invalid relationship format: 2. https://www.beatmakersboutique.com -[:UsedIn]-> 404 Not Found error message
+2024-07-30T19:25:46.853Z [WARN]: Invalid relationship format: 3. https://www.beatmakersboutique.com -[:OccuredAt]-> Home Page
+2024-07-30T19:25:46.853Z [WARN]: Invalid relationship format: 4. https://www.beatmakersboutique.com -[:ImplementedBy]-> Login Feature
+2024-07-30T19:25:46.853Z [WARN]: Invalid relationship format: 5. The page you requested does not exist -[:PublishedBy]-> https://www.beatmakersboutique.com 
+2024-07-30T19:25:46.853Z [WARN]: Invalid relationship format: Note: These relationships are limited to the provided text and may not be comprehensive or accurate in a broader context.
+2024-07-30T19:25:46.853Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. https://www.beatmakersboutique.com -[:ImplementedBy]-> Beat_Makers_Boutique_Logo_Final_Smaller
+2. https://www.beatmakersboutique.com -[:UsedIn]-> 404 Not Found error message
+3. https://www.beatmakersboutique.com -[:OccuredAt]-> Home Page
+4. https://www.beatmakersboutique.com -[:ImplementedBy]-> Login Feature
+5. The page you requested does not exist -[:PublishedBy]-> https://www.beatmakersboutique.com 
+
+Note: These relationships are limited to the provided text and may not be comprehensive or accurate in a broader context.
+2024-07-30T19:25:46.853Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:25:46.854Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:26:46.983Z [INFO]: Starting relationship extraction process
+2024-07-30T19:26:46.983Z [INFO]: Processing pre-summarized content
+2024-07-30T19:26:46.983Z [INFO]: Processing chunk 1/1
+2024-07-30T19:26:46.987Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 1. Concept:SenseMaking -[:CREATED_BY]-> Person:Calvin Hutcheon
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 2. Organization:EnchantedNetwork -[:PUBLISHED_BY]-> Publication:Better Sense-Making, Better Data Sets
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 3. OnlineCommunity:Folklore -[:IMPLEMENTED_BY]-> Platform:Hypothesis
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 4. Tool:Hypothesis -[:USED_IN]-> Service:AnnotatingTheWeb
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 5. Person:Calvin Hutcheon -[:CREATED_BY]-> Product:Intuitive Feedback Loops
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 6. Event:OnlineCommunities -[:PARTICIPATED_IN]-> Concept:ImprovingGroupRecall
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 7. Organization:EnchantedNetwork -[:SUPPORTED_BY]-> Event:CollectingHighQualityMetadata
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 8. OnlineCommunity:Folklore -[:INFLUENCED_BY]-> Technology:AIAgents
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 9. Event:TrainingAIAgents -[:OCCURRED_AT]-> Location:OnlineCommunities
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 10. Concept:SenseMaking -[:DEPENDENT_ON]-> DataSets
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 11. Person:Calvin Hutcheon -[:CREATED_BY]-> Product:IntuitiveFeedbackLoops
+2024-07-30T19:27:04.541Z [WARN]: Invalid relationship format: 12. Platform:Hypothesis -[:USED_IN]-> Service:AnnotatingTheWeb
+2024-07-30T19:27:04.541Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Concept:SenseMaking -[:CREATED_BY]-> Person:Calvin Hutcheon
+2. Organization:EnchantedNetwork -[:PUBLISHED_BY]-> Publication:Better Sense-Making, Better Data Sets
+3. OnlineCommunity:Folklore -[:IMPLEMENTED_BY]-> Platform:Hypothesis
+4. Tool:Hypothesis -[:USED_IN]-> Service:AnnotatingTheWeb
+5. Person:Calvin Hutcheon -[:CREATED_BY]-> Product:Intuitive Feedback Loops
+6. Event:OnlineCommunities -[:PARTICIPATED_IN]-> Concept:ImprovingGroupRecall
+7. Organization:EnchantedNetwork -[:SUPPORTED_BY]-> Event:CollectingHighQualityMetadata
+8. OnlineCommunity:Folklore -[:INFLUENCED_BY]-> Technology:AIAgents
+9. Event:TrainingAIAgents -[:OCCURRED_AT]-> Location:OnlineCommunities
+10. Concept:SenseMaking -[:DEPENDENT_ON]-> DataSets
+11. Person:Calvin Hutcheon -[:CREATED_BY]-> Product:IntuitiveFeedbackLoops
+12. Platform:Hypothesis -[:USED_IN]-> Service:AnnotatingTheWeb
+2024-07-30T19:27:04.541Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:27:05.542Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Person:Calvin Hutcheon -[:CreatedBy]-> Concept:sense-making
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Organization:The Enchanted network -[:PublishedBy]-> Publication:better-sense-making-better-data-sets
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Concept:sense-making -[:DependentOn]-> Technology:LLM training sets
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Community:Folklore -[:CollaboratedWith]-> Person:Calvin Hutcheon
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Organization:Hypothesis -[:ImplementedBy]-> Product:Hypothesis tool
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Person:Calvin Hutcheon -[:CreatedBy]-> Publication:Intuitive Feedback Loops
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Concept:sense-making -[:InfluencedBy]-> Concept:group sense-making
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Community:Folklore -[:UsedIn]-> Service:indexing media
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Technology:data sets -[:CompatibleWith]-> Technology:communication tools
+2024-07-30T19:27:15.590Z [WARN]: Invalid relationship format: Organization:Hypothesis -[:MaintainedBy]-> Person:Calvin Hutcheon
+2024-07-30T19:27:15.590Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+Person:Calvin Hutcheon -[:CreatedBy]-> Concept:sense-making
+Organization:The Enchanted network -[:PublishedBy]-> Publication:better-sense-making-better-data-sets
+Concept:sense-making -[:DependentOn]-> Technology:LLM training sets
+Community:Folklore -[:CollaboratedWith]-> Person:Calvin Hutcheon
+Organization:Hypothesis -[:ImplementedBy]-> Product:Hypothesis tool
+Person:Calvin Hutcheon -[:CreatedBy]-> Publication:Intuitive Feedback Loops
+Concept:sense-making -[:InfluencedBy]-> Concept:group sense-making
+Community:Folklore -[:UsedIn]-> Service:indexing media
+Technology:data sets -[:CompatibleWith]-> Technology:communication tools
+Organization:Hypothesis -[:MaintainedBy]-> Person:Calvin Hutcheon
+2024-07-30T19:27:15.591Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:27:16.593Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 1. Person:Calvin Hutcheon -[:CreatedBy]-> Concept:sense-making
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 2. Organization:Enchanted Network -[:PublishedBy]-> MediaContent:better-sense-making-better-data-sets
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 3. Community:Folklore -[:ImplementedBy]-> Platform:hypothesis
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 4. Tool:Hypothesis -[:SupportedBy]-> Person:Calvin Hutcheon
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 5. Publication:Intuitive Feedback Loops -[:CreatedBy]-> Person:Calvin Hutcheon
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 6. OnlineCommunities -[:DependentOn]-> Technology:AIs
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 7. IndustryGroup:CommunicationTools -[:CompatibleWith]-> Concept:machinelearning
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 8. Community:Folklore -[:CollaboratedWith]-> Platform:hypothesis
+2024-07-30T19:27:30.273Z [WARN]: Invalid relationship format: 9. Organization:Hypothesis -[:InvestedIn]-> ResearchGroup:data annotation research
+2024-07-30T19:27:30.274Z [WARN]: Invalid relationship format: 10. Event:Training AI agents while improving conversation quality and group recall sense-making over time -[:OccurredAt]-> Location:online communities
+2024-07-30T19:27:30.274Z [WARN]: Invalid relationship format: 11. Concept:sense-making -[:InfluencedBy]-> Technology:machinelearning
+2024-07-30T19:27:30.274Z [WARN]: Invalid relationship format: 12. Platform:hypothesis -[:UsedIn]-> Service:annotating the web with friends
+2024-07-30T19:27:30.274Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Calvin Hutcheon -[:CreatedBy]-> Concept:sense-making
+2. Organization:Enchanted Network -[:PublishedBy]-> MediaContent:better-sense-making-better-data-sets
+3. Community:Folklore -[:ImplementedBy]-> Platform:hypothesis
+4. Tool:Hypothesis -[:SupportedBy]-> Person:Calvin Hutcheon
+5. Publication:Intuitive Feedback Loops -[:CreatedBy]-> Person:Calvin Hutcheon
+6. OnlineCommunities -[:DependentOn]-> Technology:AIs
+7. IndustryGroup:CommunicationTools -[:CompatibleWith]-> Concept:machinelearning
+8. Community:Folklore -[:CollaboratedWith]-> Platform:hypothesis
+9. Organization:Hypothesis -[:InvestedIn]-> ResearchGroup:data annotation research
+10. Event:Training AI agents while improving conversation quality and group recall sense-making over time -[:OccurredAt]-> Location:online communities
+11. Concept:sense-making -[:InfluencedBy]-> Technology:machinelearning
+12. Platform:hypothesis -[:UsedIn]-> Service:annotating the web with friends
+2024-07-30T19:27:30.274Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:27:31.275Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 1. Calvin Hutcheon -[:CreatedBy]-> Concept:sense-making
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 2. Enchanted Network -[:SupportedBy]-> ResearchGroup:Enchanted network 
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 3. Folklore -[:ImplementedBy]-> Platform:Folklore 
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 4. Hypothesis -[:PublishedBy]-> Organization:Hypothes.is 
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 5. Calvin Hutcheon -[:PublishedBy]-> Publication:Intuitive Feedback Loops
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 6. Online Communities -[:CollaboratedWith]-> Technology:LLM training sets
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 7. Folklore -[:UsedIn]-> Service:Community mind through conversation and selective curation of media
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 8. Enchanted Network -[:DocumentedBy]-> MediaContent:better sense-making better data sets 
+2024-07-30T19:27:44.024Z [WARN]: Invalid relationship format: 9. Calvin Hutcheon -[:ParticipatedIn]-> Event:Intuitive Feedback Loops 
+2024-07-30T19:27:44.025Z [WARN]: Invalid relationship format: 10. Online Communities -[:CompatibleWith]-> Technology:data sets in communication tools
+2024-07-30T19:27:44.025Z [WARN]: Invalid relationship format: 11. Folklore -[:MaintainedBy]-> Person:Calvin Hutcheon 
+2024-07-30T19:27:44.025Z [WARN]: Invalid relationship format: 12. Hypothesis -[:UsedIn]-> Service:annotating the web with friends
+2024-07-30T19:27:44.025Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Calvin Hutcheon -[:CreatedBy]-> Concept:sense-making
+2. Enchanted Network -[:SupportedBy]-> ResearchGroup:Enchanted network 
+3. Folklore -[:ImplementedBy]-> Platform:Folklore 
+4. Hypothesis -[:PublishedBy]-> Organization:Hypothes.is 
+5. Calvin Hutcheon -[:PublishedBy]-> Publication:Intuitive Feedback Loops
+6. Online Communities -[:CollaboratedWith]-> Technology:LLM training sets
+7. Folklore -[:UsedIn]-> Service:Community mind through conversation and selective curation of media
+8. Enchanted Network -[:DocumentedBy]-> MediaContent:better sense-making better data sets 
+9. Calvin Hutcheon -[:ParticipatedIn]-> Event:Intuitive Feedback Loops 
+10. Online Communities -[:CompatibleWith]-> Technology:data sets in communication tools
+11. Folklore -[:MaintainedBy]-> Person:Calvin Hutcheon 
+12. Hypothesis -[:UsedIn]-> Service:annotating the web with friends
+2024-07-30T19:27:44.025Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:27:44.026Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:29:01.845Z [INFO]: Starting relationship extraction process
+2024-07-30T19:29:01.845Z [INFO]: Processing pre-summarized content
+2024-07-30T19:29:01.845Z [INFO]: Processing chunk 1/1
+2024-07-30T19:29:01.849Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Here are the extracted relationships in the specified format:
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Person:Louise Story -[:CREATED_BY]-> Publication:The Innovation Report
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Person:Louise Story -[:MAINTAINED_BY]-> MediaContent:Live video unit at The Wall Street Journal
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Organization:Nieman Journalism Lab -[:PUBLISHED_BY]-> Publication:"“Flexicles,” story alert systems, and other ways AI will serve publishers, reporters, and readers"
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Organization:The Wall Street Journal -[:USED_IN]-> Technology:Neural networks
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Organization:The Wall Street Journal -[:IMPLEMENETED_BY]-> Product:Topic model for recommendations
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Person:Louise Story -[:ADVISOR_TO]-> Organization:Media companies
+2024-07-30T19:29:15.042Z [WARN]: Invalid relationship format: Technology:AIs -[:USED_IN]-> IndustryGroup:News industry
+2024-07-30T19:29:15.043Z [WARN]: Invalid relationship format: Concept:AI -[:INFLUENCED_BY]-> PoliticalMovement:Changing public needs
+2024-07-30T19:29:15.043Z [WARN]: No valid relationships found in response: Here are the extracted relationships in the specified format:
+
+Person:Louise Story -[:CREATED_BY]-> Publication:The Innovation Report
+Person:Louise Story -[:MAINTAINED_BY]-> MediaContent:Live video unit at The Wall Street Journal
+Organization:Nieman Journalism Lab -[:PUBLISHED_BY]-> Publication:"“Flexicles,” story alert systems, and other ways AI will serve publishers, reporters, and readers"
+Organization:The Wall Street Journal -[:USED_IN]-> Technology:Neural networks
+Organization:The Wall Street Journal -[:IMPLEMENETED_BY]-> Product:Topic model for recommendations
+Person:Louise Story -[:ADVISOR_TO]-> Organization:Media companies
+Technology:AIs -[:USED_IN]-> IndustryGroup:News industry
+Concept:AI -[:INFLUENCED_BY]-> PoliticalMovement:Changing public needs
+2024-07-30T19:29:15.043Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:29:16.044Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: Here are the extracted relationships in the specified format:
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 1. MediaContent:Article -[:PublishedBy]-> Organization:Nieman Journalism Lab
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 2. Person:Louise Story -[:HasJobTitle]-> JobTitle:Adviser
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 3. Service:Talk2020 -[:UsedIn]-> Product:Reusable News Product
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 4. Technology:Neural Networks -[:ImplementedBy]-> Organization:The Wall Street Journal
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 5. Organization:News Organizations -[:DependentOn]-> Technology:GPUs
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 6. Publication:Innovation Report -[:CreatedBy]-> Person:Louise Story
+2024-07-30T19:29:25.456Z [WARN]: Invalid relationship format: 7. Concept:Awareness of changing public needs -[:InfluencedBy]-> Concept:Adaptation to change
+2024-07-30T19:29:25.457Z [WARN]: Invalid relationship format: 8. Event:Funding of broadcasting -[:OccurredAt]-> HistoricalPeriod:Future Time Period
+2024-07-30T19:29:25.457Z [WARN]: No valid relationships found in response: Here are the extracted relationships in the specified format:
+
+1. MediaContent:Article -[:PublishedBy]-> Organization:Nieman Journalism Lab
+2. Person:Louise Story -[:HasJobTitle]-> JobTitle:Adviser
+3. Service:Talk2020 -[:UsedIn]-> Product:Reusable News Product
+4. Technology:Neural Networks -[:ImplementedBy]-> Organization:The Wall Street Journal
+5. Organization:News Organizations -[:DependentOn]-> Technology:GPUs
+6. Publication:Innovation Report -[:CreatedBy]-> Person:Louise Story
+7. Concept:Awareness of changing public needs -[:InfluencedBy]-> Concept:Adaptation to change
+8. Event:Funding of broadcasting -[:OccurredAt]-> HistoricalPeriod:Future Time Period
+2024-07-30T19:29:25.457Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:29:26.458Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Here are the extracted relationships in the specified format:
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Person: Louise Story -[:CollaboratedWith]-> Publication:"Innovation Report"
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Organization:The Wall Street Journal -[:ImplementedBy]-> Product:Talk2020
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Technology:Neural networks -[:UsedIn]-> Organization:The Wall Street Journal
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: IndustryGroup:News organizations -[:UnsupportedBy]-> Technology:GPUs
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Product:Talk2020 -[:PartneredWith]-> Organization:The Wall Street Journal
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Person: Louise Story -[:MaintainedBy]-> Service:Live video unit
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Organization:Media companies -[:ShouldUse]-> Technology:AI
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Concept:Changing public needs -[:InfluencedBy]-> Concept:Adaptation
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Event:Paying for broadcasting -[:MentionedBy]-> Publication:"The ways people hear about big news these days"
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Person:Louise Story -[:AdvisedOn]-> Organization:Media companies
+2024-07-30T19:29:39.071Z [WARN]: Invalid relationship format: Organization:Nieman Journalism Lab -[:PublishedBy]-> Publication:"“Flexicles,” story alert systems, and other ways AI will serve publishers, reporters, and readers"
+2024-07-30T19:29:39.071Z [WARN]: No valid relationships found in response: Here are the extracted relationships in the specified format:
+
+Person: Louise Story -[:CollaboratedWith]-> Publication:"Innovation Report"
+Organization:The Wall Street Journal -[:ImplementedBy]-> Product:Talk2020
+Technology:Neural networks -[:UsedIn]-> Organization:The Wall Street Journal
+IndustryGroup:News organizations -[:UnsupportedBy]-> Technology:GPUs
+Product:Talk2020 -[:PartneredWith]-> Organization:The Wall Street Journal
+Person: Louise Story -[:MaintainedBy]-> Service:Live video unit
+Organization:Media companies -[:ShouldUse]-> Technology:AI
+Concept:Changing public needs -[:InfluencedBy]-> Concept:Adaptation
+Event:Paying for broadcasting -[:MentionedBy]-> Publication:"The ways people hear about big news these days"
+Person:Louise Story -[:AdvisedOn]-> Organization:Media companies
+Organization:Nieman Journalism Lab -[:PublishedBy]-> Publication:"“Flexicles,” story alert systems, and other ways AI will serve publishers, reporters, and readers"
+2024-07-30T19:29:39.071Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:29:40.073Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: Here are the extracted relationships in the specified format:
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 1. Publication:niemanlab -[:PublishedBy]-> Person:louise_story
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 2. Person:louise_story -[:SupportedBy]-> Organization:the_wall_street_journal
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 3. Product:talk2020 -[:ImplementedBy]-> Technology:ai
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 4. Product:talk2020 -[:UsedIn]-> IndustryGroup:news_industry
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 5. Organization:newspaper_company -[:DependentOn]-> Technology:gpus
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 6. Person:louise_story -[:ParticipatedIn]-> Event:innovation_report
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 7. Person:louise_story -[:JobTitle]-> JobTitle:video_unit_director
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 8. Concept:ai -[:CompatibleWith]-> IndustryGroup:news_industry
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 9. Publication:niemanlab -[:OccurredAt]-> Location:date_2023-09-21
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 10. Event:innovation_report -[:CreatedBy]-> Person:louise_story
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 11. Organization:newspaper_company -[:InfluencedBy]-> Concept:ai
+2024-07-30T19:29:53.506Z [WARN]: Invalid relationship format: 12. IndustryGroup:news_industry -[:DependentOn]-> Technology:gpus
+2024-07-30T19:29:53.507Z [WARN]: No valid relationships found in response: Here are the extracted relationships in the specified format:
+
+1. Publication:niemanlab -[:PublishedBy]-> Person:louise_story
+2. Person:louise_story -[:SupportedBy]-> Organization:the_wall_street_journal
+3. Product:talk2020 -[:ImplementedBy]-> Technology:ai
+4. Product:talk2020 -[:UsedIn]-> IndustryGroup:news_industry
+5. Organization:newspaper_company -[:DependentOn]-> Technology:gpus
+6. Person:louise_story -[:ParticipatedIn]-> Event:innovation_report
+7. Person:louise_story -[:JobTitle]-> JobTitle:video_unit_director
+8. Concept:ai -[:CompatibleWith]-> IndustryGroup:news_industry
+9. Publication:niemanlab -[:OccurredAt]-> Location:date_2023-09-21
+10. Event:innovation_report -[:CreatedBy]-> Person:louise_story
+11. Organization:newspaper_company -[:InfluencedBy]-> Concept:ai
+12. IndustryGroup:news_industry -[:DependentOn]-> Technology:gpus
+2024-07-30T19:29:53.507Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:29:53.507Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:30:23.312Z [INFO]: Starting relationship extraction process
+2024-07-30T19:30:23.312Z [INFO]: Processing pre-summarized content
+2024-07-30T19:30:23.312Z [INFO]: Processing chunk 1/1
+2024-07-30T19:30:23.316Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: Here are 12 extracted relationships:
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: 1. Location: California -[:OccurredAt]-> Event
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: 2. Person/Influencer - not explicitly mentioned in the text; however, a YouTube video is created by its creator, so we can infer 
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: CreatorOfMediaContent: [Person/Influencer] -[:CreatedBy]-> MediaContent: YouTubeVideo
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: 3. Person/Influencer - not explicitly mentioned in the text; however, the owner of the YouTube channel created the video, so we can infer 
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: Organization: YouTube -[:MaintainedBy]-> Person/Influencer
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: 4. Event - not explicitly mentioned in the text; however, a search query related to this topic is "California house seats loss", which implies an event (the expected loss of house seats), so we can infer 
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: Event - not exactly one of our entity types but inferred from context: Event -[:OccurredAt]-> Location: California
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: 5. MediaContent: YouTubeVideo -[:PublishedBy]-> Organization: YouTube
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: 6. Person/Influencer - not explicitly mentioned in the text; however, a search query is related to this topic, and people typically create such queries, so we can infer 
+2024-07-30T19:30:40.050Z [WARN]: Invalid relationship format: Person/Influencer -[:UsedIn]-> Service: SearchEngine
+2024-07-30T19:30:40.050Z [WARN]: No valid relationships found in response: Here are 12 extracted relationships:
+
+1. Location: California -[:OccurredAt]-> Event
+2. Person/Influencer - not explicitly mentioned in the text; however, a YouTube video is created by its creator, so we can infer 
+CreatorOfMediaContent: [Person/Influencer] -[:CreatedBy]-> MediaContent: YouTubeVideo
+3. Person/Influencer - not explicitly mentioned in the text; however, the owner of the YouTube channel created the video, so we can infer 
+Organization: YouTube -[:MaintainedBy]-> Person/Influencer
+4. Event - not explicitly mentioned in the text; however, a search query related to this topic is "California house seats loss", which implies an event (the expected loss of house seats), so we can infer 
+Event - not exactly one of our entity types but inferred from context: Event -[:OccurredAt]-> Location: California
+5. MediaContent: YouTubeVideo -[:PublishedBy]-> Organization: YouTube
+6. Person/Influencer - not explicitly mentioned in the text; however, a search query is related to this topic, and people typically create such queries, so we can infer 
+Person/Influencer -[:UsedIn]-> Service: SearchEngine
+2024-07-30T19:30:40.050Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:30:41.050Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:30:42.504Z [WARN]: Invalid relationship format: Here are 2 extracted relationships:
+2024-07-30T19:30:42.504Z [WARN]: Invalid relationship format: MediaContent -[:OccurredAt]-> Location
+2024-07-30T19:30:42.504Z [WARN]: Invalid relationship format: YouTube -[:ImplementedBy]-> MediaContent
+2024-07-30T19:30:42.504Z [WARN]: No valid relationships found in response: Here are 2 extracted relationships:
+
+MediaContent -[:OccurredAt]-> Location
+YouTube -[:ImplementedBy]-> MediaContent
+2024-07-30T19:30:42.504Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:30:43.506Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: 1. Location:California -[:OccurredAt]-> Event:House seats loss
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: 2. Person:YouTuber -[:PublishedBy]-> MediaContent:YouTube video
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: 3. Organization:YouTube -[:MaintainedBy]-> Platform:YouTube
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: 4. Person:Researcher/Author -[:CreatedBy]-> Publication:Report on California house seats loss
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: 5. Concept:Demographic change -[:InfluencedBy]-> Event:House seats loss
+2024-07-30T19:30:50.043Z [WARN]: Invalid relationship format: 6. Technology:Search engine -[:UsedIn]-> Service:Searching for information online
+2024-07-30T19:30:50.043Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Location:California -[:OccurredAt]-> Event:House seats loss
+2. Person:YouTuber -[:PublishedBy]-> MediaContent:YouTube video
+3. Organization:YouTube -[:MaintainedBy]-> Platform:YouTube
+4. Person:Researcher/Author -[:CreatedBy]-> Publication:Report on California house seats loss
+5. Concept:Demographic change -[:InfluencedBy]-> Event:House seats loss
+6. Technology:Search engine -[:UsedIn]-> Service:Searching for information online
+2024-07-30T19:30:50.043Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:30:51.043Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:31:05.859Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:31:05.859Z [WARN]: Invalid relationship format: 1. Location:California -[:OccurredAt]-> Event:loss_house_seats
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 2. MediaContent:YouTube_video -[:PublishedBy]-> Person:I_DDHHQ
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 3. Platform:YouTube -[:ImplementedBy]-> Technology:Internet
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 4. Concept:house_seats -[:DependentOn]-> Location:state
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 5. Organization:YouTube -[:MaintainedBy]-> Person:unknown (Note: The specific person is not mentioned, but it's implied that someone at YouTube maintains the platform)
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 6. Platform:YouTube -[:UsedIn]-> Service:video_sharing
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 7. Person:I_DDHHQ -[:ParticipatedIn]-> Event:video_creation
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 8. Location:California -[:LocatedAt]-> Location:USA (Note: This relationship is not explicitly stated in the text, but it's implied that California is located within the USA)
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: However, considering the original instructions to limit the output to 12 relationships and focusing on connections between technologies, people, organizations, and other relevant entities, I will remove some of these relationships. Here are the remaining 5:
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 1. Location:California -[:OccurredAt]-> Event:loss_house_seats
+2024-07-30T19:31:05.860Z [WARN]: Invalid relationship format: 2. MediaContent:YouTube_video -[:PublishedBy]->
+2024-07-30T19:31:05.860Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Location:California -[:OccurredAt]-> Event:loss_house_seats
+2. MediaContent:YouTube_video -[:PublishedBy]-> Person:I_DDHHQ
+3. Platform:YouTube -[:ImplementedBy]-> Technology:Internet
+4. Concept:house_seats -[:DependentOn]-> Location:state
+5. Organization:YouTube -[:MaintainedBy]-> Person:unknown (Note: The specific person is not mentioned, but it's implied that someone at YouTube maintains the platform)
+6. Platform:YouTube -[:UsedIn]-> Service:video_sharing
+7. Person:I_DDHHQ -[:ParticipatedIn]-> Event:video_creation
+8. Location:California -[:LocatedAt]-> Location:USA (Note: This relationship is not explicitly stated in the text, but it's implied that California is located within the USA)
+
+However, considering the original instructions to limit the output to 12 relationships and focusing on connections between technologies, people, organizations, and other relevant entities, I will remove some of these relationships. Here are the remaining 5:
+
+1. Location:California -[:OccurredAt]-> Event:loss_house_seats
+2. MediaContent:YouTube_video -[:PublishedBy]->
+2024-07-30T19:31:05.860Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:31:05.861Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:31:46.152Z [INFO]: Starting relationship extraction process
+2024-07-30T19:31:46.152Z [INFO]: Processing pre-summarized content
+2024-07-30T19:31:46.152Z [INFO]: Processing chunk 1/1
+2024-07-30T19:31:46.156Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:31:52.774Z [WARN]: Invalid relationship format: Here are 4 relationships extracted from the text:
+2024-07-30T19:31:52.775Z [WARN]: Invalid relationship format: yehuda-juda-kohn-498a2ba6:Person -[:NOT_FOUND]-> 
+2024-07-30T19:31:52.775Z [WARN]: Invalid relationship format: linkedin:Platform 
+2024-07-30T19:31:52.775Z [WARN]: Invalid relationship format: linkedin:Organization -[:HAS_MEMBER]-> yehuda-juda-kohn-498a2ba6:Person 
+2024-07-30T19:31:52.775Z [WARN]: Invalid relationship format: linkedin:Platform -[:REQUIRES_LOGIN]-> 930 million:Person
+2024-07-30T19:31:52.775Z [WARN]: No valid relationships found in response: Here are 4 relationships extracted from the text:
+
+yehuda-juda-kohn-498a2ba6:Person -[:NOT_FOUND]-> 
+linkedin:Platform 
+
+linkedin:Organization -[:HAS_MEMBER]-> yehuda-juda-kohn-498a2ba6:Person 
+
+linkedin:Platform -[:REQUIRES_LOGIN]-> 930 million:Person
+2024-07-30T19:31:52.775Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:31:53.784Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:31:57.409Z [WARN]: Invalid relationship format: Here are 4 extracted relationships:
+2024-07-30T19:31:57.409Z [WARN]: Invalid relationship format: Person:Yehuda Juda Kohn -[:InvestedIn]-> Organization:LinkedIn
+2024-07-30T19:31:57.409Z [WARN]: Invalid relationship format: Organization:LinkedIn -[:ImplementedBy]-> Technology:Platform
+2024-07-30T19:31:57.409Z [WARN]: Invalid relationship format: Organization:LinkedIn -[:PublishedBy]-> Publication:User Agreement
+2024-07-30T19:31:57.410Z [WARN]: Invalid relationship format: Organization:LinkedIn -[:PublishedBy]-> Publication:Privacy Policy
+2024-07-30T19:31:57.410Z [WARN]: No valid relationships found in response: Here are 4 extracted relationships:
+
+Person:Yehuda Juda Kohn -[:InvestedIn]-> Organization:LinkedIn
+Organization:LinkedIn -[:ImplementedBy]-> Technology:Platform
+Organization:LinkedIn -[:PublishedBy]-> Publication:User Agreement
+Organization:LinkedIn -[:PublishedBy]-> Publication:Privacy Policy
+2024-07-30T19:31:57.410Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:31:58.411Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:32:07.792Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 1. Person:Yehuda Juda Kohn -[:PublishedBy]-> Platform:LinkedIn
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 2. Platform:LinkedIn -[:UsedIn]-> IndustryGroup:Social Media
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 3. Person:Yehuda Juda Kohn -[:InvestedIn]-> Platform:LinkedIn
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 4. Organization:LinkedIn -[:MaintainedBy]-> Technology:Database
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 5. Organization:LinkedIn -[:MaintainedBy]-> Technology:Server
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 6. Person:Yehuda Juda Kohn -[:ParticipatedIn]-> Event:LinkedIn Profile Creation
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 7. Platform:LinkedIn -[:SupportedBy]-> GovernmentAgency:Government Agency (no specific agency mentioned)
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 8. Platform:LinkedIn -[:CompatibleWith]-> Device:Computer 
+2024-07-30T19:32:07.793Z [WARN]: Invalid relationship format: 9. User -[:UsedIn]-> Service:Login Service
+2024-07-30T19:32:07.793Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Yehuda Juda Kohn -[:PublishedBy]-> Platform:LinkedIn
+2. Platform:LinkedIn -[:UsedIn]-> IndustryGroup:Social Media
+3. Person:Yehuda Juda Kohn -[:InvestedIn]-> Platform:LinkedIn
+4. Organization:LinkedIn -[:MaintainedBy]-> Technology:Database
+5. Organization:LinkedIn -[:MaintainedBy]-> Technology:Server
+6. Person:Yehuda Juda Kohn -[:ParticipatedIn]-> Event:LinkedIn Profile Creation
+7. Platform:LinkedIn -[:SupportedBy]-> GovernmentAgency:Government Agency (no specific agency mentioned)
+8. Platform:LinkedIn -[:CompatibleWith]-> Device:Computer 
+9. User -[:UsedIn]-> Service:Login Service
+2024-07-30T19:32:07.793Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:32:08.794Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:32:13.212Z [WARN]: Invalid relationship format: Here are 4 relationships extracted from the text:
+2024-07-30T19:32:13.212Z [WARN]: Invalid relationship format: Person:Yehuda-Juda-Kohn-498a2ba6 -[:NotFound]-> Person 
+2024-07-30T19:32:13.212Z [WARN]: Invalid relationship format: Organization:LinkedIn -[:HasMembers]-> Number:930,000,000 
+2024-07-30T19:32:13.212Z [WARN]: Invalid relationship format: Technology:LinkedIn -[:RequiresLogin]-> Technology:UserAccount 
+2024-07-30T19:32:13.212Z [WARN]: Invalid relationship format: LegalDocument:LinkedIn User Agreement -[:AppliesTo]-> Organization:LinkedIn
+2024-07-30T19:32:13.212Z [WARN]: No valid relationships found in response: Here are 4 relationships extracted from the text:
+
+Person:Yehuda-Juda-Kohn-498a2ba6 -[:NotFound]-> Person 
+Organization:LinkedIn -[:HasMembers]-> Number:930,000,000 
+Technology:LinkedIn -[:RequiresLogin]-> Technology:UserAccount 
+LegalDocument:LinkedIn User Agreement -[:AppliesTo]-> Organization:LinkedIn
+2024-07-30T19:32:13.212Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:32:13.214Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:34:09.729Z [INFO]: Starting relationship extraction process
+2024-07-30T19:34:09.729Z [INFO]: Processing pre-summarized content
+2024-07-30T19:34:09.729Z [INFO]: Processing chunk 1/1
+2024-07-30T19:34:09.733Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Documentary:Kanehsatake -[:CREATED_BY]-> Person:AlanisObomsawin
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Documentary:Kanehsatake -[:PUBLISHED_BY]-> Organization:NationalFilmBoardOfCanada
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Person:JamesGabriel -[:DIED_IN_CONFLICT_WITH]-> Police
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Event:OkaCrisis -[:PARTICIPATED_IN]-> Event:ArmedStandoff
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Person:AlanisObomsawin -[:IS_MEMBER_OF]-> Nation:AbenakiNation
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Documentary:Kanehsatake -[:INFLUENCED_BY]-> PoliticalMovement:CulturalMovement ( Indigenous experiences)
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Documentary:TrickOrTreaty -[:CREATED_BY]-> Person:AlanisObomsawin
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Documentary:YouAreOnIndianLand -[:CREATED_BY]-> Person:AlanisObomsawin
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Event:TorontoInternationalFilmFestival -[:HONORED_WITH_AWARD]-> Documentary:Kanehsatake
+2024-07-30T19:34:26.577Z [WARN]: Invalid relationship format: Person:JamesGabriel -[:WAS_INVOLVED_IN_CONFLICT_WITH]-> GovernmentAgency:CanadianGovernment
+2024-07-30T19:34:26.577Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+Documentary:Kanehsatake -[:CREATED_BY]-> Person:AlanisObomsawin
+Documentary:Kanehsatake -[:PUBLISHED_BY]-> Organization:NationalFilmBoardOfCanada
+Person:JamesGabriel -[:DIED_IN_CONFLICT_WITH]-> Police
+Event:OkaCrisis -[:PARTICIPATED_IN]-> Event:ArmedStandoff
+Person:AlanisObomsawin -[:IS_MEMBER_OF]-> Nation:AbenakiNation
+Documentary:Kanehsatake -[:INFLUENCED_BY]-> PoliticalMovement:CulturalMovement ( Indigenous experiences)
+Documentary:TrickOrTreaty -[:CREATED_BY]-> Person:AlanisObomsawin
+Documentary:YouAreOnIndianLand -[:CREATED_BY]-> Person:AlanisObomsawin
+Event:TorontoInternationalFilmFestival -[:HONORED_WITH_AWARD]-> Documentary:Kanehsatake
+Person:JamesGabriel -[:WAS_INVOLVED_IN_CONFLICT_WITH]-> GovernmentAgency:CanadianGovernment
+2024-07-30T19:34:26.577Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:34:27.579Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 1. MediaContent:Kanehsatake: 270 Years of Resistance -[:CREATED_BY]-> Person:Alanis Obomsawin
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 2. Event:The Oka crisis -[:OCCURRED_AT]-> Location:Oka, Quebec
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 3. Organization:National Film Board of Canada -[:MAINTAINED_BY]-> MediaContent:Kanehsatake: 270 Years of Resistance
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 4. Person:James Gabriel -[:DIED_DURING]-> Event:The Oka crisis
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 5. Person:Alanis Obomsawin -[:MEMBER_OF]-> NonProfitOrganization:Abenaki Nation
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 6. Person:Alanis Obomsawin -[:CREATED_BY]-> MediaContent:Trick or Treaty?
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 7. Person:Alanis Obomsawin -[:CREATED_BY]-> MediaContent:You Are on Indian Land
+2024-07-30T19:34:39.739Z [WARN]: Invalid relationship format: 8. Event:The Oka crisis -[:LED_TO]-> Conflict:Violent confrontation between Mohawk people and Canadian government
+2024-07-30T19:34:39.740Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. MediaContent:Kanehsatake: 270 Years of Resistance -[:CREATED_BY]-> Person:Alanis Obomsawin
+2. Event:The Oka crisis -[:OCCURRED_AT]-> Location:Oka, Quebec
+3. Organization:National Film Board of Canada -[:MAINTAINED_BY]-> MediaContent:Kanehsatake: 270 Years of Resistance
+4. Person:James Gabriel -[:DIED_DURING]-> Event:The Oka crisis
+5. Person:Alanis Obomsawin -[:MEMBER_OF]-> NonProfitOrganization:Abenaki Nation
+6. Person:Alanis Obomsawin -[:CREATED_BY]-> MediaContent:Trick or Treaty?
+7. Person:Alanis Obomsawin -[:CREATED_BY]-> MediaContent:You Are on Indian Land
+8. Event:The Oka crisis -[:LED_TO]-> Conflict:Violent confrontation between Mohawk people and Canadian government
+2024-07-30T19:34:39.740Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:34:40.740Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 1. Person:Alanis Obomsawin -[:Directed]-> Event:Kanehsatake: 270 Years of Resistance
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 2. Event:Kanehsatake: 270 Years of Resistance -[:OccurredAt]-> Location:Oka, Quebec
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 3. Person:Alanis Obomsawin -[:CollaboratedWith]-> Organization:National Film Board of Canada
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 4. Event:Kanehsatake: 270 Years of Resistance -[:PublishedBy]-> MediaContent:Documentary
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 5. Person:James Gabriel -[:InfluencedBy]-> Event:The Oka crisis
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 6. Person:Alanis Obomsawin -[:CreatedBy]-> Organization:National Film Board of Canada
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 7. Event:The Oka crisis -[:OccurredAt]-> Location:Oka, Quebec
+2024-07-30T19:34:55.667Z [WARN]: Invalid relationship format: 8. Person:Alanis Obomsawin -[:Directed]-> Event:Trick or Treaty?
+2024-07-30T19:34:55.668Z [WARN]: Invalid relationship format: 9. Person:James Gabriel -[:Was Affected By]-> MedicalCondition:Death
+2024-07-30T19:34:55.668Z [WARN]: Invalid relationship format: 10. Person:Alanis Obomsawin -[:Member Of-> Organization:Abenaki Nation
+2024-07-30T19:34:55.668Z [WARN]: Invalid relationship format: 11. Event:The Oka crisis -[:SupportedBy-> PoliticalMovement:Land dispute between the Mohawk people
+2024-07-30T19:34:55.668Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Alanis Obomsawin -[:Directed]-> Event:Kanehsatake: 270 Years of Resistance
+2. Event:Kanehsatake: 270 Years of Resistance -[:OccurredAt]-> Location:Oka, Quebec
+3. Person:Alanis Obomsawin -[:CollaboratedWith]-> Organization:National Film Board of Canada
+4. Event:Kanehsatake: 270 Years of Resistance -[:PublishedBy]-> MediaContent:Documentary
+5. Person:James Gabriel -[:InfluencedBy]-> Event:The Oka crisis
+6. Person:Alanis Obomsawin -[:CreatedBy]-> Organization:National Film Board of Canada
+7. Event:The Oka crisis -[:OccurredAt]-> Location:Oka, Quebec
+8. Person:Alanis Obomsawin -[:Directed]-> Event:Trick or Treaty?
+9. Person:James Gabriel -[:Was Affected By]-> MedicalCondition:Death
+10. Person:Alanis Obomsawin -[:Member Of-> Organization:Abenaki Nation
+11. Event:The Oka crisis -[:SupportedBy-> PoliticalMovement:Land dispute between the Mohawk people
+2024-07-30T19:34:55.669Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:34:56.669Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:35:11.857Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:35:11.857Z [WARN]: Invalid relationship format: 1. MediaContent:Kanehsatake: 270 Years of Resistance -[:CreatedBy]-> Person:Alanis Obomsawin
+2024-07-30T19:35:11.857Z [WARN]: Invalid relationship format: 2. Event:The Oka crisis -[:OccurredAt]-> Location:Oka, Quebec
+2024-07-30T19:35:11.857Z [WARN]: Invalid relationship format: 3. Organization:National Film Board of Canada -[:Hosts]-> MediaContent:Kanehsatake: 270 Years of Resistance
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 4. Person:James Gabriel -[:WasInvolvedIn]-> Event:The Oka crisis
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 5. Person:Alanis Obomsawin -[:MemberOf]-> Organization:Abenaki Nation
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 6. Person:James Gabriel -[:DiedDuring]-> Event:The Oka crisis
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 7. Event:The Oka crisis -[:LedTo]-> Event:A violent confrontation in 1990
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 8. Person:James Gabriel -[:WasShotBy]-> Technology:Police sniper technology
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 9. MediaContent:Kanehsatake: 270 Years of Resistance -[:PublishedBy]-> Organization:National Film Board of Canada
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 10. Event:A violent confrontation in 1990 -[:OccurredAt]-> Location:Oka, Quebec
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 11. Person:Alanis Obomsawin -[:Directed]-> MediaContent:Trick or Treaty?
+2024-07-30T19:35:11.858Z [WARN]: Invalid relationship format: 12
+2024-07-30T19:35:11.858Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. MediaContent:Kanehsatake: 270 Years of Resistance -[:CreatedBy]-> Person:Alanis Obomsawin
+2. Event:The Oka crisis -[:OccurredAt]-> Location:Oka, Quebec
+3. Organization:National Film Board of Canada -[:Hosts]-> MediaContent:Kanehsatake: 270 Years of Resistance
+4. Person:James Gabriel -[:WasInvolvedIn]-> Event:The Oka crisis
+5. Person:Alanis Obomsawin -[:MemberOf]-> Organization:Abenaki Nation
+6. Person:James Gabriel -[:DiedDuring]-> Event:The Oka crisis
+7. Event:The Oka crisis -[:LedTo]-> Event:A violent confrontation in 1990
+8. Person:James Gabriel -[:WasShotBy]-> Technology:Police sniper technology
+9. MediaContent:Kanehsatake: 270 Years of Resistance -[:PublishedBy]-> Organization:National Film Board of Canada
+10. Event:A violent confrontation in 1990 -[:OccurredAt]-> Location:Oka, Quebec
+11. Person:Alanis Obomsawin -[:Directed]-> MediaContent:Trick or Treaty?
+12
+2024-07-30T19:35:11.858Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:35:11.862Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:36:31.848Z [INFO]: Starting relationship extraction process
+2024-07-30T19:36:31.849Z [INFO]: Processing pre-summarized content
+2024-07-30T19:36:31.849Z [INFO]: Processing chunk 1/1
+2024-07-30T19:36:31.852Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 1. Person:Gary Garcia -[:MarriedTo]-> Person:Chad Pritchett
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 2. Person:Toni Lynn Wheeler -[:AccusedOf]-> Crime:Hate and bigotry
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 3. Person:Toni Lynn Wheeler -[:FacedChargesOf]-> Crime:Embezzlement
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 4. Person:Toni Lynn Wheeler -[:FacedChargesOf]-> Crime:Money laundering
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 5. Person:Toni Lynn Wheeler -[:FacedChargesOf]-> Crime:Filing false child abuse reports
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 6. Event:A fire destroyed City Hall -[:OccurredAt]-> Location:Aurora, Texas
+2024-07-30T19:36:49.289Z [WARN]: Invalid relationship format: 7. Event:A arson investigation is ongoing -[:InvestigatedBy]-> Organization:GovernmentAgency
+2024-07-30T19:36:49.290Z [WARN]: Invalid relationship format: 8. Person:Toni Lynn Wheeler -[:UsedIn]-> FinancialTransaction:Hundreds of thousands of dollars in suspected fraudulent transactions
+2024-07-30T19:36:49.290Z [WARN]: Invalid relationship format: 9. Person:Toni Lynn Wheeler -[:TestifiedUnderOathAbout]-> Concept:"all but dissertation" degree
+2024-07-30T19:36:49.290Z [WARN]: Invalid relationship format: 10. Person:Gary Garcia and Chad Pritchett -[:SettledWith]-> Organization:Aurora, Texas (GovernmentAgency)
+2024-07-30T19:36:49.290Z [WARN]: Invalid relationship format: 11. Event:A civil lawsuit -[:ParticipatedIn]-> Person:Gary Garcia and Chad Pritchett
+2024-07-30T19:36:49.290Z [WARN]: Invalid relationship format: 12. Event:A trial is
+2024-07-30T19:36:49.290Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Gary Garcia -[:MarriedTo]-> Person:Chad Pritchett
+2. Person:Toni Lynn Wheeler -[:AccusedOf]-> Crime:Hate and bigotry
+3. Person:Toni Lynn Wheeler -[:FacedChargesOf]-> Crime:Embezzlement
+4. Person:Toni Lynn Wheeler -[:FacedChargesOf]-> Crime:Money laundering
+5. Person:Toni Lynn Wheeler -[:FacedChargesOf]-> Crime:Filing false child abuse reports
+6. Event:A fire destroyed City Hall -[:OccurredAt]-> Location:Aurora, Texas
+7. Event:A arson investigation is ongoing -[:InvestigatedBy]-> Organization:GovernmentAgency
+8. Person:Toni Lynn Wheeler -[:UsedIn]-> FinancialTransaction:Hundreds of thousands of dollars in suspected fraudulent transactions
+9. Person:Toni Lynn Wheeler -[:TestifiedUnderOathAbout]-> Concept:"all but dissertation" degree
+10. Person:Gary Garcia and Chad Pritchett -[:SettledWith]-> Organization:Aurora, Texas (GovernmentAgency)
+11. Event:A civil lawsuit -[:ParticipatedIn]-> Person:Gary Garcia and Chad Pritchett
+12. Event:A trial is
+2024-07-30T19:36:49.290Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:36:50.291Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:37:04.009Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 1. Person:Gary Garcia -[:CreatedBy]-> Startup:Atomic Taco
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 2. Person:Toni Lynn Wheeler -[:InvestedIn]-> Organization:Aurora City Hall
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 3. Person:Toni Lynn Wheeler -[:CollaboratedWith]-> Person:Gary Garcia, Person:Chad Pritchett
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 4. Event:Fire -[:OccurredAt]-> Location:Aurora
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 5. Person:Toni Lynn Wheeler -[:SupportedBy]-> PoliticalMovement:Hate Group
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 6. Person:Toni Lynn Wheeler -[:UsedIn]-> Service:Fake Accountant Website
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 7. Person:Toni Lynn Wheeler -[:DependentOn]-> Concept:Fake Credentials
+2024-07-30T19:37:04.010Z [WARN]: Invalid relationship format: 8. Organization:Aurora City Hall -[:MaintainedBy]-> Person:Toni Lynn Wheeler
+2024-07-30T19:37:04.011Z [WARN]: Invalid relationship format: 9. Event:Civil Lawsuit -[:OccurredAt]-> Location:Aurora
+2024-07-30T19:37:04.011Z [WARN]: Invalid relationship format: 10. Person:Toni Lynn Wheeler -[:InfluencedBy]-> Concept:Bigotry
+2024-07-30T19:37:04.011Z [WARN]: Invalid relationship format: 11. GovernmentAgency:Laws Enforcement -[:CollaboratedWith]-> Organization:Aurora City Hall
+2024-07-30T19:37:04.011Z [WARN]: Invalid relationship format: 12. Person:Toni Lynn Wheeler -[:TestedBy]-> Standard:Auditor Standards
+2024-07-30T19:37:04.011Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Gary Garcia -[:CreatedBy]-> Startup:Atomic Taco
+2. Person:Toni Lynn Wheeler -[:InvestedIn]-> Organization:Aurora City Hall
+3. Person:Toni Lynn Wheeler -[:CollaboratedWith]-> Person:Gary Garcia, Person:Chad Pritchett
+4. Event:Fire -[:OccurredAt]-> Location:Aurora
+5. Person:Toni Lynn Wheeler -[:SupportedBy]-> PoliticalMovement:Hate Group
+6. Person:Toni Lynn Wheeler -[:UsedIn]-> Service:Fake Accountant Website
+7. Person:Toni Lynn Wheeler -[:DependentOn]-> Concept:Fake Credentials
+8. Organization:Aurora City Hall -[:MaintainedBy]-> Person:Toni Lynn Wheeler
+9. Event:Civil Lawsuit -[:OccurredAt]-> Location:Aurora
+10. Person:Toni Lynn Wheeler -[:InfluencedBy]-> Concept:Bigotry
+11. GovernmentAgency:Laws Enforcement -[:CollaboratedWith]-> Organization:Aurora City Hall
+12. Person:Toni Lynn Wheeler -[:TestedBy]-> Standard:Auditor Standards
+2024-07-30T19:37:04.011Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:37:05.012Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:37:19.825Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:37:19.825Z [WARN]: Invalid relationship format: 1. Person:Gary_Garcia -[:CollaboratedWith]-> Person:Chad_Pritchett
+2024-07-30T19:37:19.825Z [WARN]: Invalid relationship format: 2. Person:Toni_Lynn_Wheeler -[:InvestedIn]-> Organization:Aurora_Local_Government
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 3. Event:Fraudulent_Transactions -[:OccurredAt]-> Location:Aurora_Texas
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 4. Event:Fraudulent_Transactions -[:OccurredWith]-> Technology:Bank_Accounts
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 5. Product:City_Hall_Building -[:DestroyedBy]-> Event:Fire
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 6. Person:Toni_Lynn_Wheeler -[:UsedIn]-> Service:Accounting_Service
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 7. Person:Toni_Lynn_Wheeler -[:ClaimedToHave]-> Concept:PhD_Degree
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 8. Organization:Aurora_Local_Government -[:SettledWith]-> Person:Gary_Garcia
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 9. Event:Civil_Lawsuit -[:OccurredAt]-> Location:Aurora_Texas
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 10. Person:Toni_Lynn_Wheeler -[:TestifiedUnderOath]-> Concept:Doctorate_Degree
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 11. Event:Fraudulent_Transactions -[:InvestigatedBy]-> Event:Arson_Investigation
+2024-07-30T19:37:19.826Z [WARN]: Invalid relationship format: 12. Organization:Aurora_Local_Government -
+2024-07-30T19:37:19.826Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Person:Gary_Garcia -[:CollaboratedWith]-> Person:Chad_Pritchett
+2. Person:Toni_Lynn_Wheeler -[:InvestedIn]-> Organization:Aurora_Local_Government
+3. Event:Fraudulent_Transactions -[:OccurredAt]-> Location:Aurora_Texas
+4. Event:Fraudulent_Transactions -[:OccurredWith]-> Technology:Bank_Accounts
+5. Product:City_Hall_Building -[:DestroyedBy]-> Event:Fire
+6. Person:Toni_Lynn_Wheeler -[:UsedIn]-> Service:Accounting_Service
+7. Person:Toni_Lynn_Wheeler -[:ClaimedToHave]-> Concept:PhD_Degree
+8. Organization:Aurora_Local_Government -[:SettledWith]-> Person:Gary_Garcia
+9. Event:Civil_Lawsuit -[:OccurredAt]-> Location:Aurora_Texas
+10. Person:Toni_Lynn_Wheeler -[:TestifiedUnderOath]-> Concept:Doctorate_Degree
+11. Event:Fraudulent_Transactions -[:InvestigatedBy]-> Event:Arson_Investigation
+12. Organization:Aurora_Local_Government -
+2024-07-30T19:37:19.827Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:37:20.827Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Gary Garcia -[:CollaboratedWith]-> Chad Pritchett
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Toni Lynn Wheeler -[:InvestedIn]-> Atomic Taco
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Toni Lynn Wheeler -[:SupportedBy]-> City Hall
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Toni Lynn Wheeler -[:ImplementedBy]-> fake accountant website
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Toni Lynn Wheeler -[:ParticipatedIn]-> embezzlement, money laundering, filing false child abuse reports 
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Gary Garcia and Chad Pritchett -[:ReceivedSupportFrom]-> $300,000
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Toni Lynn Wheeler -[:HadConflictWith]-> Gary Garcia and Chad Pritchett
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Aurora -[:OccurredAt]-> fire at City Hall in 2021
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Toni Lynn Wheeler -[:TestifiedIn-> Atomic Taco civil lawsuit
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: City Hall -[:MaintainedBy]-> Toni Lynn Wheeler 
+2024-07-30T19:37:31.419Z [WARN]: Invalid relationship format: Gary Garcia and Chad Pritchett -[:WasAffectedBy]-> hate and bigotry from Toni Lynn Wheeler
+2024-07-30T19:37:31.419Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+Gary Garcia -[:CollaboratedWith]-> Chad Pritchett
+Toni Lynn Wheeler -[:InvestedIn]-> Atomic Taco
+Toni Lynn Wheeler -[:SupportedBy]-> City Hall
+Toni Lynn Wheeler -[:ImplementedBy]-> fake accountant website
+Toni Lynn Wheeler -[:ParticipatedIn]-> embezzlement, money laundering, filing false child abuse reports 
+Gary Garcia and Chad Pritchett -[:ReceivedSupportFrom]-> $300,000
+Toni Lynn Wheeler -[:HadConflictWith]-> Gary Garcia and Chad Pritchett
+Aurora -[:OccurredAt]-> fire at City Hall in 2021
+Toni Lynn Wheeler -[:TestifiedIn-> Atomic Taco civil lawsuit
+City Hall -[:MaintainedBy]-> Toni Lynn Wheeler 
+Gary Garcia and Chad Pritchett -[:WasAffectedBy]-> hate and bigotry from Toni Lynn Wheeler
+2024-07-30T19:37:31.420Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:37:31.421Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:40:57.689Z [INFO]: Starting relationship extraction process
+2024-07-30T19:40:57.690Z [INFO]: Processing pre-summarized content
+2024-07-30T19:40:57.690Z [INFO]: Processing chunk 1/1
+2024-07-30T19:40:57.692Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:41:15.264Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:41:15.264Z [WARN]: Invalid relationship format: 1. Framework:Application Default Credentials -[:CREATED_BY]-> Person:Nobody (implied, as "Set up Application Default Credentials" is a process created by nobody in particular)
+2024-07-30T19:41:15.264Z [WARN]: Invalid relationship format: 2. Product:Cloud Client Libraries -[:USED_IN]-> Technology:Google Cloud
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 3. Product:Google API Client Libraries -[:USED_IN]-> Technology:Google Cloud
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 4. Product:REST and RPC APIs -[:USED_IN]-> Technology:Google Cloud
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 5. Service:ADCs -[:IMPLEMENTED_BY]-> Organization:Google Cloud
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 6. Concept:Credential authentication -[:INFLUENCED_BY]-> Technology:Service account impersonation
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 7. Software:gcloud CLI -[:USED_IN]-> Product:Google Cloud CLI
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 8. Person:User -[:CREATED_BY]-> Software:gcloud CLI (implied, as users install and initialize the gcloud CLI)
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 9. Device:Cloud Shell or Cloud Code -[:USED_IN]-> Technology:Google Cloud cloud-based development environment
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 10. Variable:GOOGLE_APPLICATION_CREDENTIALS -[:MAINTAINED_BY]-> Organization:Google Cloud
+2024-07-30T19:41:15.265Z [WARN]: Invalid relationship format: 11. Product:ADCs -[:DEPENDENT_ON]-> Software:gcloud CLI (implied, as ADCs use the gcloud CLI for authentication
+2024-07-30T19:41:15.265Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Framework:Application Default Credentials -[:CREATED_BY]-> Person:Nobody (implied, as "Set up Application Default Credentials" is a process created by nobody in particular)
+2. Product:Cloud Client Libraries -[:USED_IN]-> Technology:Google Cloud
+3. Product:Google API Client Libraries -[:USED_IN]-> Technology:Google Cloud
+4. Product:REST and RPC APIs -[:USED_IN]-> Technology:Google Cloud
+5. Service:ADCs -[:IMPLEMENTED_BY]-> Organization:Google Cloud
+6. Concept:Credential authentication -[:INFLUENCED_BY]-> Technology:Service account impersonation
+7. Software:gcloud CLI -[:USED_IN]-> Product:Google Cloud CLI
+8. Person:User -[:CREATED_BY]-> Software:gcloud CLI (implied, as users install and initialize the gcloud CLI)
+9. Device:Cloud Shell or Cloud Code -[:USED_IN]-> Technology:Google Cloud cloud-based development environment
+10. Variable:GOOGLE_APPLICATION_CREDENTIALS -[:MAINTAINED_BY]-> Organization:Google Cloud
+11. Product:ADCs -[:DEPENDENT_ON]-> Software:gcloud CLI (implied, as ADCs use the gcloud CLI for authentication
+2024-07-30T19:41:15.265Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:41:16.266Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 1. Technology:Google API Client Libraries -[:CREATED_BY]-> Person:Google
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 2. Product:Cloud Client Libraries -[:DEPENDENT_ON]-> Technology:Google API Client Libraries
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 3. Organization:Google -[:IMPLEMENTED_BY]-> Product:REST and RPC APIs
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 4. Service:ADCs -[:USED_IN]-> IndustryGroup:cloud computing
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 5. Event:Install and initialize the gcloud CLI -[:OCCURRED_AT]-> Location:https://cloud.google.com/
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 6. Person:You -[:PARTICIPATED_IN]-> Event:Configure ADC with your Google Account
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 7. Service:gcloud CLI -[:IMPLEMENTED_BY]-> Organization:Google
+2024-07-30T19:41:30.288Z [WARN]: Invalid relationship format: 8. Device:Cloud Shell and Cloud Code -[:USED_IN]-> IndustryGroup:cloud computing
+2024-07-30T19:41:30.289Z [WARN]: Invalid relationship format: 9. Location:https://cloud.google.com/ -[:OCCURRED_AT]-> Technology:ADCs
+2024-07-30T19:41:30.289Z [WARN]: Invalid relationship format: 10. Software:gcloud CLI -[:CREATED_BY]-> Person:Google
+2024-07-30T19:41:30.289Z [WARN]: Invalid relationship format: 11. Protocol:JSON file -[:USED_IN]-> Service:GOOGLE_APPLICATION_CREDENTIALS
+2024-07-30T19:41:30.289Z [WARN]: Invalid relationship format: 12. Device:Cloud Shell and Cloud Code -[:IMPLEMENTED_BY]-> Organization:Google
+2024-07-30T19:41:30.289Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Technology:Google API Client Libraries -[:CREATED_BY]-> Person:Google
+2. Product:Cloud Client Libraries -[:DEPENDENT_ON]-> Technology:Google API Client Libraries
+3. Organization:Google -[:IMPLEMENTED_BY]-> Product:REST and RPC APIs
+4. Service:ADCs -[:USED_IN]-> IndustryGroup:cloud computing
+5. Event:Install and initialize the gcloud CLI -[:OCCURRED_AT]-> Location:https://cloud.google.com/
+6. Person:You -[:PARTICIPATED_IN]-> Event:Configure ADC with your Google Account
+7. Service:gcloud CLI -[:IMPLEMENTED_BY]-> Organization:Google
+8. Device:Cloud Shell and Cloud Code -[:USED_IN]-> IndustryGroup:cloud computing
+9. Location:https://cloud.google.com/ -[:OCCURRED_AT]-> Technology:ADCs
+10. Software:gcloud CLI -[:CREATED_BY]-> Person:Google
+11. Protocol:JSON file -[:USED_IN]-> Service:GOOGLE_APPLICATION_CREDENTIALS
+12. Device:Cloud Shell and Cloud Code -[:IMPLEMENTED_BY]-> Organization:Google
+2024-07-30T19:41:30.289Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:41:31.291Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: Here are 12 extracted relationships between entities:
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 1. Technology:Google API Client Libraries -[:UsedIn]-> Product:Application Default Credentials
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 2. Organization:Google -[:ImplementedBy]-> Product:Application Default Credentials
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 3. Person - [:CreatedBy]-> Product:Application Default Credentials
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 4. IndustryGroup:Cloud Computing -[:SupportedBy]-> Technology:REST and RPC APIs
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 5. JobTitle:Software Developer -[:Created By]-> Product:Google Cloud CLI
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 6. Platform:Cloud Shell -[:UsedIn]-> Service:gcloud auth application-default login
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 7. Location:https://cloud.google.com/ -[:OccurredAt]-> Event:Set up Application Default Credentials
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 8. Technology:Service Account Impersonation -[:CompatibleWith]-> Product:Application Default Credentials
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 9. Person - [:PublishedBy]-> Publication:http://cloud.google.com/
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 10. JobTitle:System Administrator -[:Maintained By]-> Device:gcloud CLI
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 11. Concept:Authentication -[:UsedIn]-> Product:Application Default Credentials
+2024-07-30T19:41:44.176Z [WARN]: Invalid relationship format: 12. Protocol:JSON -[:UsedBy]-> EnvironmentVariable:GOOGLE_APPLICATION_CREDENTIALS
+2024-07-30T19:41:44.176Z [WARN]: No valid relationships found in response: Here are 12 extracted relationships between entities:
+
+1. Technology:Google API Client Libraries -[:UsedIn]-> Product:Application Default Credentials
+2. Organization:Google -[:ImplementedBy]-> Product:Application Default Credentials
+3. Person - [:CreatedBy]-> Product:Application Default Credentials
+4. IndustryGroup:Cloud Computing -[:SupportedBy]-> Technology:REST and RPC APIs
+5. JobTitle:Software Developer -[:Created By]-> Product:Google Cloud CLI
+6. Platform:Cloud Shell -[:UsedIn]-> Service:gcloud auth application-default login
+7. Location:https://cloud.google.com/ -[:OccurredAt]-> Event:Set up Application Default Credentials
+8. Technology:Service Account Impersonation -[:CompatibleWith]-> Product:Application Default Credentials
+9. Person - [:PublishedBy]-> Publication:http://cloud.google.com/
+10. JobTitle:System Administrator -[:Maintained By]-> Device:gcloud CLI
+11. Concept:Authentication -[:UsedIn]-> Product:Application Default Credentials
+12. Protocol:JSON -[:UsedBy]-> EnvironmentVariable:GOOGLE_APPLICATION_CREDENTIALS
+2024-07-30T19:41:44.177Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:41:45.178Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 1. Technology:Application Default Credentials -[:CREATED_BY]-> Person:Unknown 
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 2. Product:Google API Client Libraries -[:USED_IN]-> Technology:Application Default Credentials
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 3. Product:Cloud Client Libraries -[:USED_IN]-> Technology:Application Default Credentials
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 4. Product:REST and RPC APIs -[:USED_IN]-> Technology:Application Default Credentials
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 5. Organization:Google -[:IMPLEMENTED_BY]-> Technology:Application Default Credentials
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 6. Location:https://cloud.google.com/ -[:OCCURRED_AT]-> Event:Set up Application Default Credentials
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 7. Software:gcloud CLI -[:CREATED_BY]-> Person:Unknown 
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 8. Service:service account impersonation -[:USED_IN]-> Technology:Application Default Credentials
+2024-07-30T19:41:58.262Z [WARN]: Invalid relationship format: 9. Organization:Google -[:MAINTAINED_BY]-> Product:Google Cloud CLI
+2024-07-30T19:41:58.263Z [WARN]: Invalid relationship format: 10. Software:gcloud CLI -[:CREATED_BY]-> Person:Unknown 
+2024-07-30T19:41:58.263Z [WARN]: Invalid relationship format: 11. Product:Cloud Code -[:CREATED_BY]-> Person:Unknown 
+2024-07-30T19:41:58.263Z [WARN]: Invalid relationship format: 12. Environment Variable:GOOGLE_APPLICATION_CREDENTIALS -[:USED_IN]-> Software:gcloud CLI
+2024-07-30T19:41:58.263Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Technology:Application Default Credentials -[:CREATED_BY]-> Person:Unknown 
+2. Product:Google API Client Libraries -[:USED_IN]-> Technology:Application Default Credentials
+3. Product:Cloud Client Libraries -[:USED_IN]-> Technology:Application Default Credentials
+4. Product:REST and RPC APIs -[:USED_IN]-> Technology:Application Default Credentials
+5. Organization:Google -[:IMPLEMENTED_BY]-> Technology:Application Default Credentials
+6. Location:https://cloud.google.com/ -[:OCCURRED_AT]-> Event:Set up Application Default Credentials
+7. Software:gcloud CLI -[:CREATED_BY]-> Person:Unknown 
+8. Service:service account impersonation -[:USED_IN]-> Technology:Application Default Credentials
+9. Organization:Google -[:MAINTAINED_BY]-> Product:Google Cloud CLI
+10. Software:gcloud CLI -[:CREATED_BY]-> Person:Unknown 
+11. Product:Cloud Code -[:CREATED_BY]-> Person:Unknown 
+12. Environment Variable:GOOGLE_APPLICATION_CREDENTIALS -[:USED_IN]-> Software:gcloud CLI
+2024-07-30T19:41:58.263Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:41:58.263Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-07-30T19:43:00.353Z [INFO]: Starting relationship extraction process
+2024-07-30T19:43:00.353Z [INFO]: Processing pre-summarized content
+2024-07-30T19:43:00.353Z [INFO]: Processing chunk 1/1
+2024-07-30T19:43:00.356Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: Here are the extracted relationships, limited to 12:
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 1. Person:Joe Biden -[:ParticipatedIn]-> Event:2020 Presidential election
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 2. Person:Alice Rolli -[:SupportedBy]-> Organization:Republican Party
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 3. Person:Donald Trump -[:SupportedBy]-> Organization:Republican Party
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 4. Person:Megan Barry -[:CollaboratedWith]-> Person:David Fox
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 5. Person:Freddie O'Connell -[:ParticipatedIn]-> Event:2023 mayoral election
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 6. Person:Alice Rolli -[:ParticipatedIn]-> Event:2023 mayoral election
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 7. Organization:Nashville Government -[:ImplementedBy]-> Person:Freddie O'Connell
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 8. Person:Megan Barry -[:UsedIn]-> Service:Election runoff
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 9. Location:Nashville -[:OccurredAt]-> Event:2020 Presidential election
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 10. Location:Nashville -[:OccurredAt]-> Event:2015 mayoral election
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 11. Organization:Nashville Government -[:SupportedBy]-> PoliticalMovement:Democratic Party
+2024-07-30T19:43:17.084Z [WARN]: Invalid relationship format: 12. Person:Alice Rolli -[:InfluencedBy]-> Person:Freddie O'Connell
+2024-07-30T19:43:17.084Z [WARN]: No valid relationships found in response: Here are the extracted relationships, limited to 12:
+
+1. Person:Joe Biden -[:ParticipatedIn]-> Event:2020 Presidential election
+2. Person:Alice Rolli -[:SupportedBy]-> Organization:Republican Party
+3. Person:Donald Trump -[:SupportedBy]-> Organization:Republican Party
+4. Person:Megan Barry -[:CollaboratedWith]-> Person:David Fox
+5. Person:Freddie O'Connell -[:ParticipatedIn]-> Event:2023 mayoral election
+6. Person:Alice Rolli -[:ParticipatedIn]-> Event:2023 mayoral election
+7. Organization:Nashville Government -[:ImplementedBy]-> Person:Freddie O'Connell
+8. Person:Megan Barry -[:UsedIn]-> Service:Election runoff
+9. Location:Nashville -[:OccurredAt]-> Event:2020 Presidential election
+10. Location:Nashville -[:OccurredAt]-> Event:2015 mayoral election
+11. Organization:Nashville Government -[:SupportedBy]-> PoliticalMovement:Democratic Party
+12. Person:Alice Rolli -[:InfluencedBy]-> Person:Freddie O'Connell
+2024-07-30T19:43:17.085Z [INFO]: Retrying extraction (attempt 1/3)
+2024-07-30T19:43:18.086Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 1. Event:Presidential election_2020 -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 2. Person:Joe Biden -[:ParticipatedIn]-> Event:Presidential election_2020
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 3. Person:Freddie O'Connell -[:ParticipatedIn]-> Event:Mayoral election_2023
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 4. Person:Alice Rolli -[:ParticipatedIn]-> Event:Mayoral election_2023
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 5. Person:Megan Barry -[:ParticipatedIn]-> Event:Mayoral election_2015
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 6. Person:David Fox -[:ParticipatedIn]-> Event:Mayoral election_2015
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 7. Event:Presidential election_2020 -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 8. Person:Alice Rolli -[:CollaboratedWith]-> Concept:Democratic politics
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 9. Person:Freddie O'Connell -[:CollaboratedWith]-> Concept:Democratic politics
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 10. Event:Mayoral election_2015 -[:ParticipatedIn]-> Organization:Nashville government
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 11. Event:Presidential election_2020 -[:PublishedBy]-> MediaContent:Nashville news outlets
+2024-07-30T19:43:32.863Z [WARN]: Invalid relationship format: 12. Person:Joe Biden -
+2024-07-30T19:43:32.863Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Event:Presidential election_2020 -[:OccurredAt]-> Location:Nashville
+2. Person:Joe Biden -[:ParticipatedIn]-> Event:Presidential election_2020
+3. Person:Freddie O'Connell -[:ParticipatedIn]-> Event:Mayoral election_2023
+4. Person:Alice Rolli -[:ParticipatedIn]-> Event:Mayoral election_2023
+5. Person:Megan Barry -[:ParticipatedIn]-> Event:Mayoral election_2015
+6. Person:David Fox -[:ParticipatedIn]-> Event:Mayoral election_2015
+7. Event:Presidential election_2020 -[:OccurredAt]-> Location:Nashville
+8. Person:Alice Rolli -[:CollaboratedWith]-> Concept:Democratic politics
+9. Person:Freddie O'Connell -[:CollaboratedWith]-> Concept:Democratic politics
+10. Event:Mayoral election_2015 -[:ParticipatedIn]-> Organization:Nashville government
+11. Event:Presidential election_2020 -[:PublishedBy]-> MediaContent:Nashville news outlets
+12. Person:Joe Biden -
+2024-07-30T19:43:32.863Z [INFO]: Retrying extraction (attempt 2/3)
+2024-07-30T19:43:33.864Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2020 Presidential Election -[:ParticipatedIn]-> Person:Donald Trump
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2023 Mayoral Election -[:ParticipatedIn]-> Person:Fredie O'Connell
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2023 Mayoral Election -[:ParticipatedIn]-> Person:Alice Rolli
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2023 Runoff Vote -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Person:Alice Rolli -[:SupportedBy]-> Organization:Republican Party
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Person:Donald Trump -[:SupportedBy]-> Organization:Republican Party
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2015 Mayoral Election Runoff -[:ParticipatedIn]-> Person:Megan Barry
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2015 Mayoral Election Runoff -[:ParticipatedIn]-> Person:David Fox
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Event:2020 Presidential Election -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Person:Alice Rolli -[:SupportedBy]-> Event:2023 Mayoral Election
+2024-07-30T19:43:45.533Z [WARN]: Invalid relationship format: Organization:Republican Party -[:SupportedBy]-> Person:Alice Rolli
+2024-07-30T19:43:45.533Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+Event:2020 Presidential Election -[:ParticipatedIn]-> Person:Donald Trump
+Event:2023 Mayoral Election -[:ParticipatedIn]-> Person:Fredie O'Connell
+Event:2023 Mayoral Election -[:ParticipatedIn]-> Person:Alice Rolli
+Event:2023 Runoff Vote -[:OccurredAt]-> Location:Nashville
+Person:Alice Rolli -[:SupportedBy]-> Organization:Republican Party
+Person:Donald Trump -[:SupportedBy]-> Organization:Republican Party
+Event:2015 Mayoral Election Runoff -[:ParticipatedIn]-> Person:Megan Barry
+Event:2015 Mayoral Election Runoff -[:ParticipatedIn]-> Person:David Fox
+Event:2020 Presidential Election -[:OccurredAt]-> Location:Nashville
+Person:Alice Rolli -[:SupportedBy]-> Event:2023 Mayoral Election
+Organization:Republican Party -[:SupportedBy]-> Person:Alice Rolli
+2024-07-30T19:43:45.533Z [INFO]: Retrying extraction (attempt 3/3)
+2024-07-30T19:43:46.535Z [INFO]: Using local service for relationship extraction
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 1. Event:2020 Presidential election -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 2. Person:Joe Biden -[:ParticipatedIn]-> Event:2020 Presidential election
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 3. Event:2020 Presidential election -[:PublishedBy]-> MediaContent:News report (implied)
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 4. Event:2023 Nashville mayoral election -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 5. Person:Freddie O'Connell -[:ParticipatedIn]-> Event:2023 Nashville mayoral election
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 6. Person:Alice Rolli -[:ParticipatedIn]-> Event:2023 Nashville mayoral election
+2024-07-30T19:44:01.354Z [WARN]: Invalid relationship format: 7. Event:2015 Nashville mayoral election runoff -[:OccurredAt]-> Location:Nashville
+2024-07-30T19:44:01.355Z [WARN]: Invalid relationship format: 8. Person:Megan Barry -[:ParticipatedIn]-> Event:2015 Nashville mayoral election runoff
+2024-07-30T19:44:01.355Z [WARN]: Invalid relationship format: 9. Person:David Fox -[:ParticipatedIn]-> Event:2015 Nashville mayoral election runoff
+2024-07-30T19:44:01.355Z [WARN]: Invalid relationship format: 10. Event:2023 mayoral election runoff -[:PublishedBy]-> MediaContent:News report (implied)
+2024-07-30T19:44:01.355Z [WARN]: Invalid relationship format: 11. Concept:Democratic-led city -[:SupportedBy]-> Location:Nashville
+2024-07-30T19:44:01.355Z [WARN]: Invalid relationship format: 12. Person:Joe Biden -[:ParticipatedIn
+2024-07-30T19:44:01.355Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. Event:2020 Presidential election -[:OccurredAt]-> Location:Nashville
+2. Person:Joe Biden -[:ParticipatedIn]-> Event:2020 Presidential election
+3. Event:2020 Presidential election -[:PublishedBy]-> MediaContent:News report (implied)
+4. Event:2023 Nashville mayoral election -[:OccurredAt]-> Location:Nashville
+5. Person:Freddie O'Connell -[:ParticipatedIn]-> Event:2023 Nashville mayoral election
+6. Person:Alice Rolli -[:ParticipatedIn]-> Event:2023 Nashville mayoral election
+7. Event:2015 Nashville mayoral election runoff -[:OccurredAt]-> Location:Nashville
+8. Person:Megan Barry -[:ParticipatedIn]-> Event:2015 Nashville mayoral election runoff
+9. Person:David Fox -[:ParticipatedIn]-> Event:2015 Nashville mayoral election runoff
+10. Event:2023 mayoral election runoff -[:PublishedBy]-> MediaContent:News report (implied)
+11. Concept:Democratic-led city -[:SupportedBy]-> Location:Nashville
+12. Person:Joe Biden -[:ParticipatedIn
+2024-07-30T19:44:01.356Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-07-30T19:44:01.357Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-08-01T15:09:34.371Z [INFO]: Starting relationship extraction process
+2024-08-01T15:09:34.371Z [INFO]: Processing pre-summarized content
+2024-08-01T15:09:34.372Z [INFO]: Processing chunk 1/1
+2024-08-01T15:09:34.375Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:09:53.434Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:09:53.434Z [WARN]: Invalid relationship format: [ResearchGroup:] -[:FoundThat]-> [MedicalCondition:Mental Disorders] is not present in the text, so I'll write [Concept:] -[:RelatedTo]-> [MedicalCondition:Mental Disorders] as a connection to concept
+2024-08-01T15:09:53.434Z [WARN]: Invalid relationship format: [Concept:Nation's History Of Disarming Dangerous Individuals] -[:Is
+2024-08-01T15:09:53.435Z [INFO]: Successfully extracted 7 relationships from chunk
+2024-08-01T15:09:53.436Z [INFO]: Relationship found: President Joe Biden (Person) -[InfluencedBy]-> Federal Government (GovernmentAgency)
+2024-08-01T15:09:53.436Z [INFO]: Relationship found: Hunter Biden (Person) -[ConvictedFor]-> Violating A Statute By Buying And Possessing A Gun While An Active User Of Crack Cocaine (Crime)
+2024-08-01T15:09:53.437Z [INFO]: Relationship found: Hunter Biden (Person) -[WasActiveUserOf]-> Crack Cocaine (ChemicalSubstance)
+2024-08-01T15:09:53.437Z [INFO]: Relationship found: Federal Government (GovernmentAgency) -[ArguedThat]-> Mental Disorders (MedicalCondition)
+2024-08-01T15:09:53.437Z [INFO]: Relationship found: Pennsylvania (Location) -[HasLawmakerWho]-> A Pennsylvania Lawmaker (Person)
+2024-08-01T15:09:53.437Z [INFO]: Relationship found: A Pennsylvania Lawmaker (Person) -[IntroducedBillThat]-> Removing State Barriers To Medical Marijuana Patients Carrying Firearms (Legislation)
+2024-08-01T15:09:53.437Z [INFO]: Relationship found: Federal Government (GovernmentAgency) -[ClaimedInMultipleFederalCasesThat]-> Banning Cannabis Consumers From Owning Or Possessing Guns Is Constitutional (Statute)
+2024-08-01T15:09:53.437Z [INFO]: Extracted 10 unique nodes and 7 relationships
+2024-08-01T15:11:24.498Z [INFO]: Starting relationship extraction process
+2024-08-01T15:11:24.498Z [INFO]: Processing pre-summarized content
+2024-08-01T15:11:24.498Z [INFO]: Processing chunk 1/1
+2024-08-01T15:11:24.502Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:11:42.160Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:11:42.162Z [WARN]: Invalid relationship format: Note that the entity type "Person" is used as "unknown" since no specific person's name is mentioned in the text. The relationship types "InvestedIn", "CollaboratedWith", etc.
+2024-08-01T15:11:42.162Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: ping/instagram_private_api (Repository) -[CreatedBy]-> unknown (Person)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: python (Library) -[UsedIn]-> ping/instagram_private_api (Repository)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: mit_license (Licence) -[PublishedBy]-> ping/instagram_private_api (Repository)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: ping/instagram_private_api (Repository) -[InstalledVia]-> pip (Tool)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: ping/instagram_private_api (Repository) -[ProvidesAccessTo]-> instagram_private_api (API)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: account_management (Service) -[ImplementedBy]-> python (Library)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: posting_photos (Feature) -[ImplementedBy]-> python (Library)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: liking_posts (Feature) -[ImplementedBy]-> python (Library)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: contributing_documentation (Documentation) -[PublishedBy]-> ping/instagram_private_api (Repository)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: ping/instagram_private_api (Repository) -[ReleasedUnder]-> mit_license (Licence)
+2024-08-01T15:11:42.163Z [INFO]: Relationship found: unknown (Dependency) -[DependentOn]-> python (Library)
+2024-08-01T15:11:42.163Z [INFO]: Extracted 11 unique nodes and 11 relationships
+2024-08-01T15:16:08.738Z [INFO]: Starting relationship extraction process
+2024-08-01T15:16:08.738Z [INFO]: Processing pre-summarized content
+2024-08-01T15:16:08.738Z [INFO]: Processing chunk 1/1
+2024-08-01T15:16:08.741Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:16:24.907Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:16:24.907Z [WARN]: Invalid relationship format: Note that I've tried to keep the relationships as accurate as possible based on the provided text. If there are any discrepancies or missing relationships, please let me know!
+2024-08-01T15:16:24.907Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-01T15:16:24.909Z [INFO]: Relationship found: Jonathan Jennings Harris (Person) -[CreatedBy]-> We Feel Fine (Project)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: We Feel Fine (Project) -[PublishedBy]-> We Feel Fine: An Almanac of Human Emotion (Book)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: Jonathan Jennings Harris (Person) -[AuthorOf]-> We Feel Fine: An Almanac of Human Emotion (Book)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: AIGA (Organization) -[SupportedBy]-> We Feel Fine (Project)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: TED 2007 (Event) -[ParticipatedIn]-> We Feel Fine (Project)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: Jonathan Jennings Harris (Person) -[SpeakerAt]-> TED 2007 (Event)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: The New York Times (Publication) -[DocumentedBy]-> We Feel Fine (Project)
+2024-08-01T15:16:24.910Z [INFO]: Relationship found: Victoria and Albert Museum (Location) -[OccurredAt]-> V & A Pattern: Digital Pioneers (Exhibition)
+2024-08-01T15:16:24.910Z [INFO]: Extracted 8 unique nodes and 8 relationships
+2024-08-01T15:19:32.108Z [INFO]: Starting relationship extraction process
+2024-08-01T15:19:32.108Z [INFO]: Processing pre-summarized content
+2024-08-01T15:19:32.108Z [INFO]: Processing chunk 1/1
+2024-08-01T15:19:32.112Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:19:47.004Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:19:47.004Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: Cassandra (Person) -[RepresentativeOf]-> Cooper Depot USA (Organization)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: Houston, TX 77041 (Location) -[LocatedAt]-> Cooper Depot USA (Organization)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: City Of Industry, CA 91746 (Location) -[LocatedAt]-> Cooper Depot USA (Organization)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: Clifton, NJ 07012 (Location) -[LocatedAt]-> Cooper Depot USA (Organization)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: Cassandra (Person) -[ContactInfo]-> (626) 693-1946 (Phone)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: Cassandra (Person) -[ContactInfo]-> cassandra@coolerdepotusa.com (Email)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: Cooper Depot USA (Organization) -[HasServiceEmail]-> service@coolerdepotusa.com (Email)
+2024-08-01T15:19:47.005Z [INFO]: Relationship found: 65-in Food Vending Trailer Mobile Concession Both windows FT40 (Product) -[SoldBy]-> Cooper Depot USA (Organization)
+2024-08-01T15:19:47.006Z [INFO]: Extracted 9 unique nodes and 8 relationships
+2024-08-01T15:28:52.604Z [INFO]: Starting relationship extraction process
+2024-08-01T15:28:52.604Z [INFO]: Processing pre-summarized content
+2024-08-01T15:28:52.604Z [INFO]: Processing chunk 1/1
+2024-08-01T15:28:52.607Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:29:10.113Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:29:10.113Z [WARN]: Invalid relationship format: Note that I assumed "Unknown" as the creator of STAC specification, since it's not specified in the text. Also, I used "MaintainedBy" relationship to indicate that GitHub maintains the repository radiantearth/stac-spec. Let me know if you need any further clarification!
+2024-08-01T15:29:10.113Z [INFO]: Successfully extracted 9 relationships from chunk
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: GitHub (Organization) -[MaintainedBy]-> radientearth/stac-spec (Repository)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: STACSpecification (Concept) -[CreatedBy]-> Unknown (Person)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: STACSpecification (Concept) -[PublishedBy]-> stacspec.org (Organization)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: Apache-2.0License (Product) -[UsedIn]-> radientearth/stac-spec (Repository)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: GeoJSON (Technology) -[ExtendedBy]-> STACSpecification (Concept)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: OGC API - Features - Part 1: Core (Technology) -[ExtendedBy]-> STACSpecification (Concept)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: STACItem (Product) -[DependentOn]-> GeoJSONFeature (Concept)
+2024-08-01T15:29:10.114Z [INFO]: Relationship found: GitHub (Organization) -[Hosts]-> stac-extensions (Repository)
+2024-08-01T15:29:10.115Z [INFO]: Relationship found: Unknown (Person) -[InvestedIn]-> radientearth (Organization)
+2024-08-01T15:29:10.115Z [INFO]: Extracted 12 unique nodes and 9 relationships
+2024-08-01T15:30:17.883Z [INFO]: Starting relationship extraction process
+2024-08-01T15:30:17.884Z [INFO]: Processing pre-summarized content
+2024-08-01T15:30:17.884Z [INFO]: Processing chunk 1/1
+2024-08-01T15:30:17.887Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: News 12 New York -[:PublishedBy]-> Hudson Valley news
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: Warwick -[:LocatedIn]-> Hudson Valley
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: Warwick -[:ParticipatedIn]-> soccer game
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: Soccer player -[:Made]-> racist remarks
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: Racist remarks -[:OccurredAt]-> soccer game
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: Hudson Valley news -[:CoveredBy]-> News 12 New York
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: News 12 New York -[:AvailableOn]-> https://hudsonvalley.news12.com 
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: News 12 New York -[:AvailableAs]-> app 
+2024-08-01T15:30:28.480Z [WARN]: Invalid relationship format: https://hudsonvalley.news12.com -[:HostedBy]-> News 12 New York
+2024-08-01T15:30:28.480Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+News 12 New York -[:PublishedBy]-> Hudson Valley news
+Warwick -[:LocatedIn]-> Hudson Valley
+Warwick -[:ParticipatedIn]-> soccer game
+Soccer player -[:Made]-> racist remarks
+Racist remarks -[:OccurredAt]-> soccer game
+Hudson Valley news -[:CoveredBy]-> News 12 New York
+News 12 New York -[:AvailableOn]-> https://hudsonvalley.news12.com 
+News 12 New York -[:AvailableAs]-> app 
+https://hudsonvalley.news12.com -[:HostedBy]-> News 12 New York
+2024-08-01T15:30:28.480Z [INFO]: Retrying extraction (attempt 1/3)
+2024-08-01T15:30:29.482Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:32:06.531Z [WARN]: Invalid relationship format: Here are the extracted relationships:
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: 1. [Organization:News 12 New York] -[:PublishedBy]-> [MediaContent:Hudson Valley section]
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: 2. [Location:Hudson Valley] -[:OccurredAt]-> [Event:Heat advisory]
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: 3. [Person:Male soccer player from Warwick] -[:Made]-> [Concept:Racist remarks]
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: 4. [Team:Two teams in the game] -[:ParticipatedIn]-> [Sport:Soccer]
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: 5. [Organization:News 12 New York] -[:DocumentedBy]-> [Event:Incident investigation]
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: 6. [Person:Male soccer player from Warwick] -[:InvolvedIn]-> [Concept:Racist incident]
+2024-08-01T15:32:06.532Z [WARN]: Invalid relationship format: Note that some relationships are implicit or inferred, and may not be directly stated in the text.
+2024-08-01T15:32:06.532Z [WARN]: No valid relationships found in response: Here are the extracted relationships:
+
+1. [Organization:News 12 New York] -[:PublishedBy]-> [MediaContent:Hudson Valley section]
+2. [Location:Hudson Valley] -[:OccurredAt]-> [Event:Heat advisory]
+3. [Person:Male soccer player from Warwick] -[:Made]-> [Concept:Racist remarks]
+4. [Team:Two teams in the game] -[:ParticipatedIn]-> [Sport:Soccer]
+5. [Organization:News 12 New York] -[:DocumentedBy]-> [Event:Incident investigation]
+6. [Person:Male soccer player from Warwick] -[:InvolvedIn]-> [Concept:Racist incident]
+
+Note that some relationships are implicit or inferred, and may not be directly stated in the text.
+2024-08-01T15:32:06.532Z [INFO]: Retrying extraction (attempt 2/3)
+2024-08-01T15:32:07.533Z [INFO]: Using local service for relationship extraction
+2024-08-01T15:32:20.239Z [WARN]: Invalid relationship format: [Person:Soccer Player] -[:Made-> [Concept:Racist Remark]
+2024-08-01T15:32:20.239Z [WARN]: Invalid relationship format: [Organization:News 12 New York] -[:Provided-> [Service:App or Website]
+2024-08-01T15:32:20.240Z [WARN]: Invalid relationship format: Note: The relationship type "InvestigatedBy" was not explicitly mentioned in the original list, but it seems to be a reasonable inference given the context of the text. If you'd like, I can try to rephrase it as something more explicit (e.g. "SubjectOfInvestigation") or simply remove it.
+2024-08-01T15:32:20.240Z [INFO]: Successfully extracted 6 relationships from chunk
+2024-08-01T15:32:20.242Z [INFO]: Relationship found: Soccer Player (Person) -[ParticipatedIn]-> Soccer Game (Event)
+2024-08-01T15:32:20.242Z [INFO]: Relationship found: Heat Advisory (Event) -[OccurredAt]-> Hudson Valley (Location)
+2024-08-01T15:32:20.242Z [INFO]: Relationship found: News 12 New York (Organization) -[PublishedBy]-> News Article (MediaContent)
+2024-08-01T15:32:20.242Z [INFO]: Relationship found: Warwick Soccer Team (Organization) -[SupportedBy]-> News 12 New York (Organization)
+2024-08-01T15:32:20.242Z [INFO]: Relationship found: Soccer Game (Event) -[OccurredAt]-> Hudson Valley (Location)
+2024-08-01T15:32:20.242Z [INFO]: Relationship found: Soccer Player (Person) -[InvestigatedBy]-> Unknown Agency (GovernmentAgency)
+2024-08-01T15:32:20.243Z [INFO]: Extracted 8 unique nodes and 6 relationships
