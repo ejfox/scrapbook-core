@@ -17,7 +17,10 @@ const openai = new OpenAI({
 const tagData = await axios
   .get("https://ejfox.com/tags.json")
   .then((res) => res.data);
-const tags = tagData;
+const tags = tagData.filter((d) => {
+  // filter out tags that start with !
+  return !d.startsWith("!");
+})
 
 // Configure rate limiter
 const limiter = new Bottleneck({
