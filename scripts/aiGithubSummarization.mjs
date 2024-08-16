@@ -14,7 +14,8 @@ const limiter = new Bottleneck({
 });
 
 function chooseLLMService() {
-  return process.env.USE_OPENAI === "true" ? "openai" : "local";
+  // return process.env.USE_OPENAI === "true" ? "openai" : "local";
+  return "local";
 }
 
 export async function summarizeGitHubActivity(activity, options = {}) {
@@ -50,6 +51,9 @@ function formatGitHubActivityForSummary(activity) {
 
   // add the author
   formattedContent += `Author: ${activity.user?.login || ""}\n`;
+
+  // add the href
+  formattedContent += `URL: ${activity.href || ""}\n`;
 
   if (activity.type === "repository") {
     formattedContent = `Repository: ${activity.name}\n`;
@@ -125,7 +129,7 @@ async function summarizeGitHubString(content) {
   try {
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.7,
         max_tokens: 1024,
@@ -169,7 +173,7 @@ ${summaryContent}`,
   try {
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.2,
         max_tokens: 32,

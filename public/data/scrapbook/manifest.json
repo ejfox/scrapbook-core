@@ -1,19 +1,19 @@
 {
-  "lastUpdateTimestamp": 1722528961338,
+  "lastUpdateTimestamp": 1723661726257,
   "pinboard": {
-    "lastFetch": "2024-08-01T15:07:11.674Z",
+    "lastFetch": "2024-08-11T01:18:27.684Z",
     "errors": []
   },
   "mastodon": {
-    "lastFetch": "2024-07-18T14:16:08.054Z",
+    "lastFetch": "2024-08-14T18:55:33.663Z",
     "errors": []
   },
   "arena": {
-    "lastFetch": "2024-08-01T16:11:06.174Z",
+    "lastFetch": "2024-08-14T18:56:08.391Z",
     "errors": []
   },
   "github": {
-    "lastFetch": "2024-08-01T16:15:01.794Z",
+    "lastFetch": "2024-08-11T22:39:00.814Z",
     "errors": []
   }
 }

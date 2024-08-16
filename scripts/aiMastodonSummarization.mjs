@@ -69,7 +69,7 @@ What tags would you suggest for this status?`,
   try {
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.3,
         max_tokens: 100,

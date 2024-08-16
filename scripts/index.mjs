@@ -211,6 +211,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
     if (isShuttingDown) return lastScrapTime;
 
     for (const bookmark of pinboardBookmarks) {
+      console.log("Processing bookmark:", bookmark.href);
       if (isShuttingDown) {
         console.log("Shutting down, skipping bookmark processing");
         break;
@@ -233,6 +234,7 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
             pageContent = await browserLimiter.schedule(() =>
               helpers.fetchPageContent(bookmark.href)
             );
+            console.log(`Fetched ${pageContent.length} characters of content`);
             summary = await limiter.schedule(() =>
               summarizeContent(pageContent, { metaSummary: true })
             );
@@ -315,6 +317,7 @@ async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
     }
 
     for (const status of statuses) {
+      console.log("Processing Mastodonstatus:", status.content);
       if (isShuttingDown) {
         console.log("Shutting down, skipping status processing");
         break;
@@ -381,6 +384,7 @@ async function fetchAndUpsertArenaBlocks(lastScrapTime) {
     }
 
     for (const block of blocks) {
+      console.log("Processing block:", block.title);
       if (isShuttingDown) {
         console.log("Shutting down, skipping block processing");
         break;
@@ -462,6 +466,7 @@ async function fetchAndUpsertGithubData() {
     ];
 
     for (const scrap of allScraps) {
+      console.log("Processing github scrap:", scrap.title);
       if (isShuttingDown) {
         console.log("Shutting down, skipping GitHub data processing");
         break;
@@ -582,7 +587,9 @@ async function generateWebpageScreenshot(webUrl) {
 
     // Display screenshot in terminal (if running in a terminal that supports it)
     try {
-      console.log(await terminalImage.file(screenshotPath, { width: "50%" }));
+      if (options.printScreenshot) {
+        console.log(await terminalImage.file(screenshotPath, { width: "25%" }));
+      }
     } catch (error) {
       console.log("Unable to display screenshot in terminal.");
     }
@@ -651,7 +658,12 @@ async function main(options = {}) {
   };
 
   console.log("🚀 Scrapbook Core: Main function started");
-  console.log("📊 Options:", JSON.stringify(options, null, 2));
+  console.log(
+    "📊 Options:\n" +
+      Object.entries(options)
+        .map(([key, value]) => `  ${key.padEnd(15)} ${value}`)
+        .join("\n")
+  );
 
   const checkpoint = await loadCheckpoint();
   console.log("📍 Loaded checkpoint:", JSON.stringify(checkpoint, null, 2));
@@ -667,6 +679,7 @@ async function main(options = {}) {
   ];
 
   for (const source of sources) {
+    console.log(`\n📦 Processing ${source.name.toUpperCase()}...`);
     if (options[source.name] || options.all) {
       console.log(`\n📦 Processing ${source.name.toUpperCase()}...`);
       try {
@@ -711,6 +724,7 @@ program
   .option("-a, --arena", "Fetch and upsert Are.na blocks")
   .option("-g, --github", "Fetch and upsert GitHub data")
   .option("--all", "Fetch and upsert all data sources")
+  .option("--print-screenshot", "Print screenshots to terminal")
   .option("--new-only", "Only upload new entries, don't update existing ones")
   .option("--debug", "Enable debug mode")
   .parse(process.argv);

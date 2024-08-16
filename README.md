@@ -28,6 +28,30 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 - <scripts/search_sqlite_scraps.js>
 - <Local\ Scrap\ Search.1.1.alfredworkflow.zip>
 
+## Database Schema
+
+Scraps table
+```sql
+create table
+  public.scraps (
+    id uuid not null default gen_random_uuid (),
+    source public.scrap_source not null,
+    content text not null,
+    summary text null,
+    created_at timestamp without time zone null default current_timestamp,
+    updated_at timestamp without time zone null default current_timestamp,
+    tags text null,
+    relationships jsonb null,
+    metadata jsonb null,
+    scrap_id text null,
+    embedding public.vector null,
+    title text null,
+    constraint scraps_pkey primary key (id),
+    constraint scraps_id_key unique (id),
+    constraint scraps_scrap_id_key unique (scrap_id)
+  ) tablespace pg_default;
+  ```
+
 
 ## System Architecture
 

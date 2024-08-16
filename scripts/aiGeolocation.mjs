@@ -20,7 +20,9 @@ const limiter = new Bottleneck({
 });
 
 function chooseLLMService() {
-  return process.env.USE_OPENAI === "true" ? "openai" : "local";
+  // return process.env.USE_OPENAI === "true" ? "openai" : "local";
+  // hardcode geolocation to local LLM, it's not worth the cost to pay for it
+  return "local";
 }
 
 export default async function extractLocation(content, options = {}) {
@@ -54,8 +56,7 @@ export default async function extractLocation(content, options = {}) {
     })
   );
 
-  console.log("⚡️ Locations:");
-  console.log(locations);
+  // console.log(locations);
 
   const filteredLocations = locations.filter(
     (location) =>
@@ -175,7 +176,7 @@ async function extractLocationOpenAI(content) {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: messages,
       tools: tools,
       tool_choice: "auto",
@@ -220,7 +221,32 @@ async function extractLocationLocal(content) {
     {
       role: "system",
       content:
-        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no clear location is found, return 'null'. These must be real, existing locations on earth. Respond with ONLY the location, no other text.",
+        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no clear location is found, return 'null'. These must be real, existing locations on earth. Respond with ONLY the location, no other text. Your response must be a SINGLE location, in the format 'City, State, Country' or 'City, Country'.",
+    },
+    // give the robot some examples
+    {
+      role: "user",
+      content: `The brooklyn bridge spans 1,595 feet.\nCan you extract a geographic location from this content?`,
+    },
+    {
+      role: "assistant",
+      content: `Brooklyn, NY, USA`,
+    },
+    {
+      role: "user",
+      content: `The eiffel tower is 1,083 feet tall.\nCan you extract a geographic location from this content?`,
+    },
+    {
+      role: "assistant",
+      content: `Paris, France`,
+    },
+    {
+      role: "user",
+      content: `Bloomberg published an embargo-breaking scoop about the release of Evan Gershkovich and Paul Whelan from Russia on August 1 at 7:41 a.m.\nCan you extract a geographic location from this content?`,
+    },
+    {
+      role: "assistant",
+      content: `Moscow, Russia`,
     },
     {
       role: "user",
