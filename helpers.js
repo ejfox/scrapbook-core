@@ -270,7 +270,7 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
  * @returns {string[]} An array of content chunks.
  */
 export function contentToChunks(content, options = {}) {
-  const { chunkMaxChars = 2048 } = options;
+  const { chunkMaxChars = 16384 } = options;
   const chunks = [];
   let currentChunk = "";
 

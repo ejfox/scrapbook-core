@@ -26,9 +26,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const MAX_RELATIONSHIPS = 12;
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+const MAX_RELATIONSHIPS = 24;
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 2000; // 1 second
 
 // OLD, a bit too strict?
 // const relationshipRegex =
@@ -137,7 +137,7 @@ ${chunk}`,
     let responseMsg;
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.7,
         max_tokens: 256,

@@ -32,9 +32,8 @@ if (!apiToken) {
   process.exit(1);
 }
 
-const fetchBookmarks = async () => {
+const fetchBookmarks = async (fromdt = null) => {
   log("Fetching bookmarks from Pinboard API");
-  // const spinner = ora("Initializing download...").start();
   let allBookmarks = [];
   let start = 0;
   let fetching = true;
@@ -43,38 +42,25 @@ const fetchBookmarks = async () => {
   while (fetching) {
     try {
       log(`Fetching bookmarks starting from index ${start}`);
+      const params = {
+        auth_token: apiToken,
+        format: "json",
+        start,
+        results: resultCount,
+      };
+      if (fromdt) {
+        params.fromdt = fromdt;
+      }
       const response = await limiter.schedule(() =>
-        axios.get("https://api.pinboard.in/v1/posts/all", {
-          params: {
-            auth_token: apiToken,
-            format: "json",
-            start,
-            results: resultCount,
-          },
-        })
+        axios.get("https://api.pinboard.in/v1/posts/all", { params })
       );
       allBookmarks = allBookmarks.concat(response.data);
       start += resultCount;
       fetching = response.data.length === resultCount;
-      // spinner.text = `Fetched ${allBookmarks.length} pinboard bookmarks...`;
     } catch (error) {
       console.error("Error fetching bookmarks:", error.message);
-      // spinner.fail("Failed to fetch bookmarks");
-      throw error;
+      break; // Stop fetching on error, but don't throw
     }
-  }
-
-  try {
-    log("Saving fetched bookmarks to file");
-    const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
-    await fs.mkdir(dirPath, { recursive: true });
-    const filePath = path.join(dirPath, "bookmarks.json");
-    await fs.writeFile(filePath, JSON.stringify(allBookmarks, null, 2));
-    // spinner.succeed(`Downloaded and saved ${allBookmarks.length} bookmarks`);
-  } catch (error) {
-    console.error("Error saving bookmarks:", error.message);
-    // spinner.fail("Failed to save bookmarks");
-    throw error;
   }
 
   return allBookmarks;
@@ -102,7 +88,6 @@ const writeManifest = async (manifest) => {
 
 export async function fetchBookmarksWithCache(forceUpdate = false) {
   log("Fetching bookmarks with cache");
-  // const spinner = ora("Initializing...").start();
   try {
     const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
     await fs.mkdir(dirPath, { recursive: true });
@@ -118,27 +103,46 @@ export async function fetchBookmarksWithCache(forceUpdate = false) {
 
     if (!forceUpdate && cacheExists && cacheIsValid) {
       log("Using cached bookmarks");
-      // spinner.text = "Loading cached bookmarks...";
       const bookmarksData = await fs.readFile(filePath, "utf8");
-      const existingBookmarks = JSON.parse(bookmarksData);
-      // spinner.succeed(
-      //   `Loaded ${existingBookmarks.length} bookmarks from cache.`
-      // );
-      return existingBookmarks;
+      return JSON.parse(bookmarksData);
     } else {
       log("Fetching new bookmarks");
-      // spinner.text = "Fetching new bookmarks from API...";
-      const bookmarks = await fetchBookmarks();
-      await fs.writeFile(filePath, JSON.stringify(bookmarks, null, 2));
-      manifest.lastUpdateTimestamp = currentTimestamp;
-      await writeManifest(manifest);
-      // spinner.succeed(`Fetched and saved ${bookmarks.length} bookmarks.`);
-      return bookmarks;
+      const fromdt = new Date(lastUpdateTimestamp).toISOString();
+      const newBookmarks = await fetchBookmarks(fromdt);
+
+      if (cacheExists) {
+        const existingBookmarksData = await fs.readFile(filePath, "utf8");
+        const existingBookmarks = JSON.parse(existingBookmarksData);
+        const updatedBookmarks = [...newBookmarks, ...existingBookmarks];
+        await fs.writeFile(filePath, JSON.stringify(updatedBookmarks, null, 2));
+        manifest.lastUpdateTimestamp = currentTimestamp;
+        await writeManifest(manifest);
+        return updatedBookmarks;
+      } else {
+        await fs.writeFile(filePath, JSON.stringify(newBookmarks, null, 2));
+        manifest.lastUpdateTimestamp = currentTimestamp;
+        await writeManifest(manifest);
+        return newBookmarks;
+      }
     }
   } catch (error) {
-    // spinner.fail("Failed to process bookmarks.");
     console.error("Error in fetchBookmarksWithCache:", error);
-    throw error;
+    // Attempt to return cached data even if there's an error
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      "data",
+      "scrapbook",
+      "bookmarks.json"
+    );
+    try {
+      const bookmarksData = await fs.readFile(filePath, "utf8");
+      console.log("Falling back to cached bookmarks");
+      return JSON.parse(bookmarksData);
+    } catch (cacheError) {
+      console.error("Failed to read cache:", cacheError);
+      return []; // Return empty array if everything fails
+    }
   }
 }
 

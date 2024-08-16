@@ -20,7 +20,7 @@ const tagData = await axios
 const tags = tagData.filter((d) => {
   // filter out tags that start with !
   return !d.startsWith("!");
-})
+});
 
 // Configure rate limiter
 const limiter = new Bottleneck({
@@ -34,28 +34,40 @@ function chooseLLMService() {
 }
 
 export async function summarizeContent(content, options = {}) {
-  const chunkSizeTokens = 6144;
-  const flatChunks = breakContentIntoChunks(content, chunkSizeTokens);
+  // const chunkSizeTokens = 6144;
+  // turn it ALL the way to 120k!!!
+  const chunkSizeTokens = 120000;
 
-  console.log(
-    `Broke ${content.length} characters into ${flatChunks.length} chunks...`
-  );
+  const flatChunks = breakContentIntoChunks(content, chunkSizeTokens);
 
   const avgTokensPerChunk = flatChunks.reduce(
     (acc, chunk) => acc + llamaTokenizer.encode(chunk).length,
     0
   );
   const avgTokensPerChunkAvg = avgTokensPerChunk / flatChunks.length;
-  console.log(`Avg tokens per chunk: ${avgTokensPerChunkAvg}`);
-  console.log("\n");
-  console.log(flatChunks[0].substring(0, 1000) + "...");
+  // console.log(`🤖 Avg tokens per chunk: ${avgTokensPerChunkAvg}`);
+  // console.log("\n");
+  // console.log(flatChunks[0].substring(0, 80) + "...");
+  console.log(
+    `Broke ${content.length} characters into ${flatChunks.length} chunks for summary with avg tokens per chunk: ${avgTokensPerChunkAvg}`
+  );
+  // then log the actual chunk token lengths
+  flatChunks.forEach((chunk, i) => {
+    console.log(
+      `Chunk ${i + 1} tokens: ${llamaTokenizer.encode(chunk).length} from ${
+        chunk.length
+      } chars`
+    );
+  });
 
   const summaries = await Promise.all(
     flatChunks.map((chunk) => limiter.schedule(() => summarizeString(chunk)))
   );
 
   let summary = summaries.join("\n");
-  console.log("Summary:", summary);
+  console.log(`${content.length} characters summarized to ${summary.length}`);
+  // log the first line of the summary
+  console.log(`First line of summary: ${summary.split("\n")[0]}`);
 
   if (options.metaSummary) {
     console.log("Generating meta summary...");
@@ -74,7 +86,7 @@ export async function summarizeString(content) {
     },
     {
       role: "user",
-      content: `${content}\nCan you summarize this into a list of facts? Start with fact 1, no introduction or confirmation. Do not say "Here is the summary:". Just start with the first fact. Try to keep the total list of facts under 10 items. Keep the most important / unique facts. Include URLs or search queries, specific keywords, names, etc. if they are important to the fact. Be sure every single fact stands alone and is not dependent on any other fact.`,
+      content: `${content}\nCan you summarize this into a list of facts? Start with fact 1, no introduction or confirmation. Do not say "Here is the summary:". Just start with the first fact. Try to keep the total list of facts under 10 items. Keep the most important / unique facts. Include URLs or search queries, specific keywords, names, etc. if they are important to the fact. Be sure every single fact stands alone and is not dependent on any other fact. Your role is to weave together the individual bullet points provided by the chunk analysis into a coherent, concise summary of the entire webpage that helps the user with their goal. Approach this task as if you're creating a map from individual landmarks. Each bullet point is a point of interest, and your job is to connect these in a way that tells the complete story of the webpage. Focus on overarching themes, key concepts, and the most significant information. Look for connections between bullet points to build a narrative that accurately represents the webpage’s content. While doing so, maintain the precision and context from the individual bullet points, ensuring that the final summary is a true reflection of the webpage’s entirety. Additionally, it's vital to surface verbatim any technical elements like keywords, code snippets, variable names, etc. These technical details should be precisely preserved in their original form within your summary. Remember, your summary should be comprehensive, detailed, and easy to understand, providing a bird's-eye view of the webpage that highlights its most important aspects to help the user. Remember; less is more. Do not include any other text, parantheticals, or introduction. Respond ONLY with the summary.`,
     },
   ];
 
@@ -83,7 +95,7 @@ export async function summarizeString(content) {
   try {
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
-        // model: "gpt-3.5-turbo",
+        // gpt-4o-mini,
         model: "gpt-4o",
         messages,
         temperature: 0.7,
@@ -139,7 +151,7 @@ ${metaSummaryContent}`,
   try {
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
-        // model: "gpt-3.5-turbo",
+        // gpt-4o-mini,
         model: "gpt-4o",
         messages,
         temperature: 0.2,
