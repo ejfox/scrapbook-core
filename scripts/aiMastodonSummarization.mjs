@@ -89,9 +89,13 @@ What tags would you suggest for this status?`,
         "http://localhost:1234/v1/chat/completions",
         payload
       );
-      return response.data.choices[0].message.content
-        .split("\n")
-        .filter((tag) => tag.trim() !== "");
+      return (
+        response.data.choices[0].message.content
+          .split("\n")
+          // make sure to strip any # from the tags
+          .map((tag) => tag.replace("#", ""))
+          .filter((tag) => tag.trim() !== "")
+      );
     }
   } catch (error) {
     console.error("Error generating tags:", error);
