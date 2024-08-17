@@ -235,6 +235,11 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
               helpers.fetchPageContent(bookmark.href)
             );
             console.log(`Fetched ${pageContent.length} characters of content`);
+
+            // if the length is over 100,000 characters, truncate it
+            if (pageContent.length > 100000) {
+              pageContent = pageContent.substring(0, 100000);
+            }
             summary = await limiter.schedule(() =>
               summarizeContent(pageContent, { metaSummary: true })
             );
