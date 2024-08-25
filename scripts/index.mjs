@@ -52,17 +52,17 @@ const supabase = createClient(
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
-  minTime: 500,
+  minTime: 1500,
 });
 
 const upsertLimiter = new Bottleneck({
   maxConcurrent: 3,
-  minTime: 1000,
+  minTime: 1500,
 });
 
 const browserLimiter = new Bottleneck({
   maxConcurrent: 1,
-  minTime: 1000,
+  minTime: 1500,
 });
 
 async function generateEmbedding(text) {
@@ -72,11 +72,13 @@ async function generateEmbedding(text) {
   }
 
   try {
-    const response = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
-      input: text,
+    return await limiter.schedule(async () => {
+      const response = await openai.embeddings.create({
+        model: "text-embedding-ada-002",
+        input: text,
+      });
+      return response.data[0].embedding;
     });
-    return response.data[0].embedding;
   } catch (error) {
     console.error("Error generating embedding:", error);
     return null;
@@ -93,9 +95,12 @@ async function extractAndAddRelationships(scrapObj) {
       return scrapObj;
     }
 
-    const relationshipsData = await limiter.schedule(() =>
-      extractRelationships(content, { isRawText: !scrapObj.summary })
-    );
+    const relationshipsData = await limiter.schedule(async () => {
+      const extractedRelationships = await extractRelationships(content, {
+        isRawText: !scrapObj.summary,
+      });
+      return extractedRelationships;
+    });
 
     scrapObj.relationships = relationshipsData.relationships;
     return scrapObj;

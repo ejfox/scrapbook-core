@@ -7806,3 +7806,1325 @@ Note that some relationships are implicit or inferred, and may not be directly s
 2024-08-11T02:18:11.296Z [INFO]: Relationship found: 3D scatter graph (Technology) -[VisualizedIn]-> Semantic relationships (Concept)
 2024-08-11T02:18:11.296Z [INFO]: Relationship found: Tom Hazledine's website (Location) -[PublishedBy]-> Blog post (MediaContent)
 2024-08-11T02:18:11.296Z [INFO]: Extracted 9 unique nodes and 9 relationships
+2024-08-25T19:36:26.195Z [INFO]: Starting relationship extraction process
+2024-08-25T19:36:26.196Z [INFO]: Raw content split into 1 chunks
+2024-08-25T19:36:26.196Z [INFO]: Processing chunk 1/1
+2024-08-25T19:36:26.200Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:36:26.954Z [INFO]: Successfully extracted 3 relationships from chunk
+2024-08-25T19:36:26.957Z [INFO]: Relationship found: KY (Location) -[OccurredAt]-> prisoners hack state-issued computer tablets (Event)
+2024-08-25T19:36:26.957Z [INFO]: Relationship found: state-issued computer tablets (Product) -[UsedIn]-> digital creation (Concept)
+2024-08-25T19:36:26.957Z [INFO]: Relationship found: digital creation (Concept) -[ValuedAt]-> $1M (FundingRound)
+2024-08-25T19:36:26.958Z [INFO]: Extracted 5 unique nodes and 3 relationships
+2024-08-25T19:36:47.126Z [INFO]: Starting relationship extraction process
+2024-08-25T19:36:47.126Z [INFO]: Processing pre-summarized content
+2024-08-25T19:36:47.126Z [INFO]: Processing chunk 1/1
+2024-08-25T19:36:47.129Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:36:49.517Z [WARN]: Invalid relationship format: [Event:Burning Man] -[:Collabor
+2024-08-25T19:36:49.517Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[ParticipatedIn]-> Jeff Bezos (Person)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[ParticipatedIn]-> Elon Musk (Person)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[SupportedBy]-> Burning Man Project (NonProfitOrganization)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man Project (NonProfitOrganization) -[MaintainedBy]-> Workers (Person)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[DependentOn]-> IRS Filings (FundingRound)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[DocumentedBy]-> Jacobin (Publication)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[InfluencedBy]-> Art Basel (Event)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[InfluencedBy]-> Cannes (Event)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[UsedIn]-> Radical Inclusion (Concept)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[UsedIn]-> Decommodification (Concept)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[CompatibleWith]-> Capitalism (IndustryGroup)
+2024-08-25T19:36:49.518Z [INFO]: Relationship found: Burning Man (Event) -[OccurredAt]-> Black Rock Desert (Location)
+2024-08-25T19:36:49.519Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T19:38:09.862Z [INFO]: Starting relationship extraction process
+2024-08-25T19:38:09.862Z [INFO]: Processing pre-summarized content
+2024-08-25T19:38:09.862Z [INFO]: Processing chunk 1/1
+2024-08-25T19:38:09.865Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:38:13.543Z [WARN]: Invalid relationship format: [
+2024-08-25T19:38:13.543Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: U.S. Department of Justice (GovernmentAgency) -[FiledAgainst]-> RealPage (Organization)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: RealPage (Organization) -[AccusedOf]-> Rent-Setting Software (Product)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: U.S. Department of Justice (GovernmentAgency) -[Conducted]-> Investigation (Event)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: Investigation (Event) -[Involved]-> Data Scientists (Person)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: RealPage (Organization) -[Enables]-> Landlords (Organization)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: RealPage (Organization) -[AccusedOf]-> Price-Fixing (Concept)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: RealPage (Organization) -[Promotes]-> Coordinated Pricing (Concept)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: Lawsuit (Event) -[Includes]-> RealPage Executives (Person)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: Lawsuit (Event) -[Includes]-> Landlords (Organization)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: Lawsuit (Event) -[PartOf]-> Biden Administration (GovernmentAgency)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: Biden Administration (GovernmentAgency) -[Initiated]-> Antitrust Enforcement (Concept)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: North Carolina (Location) -[ParticipatedIn]-> Lawsuit (Event)
+2024-08-25T19:38:13.545Z [INFO]: Relationship found: California (Location) -[ParticipatedIn]-> Lawsuit (Event)
+2024-08-25T19:38:13.545Z [INFO]: Extracted 14 unique nodes and 13 relationships
+2024-08-25T19:38:42.944Z [INFO]: Starting relationship extraction process
+2024-08-25T19:38:42.944Z [INFO]: Processing pre-summarized content
+2024-08-25T19:38:42.944Z [INFO]: Processing chunk 1/1
+2024-08-25T19:38:42.948Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:38:45.203Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Center for AI Safety (Organization) -[PublishedBy]-> Representation Engineering: A Top-Down Approach to AI Transparency (Publication)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[UsedIn]-> Mistral-7B model (Product)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[ImplementedBy]-> PCA (Technology)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[DependentOn]-> Prompt Pairs (Technology)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[UsedIn]-> AI Model Interpretation (Concept)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[CreatedBy]-> PyPI package (Software)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[InfluencedBy]-> Traditional Prompt Engineering (Concept)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Control Vectors (Technology) -[TestedBy]-> Blog Post (MediaContent)
+2024-08-25T19:38:45.205Z [INFO]: Relationship found: Mistral-7B model (Product) -[DemonstratedBy]-> Control Vectors (Technology)
+2024-08-25T19:38:45.206Z [INFO]: Relationship found: AI Behavior (Concept) -[ManipulatedBy]-> Control Vectors (Technology)
+2024-08-25T19:38:45.206Z [INFO]: Relationship found: Unnamed Persona (Person) -[RepresentedBy]-> Control Vectors (Technology)
+2024-08-25T19:38:45.206Z [INFO]: Relationship found: Control Vectors (Technology) -[UsedIn]-> Model Training (Concept)
+2024-08-25T19:38:45.206Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T19:39:03.209Z [INFO]: Starting relationship extraction process
+2024-08-25T19:39:03.210Z [INFO]: Processing pre-summarized content
+2024-08-25T19:39:03.210Z [INFO]: Processing chunk 1/1
+2024-08-25T19:39:03.213Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:39:05.575Z [WARN]: Invalid relationship format: [Person:Bre Pettis] -[:ImplementedBy]->
+2024-08-25T19:39:05.575Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Putnam/Northern Westchester BOCES (Organization) -[SupportedBy]-> career and technical education (Concept)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Five students (Student) -[ParticipatedIn]-> Bantam Tools (Startup)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Aiello (Intern) -[CollaboratedWith]-> Monticelli (Intern)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Aiello (Intern) -[UsedIn]-> Bantam Tools (Startup)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Monticelli (Intern) -[UsedIn]-> Bantam Tools (Startup)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Onell Guichardo (Person) -[InfluencedBy]-> Bantam Tools (Startup)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Aiello (Student) -[DependentOn]-> Manhattan College (EducationalInstitution)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Monticelli (Student) -[DependentOn]-> Manhattan College (EducationalInstitution)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: John Tenecesca (Student) -[ParticipatedIn]-> Bantam Tools (Startup)
+2024-08-25T19:39:05.575Z [INFO]: Relationship found: Jonathan Chocho (Student) -[ParticipatedIn]-> Bantam Tools (Startup)
+2024-08-25T19:39:05.576Z [INFO]: Relationship found: Tenecesca (Student) -[UsedIn]-> drawing and handwriting machines (Device)
+2024-08-25T19:39:05.576Z [INFO]: Relationship found: Chocho (Student) -[UsedIn]-> drawing and handwriting machines (Device)
+2024-08-25T19:39:05.576Z [INFO]: Extracted 15 unique nodes and 12 relationships
+2024-08-25T19:39:19.795Z [INFO]: Starting relationship extraction process
+2024-08-25T19:39:19.795Z [INFO]: Processing pre-summarized content
+2024-08-25T19:39:19.795Z [INFO]: Processing chunk 1/1
+2024-08-25T19:39:19.799Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:39:21.806Z [WARN]: Invalid relationship format: [Product:Anthropic API] -[:Compatible
+2024-08-25T19:39:21.806Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:39:21.808Z [INFO]: Relationship found: CORS (Technology) -[ImplementedBy]-> Claude’s API (Product)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Claude’s API (Product) -[DocumentedBy]-> Anthropic pull request (Publication)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Claude’s API (Product) -[SupportedBy]-> Anthropic (Organization)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Claude’s API (Product) -[UsedIn]-> Haiku app (Application)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Haiku app (Application) -[CreatedBy]-> Simon Willison (Person)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Haiku app (Product) -[DependentOn]-> Anthropic API (Product)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Haiku app (Product) -[CompatibleWith]-> Vercel (Platform)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: JavaScript snippet (Technology) -[UsedIn]-> Claude’s API (Product)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: Claude’s API (Product) -[UsedIn]-> post-upgrade (Event)
+2024-08-25T19:39:21.809Z [INFO]: Relationship found: JavaScript snippet (Technology) -[DocumentedBy]-> Anthropic pull request (Publication)
+2024-08-25T19:39:21.810Z [INFO]: Relationship found: Haiku app (Product) -[ParticipatedIn]-> post-upgrade (Event)
+2024-08-25T19:39:21.810Z [INFO]: Relationship found: Simon Willison (Person) -[InfluencedBy]-> bring your own API key pattern (Concept)
+2024-08-25T19:39:21.810Z [INFO]: Extracted 12 unique nodes and 12 relationships
+2024-08-25T19:39:43.617Z [INFO]: Starting relationship extraction process
+2024-08-25T19:39:43.617Z [INFO]: Processing pre-summarized content
+2024-08-25T19:39:43.617Z [INFO]: Processing chunk 1/1
+2024-08-25T19:39:43.620Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:39:45.574Z [INFO]: Successfully extracted 6 relationships from chunk
+2024-08-25T19:39:45.576Z [INFO]: Relationship found: Newburgh (Location) -[OccuredAt]-> Violent Encounter (Event)
+2024-08-25T19:39:45.576Z [INFO]: Relationship found: Witness (Person) -[DocumentedBy]-> Video Footage (MediaContent)
+2024-08-25T19:39:45.576Z [INFO]: Relationship found: Video Footage (MediaContent) -[PublishedBy]-> News 12 New York (Publication)
+2024-08-25T19:39:45.576Z [INFO]: Relationship found: Violent Encounter (Event) -[DocumentedBy]-> Video Footage (MediaContent)
+2024-08-25T19:39:45.576Z [INFO]: Relationship found: South William Street (Location) -[OccuredAt]-> Violent Encounter (Event)
+2024-08-25T19:39:45.576Z [INFO]: Relationship found: News 12 New York (Publication) -[ReferencedIn]-> Article (MediaContent)
+2024-08-25T19:39:45.576Z [INFO]: Extracted 7 unique nodes and 6 relationships
+2024-08-25T19:39:50.505Z [INFO]: Starting relationship extraction process
+2024-08-25T19:39:50.506Z [INFO]: Raw content split into 1 chunks
+2024-08-25T19:39:50.506Z [INFO]: Processing chunk 1/1
+2024-08-25T19:39:50.510Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:39:51.117Z [WARN]: Invalid relationship format: No relevant entities or relationships could be extracted from the provided text "gov.uscourts.cand.412276.53.0". Please provide a different text with identifiable entities and relationships.
+2024-08-25T19:39:51.118Z [WARN]: No valid relationships found in response: No relevant entities or relationships could be extracted from the provided text "gov.uscourts.cand.412276.53.0". Please provide a different text with identifiable entities and relationships.
+2024-08-25T19:39:51.118Z [INFO]: Retrying extraction (attempt 1/2)
+2024-08-25T19:39:53.120Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:39:53.741Z [WARN]: Invalid relationship format: No relevant entities or relationships could be extracted from the provided text. Please provide a more detailed text containing specific entities and relationships.
+2024-08-25T19:39:53.741Z [WARN]: No valid relationships found in response: No relevant entities or relationships could be extracted from the provided text. Please provide a more detailed text containing specific entities and relationships.
+2024-08-25T19:39:53.741Z [INFO]: Retrying extraction (attempt 2/2)
+2024-08-25T19:39:55.744Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:39:56.502Z [WARN]: Invalid relationship format: No identifiable entities or relationships could be extracted from the provided text "gov.uscourts.cand.412276.53.0". Please provide more context or a different text for analysis.
+2024-08-25T19:39:56.502Z [WARN]: No valid relationships found in response: No identifiable entities or relationships could be extracted from the provided text "gov.uscourts.cand.412276.53.0". Please provide more context or a different text for analysis.
+2024-08-25T19:39:56.502Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-08-25T19:39:56.502Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-08-25T19:40:14.630Z [INFO]: Starting relationship extraction process
+2024-08-25T19:40:14.630Z [INFO]: Processing pre-summarized content
+2024-08-25T19:40:14.630Z [INFO]: Processing chunk 1/1
+2024-08-25T19:40:14.633Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:40:16.731Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[CreatedBy]-> GitHub (Organization)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[CompatibleWith]-> BitBar (Product)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[UsedIn]-> macOS (Technology)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[DependentOn]-> Go (Technology)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[ImplementedBy]-> Wails (Framework)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[SupportedBy]-> ~/Library/Application Support/xbar/plugins (Location)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[ParticipatedIn]-> xbar plugin ecosystem (Event)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[DocumentedBy]-> xbar plugin writing guide (Publication)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[TestedBy]-> macOS Catalina (Product)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[PublishedBy]-> xbarapp.com (MediaContent)
+2024-08-25T19:40:16.732Z [INFO]: Relationship found: xbar (Product) -[MaintainedBy]-> GitHub (Organization)
+2024-08-25T19:40:16.733Z [INFO]: Relationship found: xbar (Product) -[InfluencedBy]-> BitBar (Product)
+2024-08-25T19:40:16.733Z [INFO]: Extracted 11 unique nodes and 12 relationships
+2024-08-25T19:40:43.820Z [INFO]: Starting relationship extraction process
+2024-08-25T19:40:43.820Z [INFO]: Processing pre-summarized content
+2024-08-25T19:40:43.820Z [INFO]: Processing chunk 1/1
+2024-08-25T19:40:43.823Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:40:46.589Z [WARN]: Invalid relationship format: [Product:4-AcO-DMT] -
+2024-08-25T19:40:46.589Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[DocumentedBy]-> FDA (GovernmentAgency)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[DependentOn]-> muscimol (ChemicalSubstance)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Prophet Premium Blends (Organization) -[Produced]-> Diamond Shruumz (Product)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[StoppedProductionDueTo]-> muscimol (ChemicalSubstance)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[TestedBy]-> toxicology labs (ResearchGroup)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[UsedIn]-> nausea (MedicalCondition)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[UsedIn]-> vomiting (MedicalCondition)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[UsedIn]-> agitation (MedicalCondition)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[UsedIn]-> seizures (MedicalCondition)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: Diamond Shruumz (Product) -[UsedIn]-> loss of consciousness (MedicalCondition)
+2024-08-25T19:40:46.591Z [INFO]: Relationship found: 4-AcO-DMT (Product) -[CompatibleWith]-> psilocybin (Product)
+2024-08-25T19:40:46.591Z [INFO]: Extracted 12 unique nodes and 11 relationships
+2024-08-25T19:41:00.165Z [INFO]: Starting relationship extraction process
+2024-08-25T19:41:00.166Z [INFO]: Processing pre-summarized content
+2024-08-25T19:41:00.166Z [INFO]: Processing chunk 1/1
+2024-08-25T19:41:00.168Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:41:02.497Z [WARN]: Invalid relationship format: [
+2024-08-25T19:41:02.497Z [INFO]: Successfully extracted 14 relationships from chunk
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[CreatedBy]-> Rust (Technology)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[CompatibleWith]-> macOS (OperatingSystem)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[CompatibleWith]-> Linux (OperatingSystem)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[CompatibleWith]-> Windows (OperatingSystem)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[UsedIn]-> LLMs (Technology)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[UsedIn]-> Tree-sitter (Technology)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[UsedIn]-> WebAssembly (Technology)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[UsedIn]-> Language Server Protocol (Standard)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[SupportedBy]-> multibuffer editing (Concept)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[SupportedBy]-> code generation (Concept)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[SupportedBy]-> code transformation (Concept)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[SupportedBy]-> code analysis (Concept)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[SupportedBy]-> chat (Service)
+2024-08-25T19:41:02.498Z [INFO]: Relationship found: Zed (Product) -[SupportedBy]-> note-sharing (Service)
+2024-08-25T19:41:02.498Z [INFO]: Extracted 15 unique nodes and 14 relationships
+2024-08-25T19:42:29.936Z [INFO]: Starting relationship extraction process
+2024-08-25T19:42:29.936Z [INFO]: Processing pre-summarized content
+2024-08-25T19:42:29.936Z [INFO]: Processing chunk 1/1
+2024-08-25T19:42:29.940Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:42:32.347Z [WARN]: Invalid relationship format: [Product:Shimmering Obsidian] -[:UsedIn]->
+2024-08-25T19:42:32.347Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[CreatedBy]-> Chris Grieser (Person)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[UsedIn]-> Obsidian (Software)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[DependentOn]-> Alfred 5 (Product)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Alfred 5 (Product) -[CompatibleWith]-> Powerpack (Product)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[SupportedBy]-> Advanced URI (Product)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[SupportedBy]-> Metadata Extractor (Product)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[UsedIn]-> Notes (Concept)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[UsedIn]-> Aliases (Concept)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[UsedIn]-> Folders (Concept)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[UsedIn]-> Tags (Concept)
+2024-08-25T19:42:32.349Z [INFO]: Relationship found: Shimmering Obsidian (Product) -[UsedIn]-> Attachments (Concept)
+2024-08-25T19:42:32.349Z [INFO]: Extracted 12 unique nodes and 11 relationships
+2024-08-25T19:42:47.969Z [INFO]: Starting relationship extraction process
+2024-08-25T19:42:47.969Z [INFO]: Processing pre-summarized content
+2024-08-25T19:42:47.969Z [INFO]: Processing chunk 1/1
+2024-08-25T19:42:47.973Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:42:49.749Z [INFO]: Successfully extracted 5 relationships from chunk
+2024-08-25T19:42:49.750Z [INFO]: Relationship found: Thomas Cole (Person) -[CreatedBy]-> View on the Catskill—Early Autumn (ArtMovement)
+2024-08-25T19:42:49.750Z [INFO]: Relationship found: View on the Catskill—Early Autumn (ArtMovement) -[DocumentedBy]-> The Metropolitan Museum of Art (Location)
+2024-08-25T19:42:49.750Z [INFO]: Relationship found: View on the Catskill—Early Autumn (ArtMovement) -[MaintainedBy]-> The Metropolitan Museum of Art (Location)
+2024-08-25T19:42:49.750Z [INFO]: Relationship found: The Metropolitan Museum of Art (Location) -[SupportedBy]-> Open Access Policy (Concept)
+2024-08-25T19:42:49.750Z [INFO]: Relationship found: Open Access Policy (Concept) -[UsedIn]-> View on the Catskill—Early Autumn (MediaContent)
+2024-08-25T19:42:49.750Z [INFO]: Extracted 5 unique nodes and 5 relationships
+2024-08-25T19:43:08.620Z [INFO]: Starting relationship extraction process
+2024-08-25T19:43:08.620Z [INFO]: Processing pre-summarized content
+2024-08-25T19:43:08.620Z [INFO]: Processing chunk 1/1
+2024-08-25T19:43:08.625Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:43:11.405Z [WARN]: Invalid relationship format: [Product:View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The O
+2024-08-25T19:43:11.405Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-25T19:43:11.405Z [INFO]: Relationship found: American landscape (ArtMovement) -[CreatedBy]-> Thomas Cole (Person)
+2024-08-25T19:43:11.406Z [INFO]: Relationship found: View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow (Product) -[DisplayedAt]-> The Met Fifth Avenue (Organization)
+2024-08-25T19:43:11.406Z [INFO]: Relationship found: View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow (Product) -[CreatedBy]-> Thomas Cole (Person)
+2024-08-25T19:43:11.406Z [INFO]: Relationship found: View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow (Product) -[UsedIn]-> Open Access policy (Concept)
+2024-08-25T19:43:11.406Z [INFO]: Relationship found: Thomas Cole (Person) -[InfluencedBy]-> climate justice (Concept)
+2024-08-25T19:43:11.407Z [INFO]: Relationship found: Thomas Cole (Person) -[DocumentedBy]-> The Met (Organization)
+2024-08-25T19:43:11.407Z [INFO]: Relationship found: View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow (Product) -[MaintainedBy]-> The Met (Organization)
+2024-08-25T19:43:11.407Z [INFO]: Relationship found: View from Mount Holyoke, Northampton, Massachusetts, after a Thunderstorm—The Oxbow (Product) -[SupportedBy]-> Mrs. Russell Sage (Person)
+2024-08-25T19:43:11.408Z [INFO]: Extracted 8 unique nodes and 8 relationships
+2024-08-25T19:43:21.775Z [INFO]: Starting relationship extraction process
+2024-08-25T19:43:21.775Z [INFO]: Processing pre-summarized content
+2024-08-25T19:43:21.775Z [INFO]: Processing chunk 1/1
+2024-08-25T19:43:21.779Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:43:24.895Z [WARN]: Invalid relationship format: [SearchQuery:search query] -[:Includes]-> [Concept:finance
+2024-08-25T19:43:24.895Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T19:43:24.896Z [INFO]: Relationship found: Wall Street Journal (Organization) -[CreatedBy]-> wsj.com (Website)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Covers]-> business (Concept)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Covers]-> politics (Concept)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Covers]-> technology (Concept)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Covers]-> lifestyle (Concept)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Provides]-> analysis (MediaContent)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Provides]-> commentary (MediaContent)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Features]-> interactive tools (Technology)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Provides]-> newsletters (Service)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Wall Street Journal (Organization) -[Has]-> mobile application (Product)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: wsj.com (Website) -[AccessibleAt]-> https://www.wsj.com (Location)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Users (User) -[SubscribesTo]-> premium content (Service)
+2024-08-25T19:43:24.897Z [INFO]: Relationship found: Users (User) -[Receives]-> updates (Service)
+2024-08-25T19:43:24.897Z [INFO]: Extracted 15 unique nodes and 13 relationships
+2024-08-25T19:43:35.531Z [INFO]: Starting relationship extraction process
+2024-08-25T19:43:35.531Z [INFO]: Processing pre-summarized content
+2024-08-25T19:43:35.531Z [INFO]: Processing chunk 1/1
+2024-08-25T19:43:35.535Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:43:37.257Z [INFO]: Successfully extracted 4 relationships from chunk
+2024-08-25T19:43:37.257Z [INFO]: Relationship found: breakingsmart.com/en/season-1 (Webpage) -[ArchivedAt]-> archive.is (Location)
+2024-08-25T19:43:37.257Z [INFO]: Relationship found: CAPTCHA (Technology) -[UsedIn]-> breakingsmart.com/en/season-1 (Webpage)
+2024-08-25T19:43:37.257Z [INFO]: Relationship found: breakingsmart.com/en/season-1 (Webpage) -[DocumentedBy]-> archive.is (Webpage)
+2024-08-25T19:43:37.257Z [INFO]: Relationship found: archive.is (Webpage) -[OccuredAt]-> November 27, 2022 (Event)
+2024-08-25T19:43:37.258Z [INFO]: Extracted 5 unique nodes and 4 relationships
+2024-08-25T19:44:39.972Z [INFO]: Starting relationship extraction process
+2024-08-25T19:44:39.972Z [INFO]: Processing pre-summarized content
+2024-08-25T19:44:39.972Z [INFO]: Processing chunk 1/1
+2024-08-25T19:44:39.975Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:44:42.742Z [WARN]: Invalid relationship format: [Framework:HeadGAP]
+2024-08-25T19:44:42.742Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T19:44:42.743Z [INFO]: Relationship found: HeadGAP (Framework) -[CreatedBy]-> Unknown (Person)
+2024-08-25T19:44:42.744Z [INFO]: Relationship found: HeadGAP (Framework) -[UsedIn]-> Gaussian Splatting-based auto-decoder network (Technology)
+2024-08-25T19:44:42.744Z [INFO]: Relationship found: HeadGAP (Framework) -[DependentOn]-> 3D head priors (Technology)
+2024-08-25T19:44:42.744Z [INFO]: Relationship found: HeadGAP (Framework) -[DocumentedBy]-> HeadGAP: Few-shot 3D Head Avatar via Generalizable Gaussian Priors (Publication)
+2024-08-25T19:44:42.744Z [INFO]: Relationship found: HeadGAP: Few-shot 3D Head Avatar via Generalizable Gaussian Priors (Publication) -[PublishedBy]-> arXiv (Platform)
+2024-08-25T19:44:42.745Z [INFO]: Relationship found: HeadGAP (Framework) -[SupportedBy]-> Unknown (ResearchGroup)
+2024-08-25T19:44:42.745Z [INFO]: Relationship found: HeadGAP (Framework) -[TestedBy]-> Extensive experiments (Event)
+2024-08-25T19:44:42.745Z [INFO]: Relationship found: Unknown (ResearchGroup) -[CollaboratedWith]-> Unknown (ResearchGroup)
+2024-08-25T19:44:42.745Z [INFO]: Relationship found: HeadGAP (Framework) -[ImplementedBy]-> Website (Service)
+2024-08-25T19:44:42.745Z [INFO]: Relationship found: Website (Service) -[MaintainedBy]-> Unknown (Organization)
+2024-08-25T19:44:42.745Z [INFO]: Relationship found: Website (Service) -[HostedAt]-> https://headgap.github.io/ (Location)
+2024-08-25T19:44:42.745Z [INFO]: Extracted 11 unique nodes and 11 relationships
+2024-08-25T19:45:06.965Z [INFO]: Starting relationship extraction process
+2024-08-25T19:45:06.965Z [INFO]: Processing pre-summarized content
+2024-08-25T19:45:06.965Z [INFO]: Processing chunk 1/1
+2024-08-25T19:45:06.969Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:45:09.421Z [WARN]: Invalid relationship format: [Technology:Azure] -[:UsedIn]-> [Concept:high
+2024-08-25T19:45:09.421Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T19:45:09.423Z [INFO]: Relationship found: Common Crawl (Organization) -[CreatedBy]-> 2007 (Year)
+2024-08-25T19:45:09.424Z [INFO]: Relationship found: SafeDocs (Product) -[CreatedBy]-> DARPA (Organization)
+2024-08-25T19:45:09.424Z [INFO]: Relationship found: FineWeb Paper (Publication) -[InfluencedBy]-> Teacher and student approach (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: SafeDocs (Product) -[UsedIn]-> Llama-3-70B (Technology)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: Llama-3-70B (Technology) -[UsedIn]-> few-shot prompting (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: SafeDocs (Product) -[DocumentedBy]-> 8GB metadata file (File)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: 8GB metadata file (File) -[UsedIn]-> label generation (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: XGBoost (Product) -[UsedIn]-> classification (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: hyperparameter tuning (Concept) -[SupportedBy]-> XGBoost (Product)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: TFIDF (Technology) -[UsedIn]-> feature extraction (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: feature extraction (Concept) -[MaintainedBy]-> XGBoost (Product)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: UMAP (Technology) -[UsedIn]-> data analysis visualizations (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Relationship found: PCA (Technology) -[UsedIn]-> data analysis visualizations (Concept)
+2024-08-25T19:45:09.425Z [INFO]: Extracted 18 unique nodes and 13 relationships
+2024-08-25T19:45:25.934Z [INFO]: Starting relationship extraction process
+2024-08-25T19:45:25.935Z [INFO]: Processing pre-summarized content
+2024-08-25T19:45:25.935Z [INFO]: Processing chunk 1/1
+2024-08-25T19:45:25.937Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:45:28.692Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Minecraft (Product) -[UsedIn]-> Video (MediaContent)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[CreatedBy]-> YouTube (Platform)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[SupportedBy]-> Mindcraft (Organization)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[DocumentedBy]-> ChatGPT (Person)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[InfluencedBy]-> AI in Gaming (Concept)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[ParticipatedIn]-> ChatGPT (Person)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[OccuredAt]-> https://youtube.com/watch (Location)
+2024-08-25T19:45:28.694Z [INFO]: Relationship found: Video (MediaContent) -[MaintainedBy]-> ChatGPT (Person)
+2024-08-25T19:45:28.695Z [INFO]: Relationship found: Minecraft (Product) -[InfluencedBy]-> Creativity and Collaboration (Concept)
+2024-08-25T19:45:28.695Z [INFO]: Relationship found: Minecraft (Product) -[DocumentedBy]-> Minecraft Mechanics (Concept)
+2024-08-25T19:45:28.695Z [INFO]: Relationship found: Minecraft (Product) -[CompatibleWith]-> Survival Tips (Concept)
+2024-08-25T19:45:28.695Z [INFO]: Relationship found: Video (MediaContent) -[UsedIn]-> Building Techniques (Concept)
+2024-08-25T19:45:28.695Z [INFO]: Relationship found: Video (MediaContent) -[UsedIn]-> Resource Gathering (Concept)
+2024-08-25T19:45:28.695Z [INFO]: Extracted 12 unique nodes and 13 relationships
+2024-08-25T19:45:48.130Z [INFO]: Starting relationship extraction process
+2024-08-25T19:45:48.130Z [INFO]: Processing pre-summarized content
+2024-08-25T19:45:48.130Z [INFO]: Processing chunk 1/1
+2024-08-25T19:45:48.133Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:45:50.719Z [WARN]: Invalid relationship format: [Person:Performer] -[:Co
+2024-08-25T19:45:50.720Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[DiscouragedBy]-> Injury (MedicalCondition)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[RevealedBy]-> New York Times (Publication)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Li Hongzhi (Person) -[InfluencedBy]-> Falun Gong (Concept)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Performer (Person) -[ParticipatedIn]-> Performance (Event)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Performance (Event) -[Conveys]-> Anti-Communist Message (Concept)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Dragon Springs (Location) -[UsedIn]-> Fei Tian Academy of the Arts (EducationalInstitution)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Fei Tian Academy of the Arts (EducationalInstitution) -[MaintainedBy]-> Shen Yun Performing Arts (Organization)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Performer (Person) -[DependentOn]-> Meditation Techniques (Concept)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[DoesNotProvide]-> Medical Access (Service)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Performer (Person) -[WorkedIn]-> Tour (Event)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Tour (Event) -[OccuredAt]-> Cuddebackville, N.Y. (Location)
+2024-08-25T19:45:50.720Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[Fosters]-> Fear (Concept)
+2024-08-25T19:45:50.720Z [INFO]: Extracted 15 unique nodes and 12 relationships
+2024-08-25T19:46:17.398Z [INFO]: Starting relationship extraction process
+2024-08-25T19:46:17.398Z [INFO]: Processing pre-summarized content
+2024-08-25T19:46:17.398Z [INFO]: Processing chunk 1/1
+2024-08-25T19:46:17.401Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:46:19.866Z [WARN]: Invalid relationship format: [Person:Performers] -[:DependentOn]->
+2024-08-25T19:46:19.866Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[CreatedBy]-> Li Hongzhi (Person)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[InfluencedBy]-> Falun Gong (Concept)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[DependentOn]-> Chinese Communist Party (GovernmentAgency)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[ParticipatedIn]-> New York Times Investigation (Event)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[MaintainedBy]-> Dragon Springs (Location)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Li Hongzhi (Person) -[SupportedBy]-> Shen Yun Performing Arts (Organization)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Li Hongzhi (Person) -[InfluencedBy]-> Religious Beliefs (Concept)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[DocumentedBy]-> New York Times (Publication)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Li Hongzhi (Person) -[CompatibleWith]-> Spiritual Protection (Concept)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[InvestedIn]-> Ticket Sales (Product)
+2024-08-25T19:46:19.867Z [INFO]: Relationship found: Shen Yun Performing Arts (Organization) -[CollaboratedWith]-> Performers (Person)
+2024-08-25T19:46:19.867Z [INFO]: Extracted 11 unique nodes and 11 relationships
+2024-08-25T19:47:08.150Z [INFO]: Starting relationship extraction process
+2024-08-25T19:47:08.150Z [INFO]: Processing pre-summarized content
+2024-08-25T19:47:08.150Z [INFO]: Processing chunk 1/1
+2024-08-25T19:47:08.153Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:47:10.715Z [WARN]: Invalid relationship format: [EducationalInstitution:Fei Tian Academy] -[:Provides]-> [Curriculum:Intensive Arts
+2024-08-25T19:47:10.715Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Levi Browde (Person) -[SoughtSuitableEducationalOptionsFor]-> Northern New Jersey (Location)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Levi Browde (Person) -[Found]-> Northern Academy (EducationalInstitution)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Northern Academy (EducationalInstitution) -[FocusedOn]-> Student Mental Health (Concept)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Northern Academy (EducationalInstitution) -[Emphasized]-> Academic Excellence (Concept)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Northern Academy (EducationalInstitution) -[Emphasized]-> Moral Integrity (Concept)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Northern Academy (EducationalInstitution) -[Provided]-> Academic Curriculum (Curriculum)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Northern Academy (EducationalInstitution) -[Provided]-> Arts Focus (ArtMovement)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Arts Focus (ArtMovement) -[Included]-> Classical Chinese Dance (Dance)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Levi Browde (Person) -[Supported]-> Jesse Browde (Person)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Levi Browde (Person) -[Supported]-> Lucas Browde (Person)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Jesse Browde (Person) -[GainedAdmissionTo]-> Fei Tian Academy (EducationalInstitution)
+2024-08-25T19:47:10.716Z [INFO]: Relationship found: Fei Tian Academy (EducationalInstitution) -[Combines]-> Traditional Chinese Culture (Concept)
+2024-08-25T19:47:10.717Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T19:47:43.174Z [INFO]: Starting relationship extraction process
+2024-08-25T19:47:43.174Z [INFO]: Processing pre-summarized content
+2024-08-25T19:47:43.174Z [INFO]: Processing chunk 1/1
+2024-08-25T19:47:43.178Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:47:48.191Z [INFO]: Successfully extracted 14 relationships from chunk
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Jake Paul (Person) -[SpottedAt]-> Massaro House (Location)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Jake Paul (Person) -[PostedOn]-> Instagram (MediaContent)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Jake Paul (Person) -[ConfirmedBy]-> Video (MediaContent)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[DesignedBy]-> Frank Lloyd Wright (Person)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[CompletedBy]-> Joseph Massaro (Person)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[IncludedIn]-> Helipad (Concept)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[IncludedIn]-> Dock (Concept)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[IncludedIn]-> Beach (Concept)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[AccessibleBy]-> Boat (Technology)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[AccessibleBy]-> Helicopter (Technology)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[ListedForSaleIn]-> 2021 (FundingRound)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Massaro House (Organization) -[AvailableFor]-> Short-term Rentals (Service)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Wright Over Water (Organization) -[CollaboratedWith]-> Wander (Startup)
+2024-08-25T19:47:48.193Z [INFO]: Relationship found: Betr (Startup) -[PartneredWith]-> Wander (Startup)
+2024-08-25T19:47:48.193Z [INFO]: Extracted 17 unique nodes and 14 relationships
+2024-08-25T19:48:03.568Z [INFO]: Starting relationship extraction process
+2024-08-25T19:48:03.568Z [INFO]: Processing pre-summarized content
+2024-08-25T19:48:03.568Z [INFO]: Processing chunk 1/1
+2024-08-25T19:48:03.571Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:48:05.925Z [INFO]: Successfully extracted 9 relationships from chunk
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[UsedIn]-> gpt-3.5-turbo (Technology)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[UsedIn]-> gpt-4o (Technology)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[SupportedBy]-> OpenAI API key (Product)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[UsedIn]-> llm chat (Product)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[MaintainedBy]-> llm models (Product)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[DocumentedBy]-> llm logs (Product)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: llm (Product) -[SupportedBy]-> completion models (Product)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: completion models (Product) -[CompatibleWith]-> gpt-3.5-turbo-instruct (Product)
+2024-08-25T19:48:05.926Z [INFO]: Relationship found: gpt-3.5-turbo-instruct (Product) -[DependentOn]-> prompt formats (Product)
+2024-08-25T19:48:05.926Z [INFO]: Extracted 10 unique nodes and 9 relationships
+2024-08-25T19:48:10.929Z [INFO]: Starting relationship extraction process
+2024-08-25T19:48:10.929Z [INFO]: Raw content split into 1 chunks
+2024-08-25T19:48:10.929Z [INFO]: Processing chunk 1/1
+2024-08-25T19:48:10.933Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:48:11.884Z [INFO]: Successfully extracted 3 relationships from chunk
+2024-08-25T19:48:11.885Z [INFO]: Relationship found: KY (Location) -[OccurredAt]-> prisoners hack state-issued computer tablets (Event)
+2024-08-25T19:48:11.885Z [INFO]: Relationship found: prisoners hack state-issued computer tablets (Event) -[CreatedBy]-> $1M (Product)
+2024-08-25T19:48:11.885Z [INFO]: Relationship found: $1M (Product) -[UsedIn]-> state-issued computer tablets (Technology)
+2024-08-25T19:48:11.885Z [INFO]: Extracted 4 unique nodes and 3 relationships
+2024-08-25T19:48:18.045Z [INFO]: Starting relationship extraction process
+2024-08-25T19:48:18.047Z [INFO]: Raw content split into 1 chunks
+2024-08-25T19:48:18.047Z [INFO]: Processing chunk 1/1
+2024-08-25T19:48:18.052Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:48:18.580Z [WARN]: Invalid relationship format: No relationships could be extracted from the provided text as it does not contain identifiable entities or relationships that fit the specified types and formats.
+2024-08-25T19:48:18.580Z [WARN]: No valid relationships found in response: No relationships could be extracted from the provided text as it does not contain identifiable entities or relationships that fit the specified types and formats.
+2024-08-25T19:48:18.580Z [INFO]: Retrying extraction (attempt 1/2)
+2024-08-25T19:48:20.581Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:48:21.111Z [WARN]: Invalid relationship format: No recognizable entities or relationships could be extracted from the provided text. Please provide a more detailed text for analysis.
+2024-08-25T19:48:21.111Z [WARN]: No valid relationships found in response: No recognizable entities or relationships could be extracted from the provided text. Please provide a more detailed text for analysis.
+2024-08-25T19:48:21.111Z [INFO]: Retrying extraction (attempt 2/2)
+2024-08-25T19:48:23.113Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:48:23.572Z [WARN]: Invalid relationship format: No identifiable entities or relationships could be extracted from the provided text.
+2024-08-25T19:48:23.572Z [WARN]: No valid relationships found in response: No identifiable entities or relationships could be extracted from the provided text.
+2024-08-25T19:48:23.572Z [ERROR]: Max retries reached. Unable to extract valid relationships.
+2024-08-25T19:48:23.572Z [INFO]: Extracted 0 unique nodes and 0 relationships
+2024-08-25T19:51:53.312Z [INFO]: Starting relationship extraction process
+2024-08-25T19:51:53.312Z [INFO]: Processing pre-summarized content
+2024-08-25T19:51:53.312Z [INFO]: Processing chunk 1/1
+2024-08-25T19:51:53.317Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:51:55.849Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T19:51:55.850Z [INFO]: Relationship found: Cruiser Jacket (Product) -[CreatedBy]-> Rogue Territory (Organization)
+2024-08-25T19:51:55.850Z [INFO]: Relationship found: Cruiser Jacket (Product) -[ManufacturedIn]-> Los Angeles, California (Location)
+2024-08-25T19:51:55.850Z [INFO]: Relationship found: Cruiser Jacket (Product) -[UsedIn]-> Care Instructions (Concept)
+2024-08-25T19:51:55.850Z [INFO]: Relationship found: Cruiser Jacket (Product) -[DependentOn]-> Indigo Sashiko Fabric (Technology)
+2024-08-25T19:51:55.851Z [INFO]: Relationship found: Cruiser Jacket (Product) -[CompatibleWith]-> Chain-Stitched Side Seams (Product)
+2024-08-25T19:51:55.851Z [INFO]: Relationship found: Cruiser Jacket (Product) -[CompatibleWith]-> Matte Black Crossed Feather Branded Buttons (Product)
+2024-08-25T19:51:55.851Z [INFO]: Relationship found: Cruiser Jacket (Product) -[CompatibleWith]-> Hand-Branded Leather Patch (Product)
+2024-08-25T19:51:55.851Z [INFO]: Relationship found: Cruiser Jacket (Product) -[ParticipatedIn]-> Pre-Order Window (Event)
+2024-08-25T19:51:55.851Z [INFO]: Relationship found: Pre-Order Window (Event) -[OccurredAt]-> September 1st (Location)
+2024-08-25T19:51:55.851Z [INFO]: Relationship found: Pre-Order Window (Event) -[OccurredAt]-> Early November (Location)
+2024-08-25T19:51:55.851Z [INFO]: Extracted 11 unique nodes and 10 relationships
+2024-08-25T19:52:26.633Z [INFO]: Starting relationship extraction process
+2024-08-25T19:52:26.633Z [INFO]: Processing pre-summarized content
+2024-08-25T19:52:26.633Z [INFO]: Processing chunk 1/1
+2024-08-25T19:52:26.636Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:52:28.939Z [WARN]: Invalid relationship format: [Product:KINTO CAST water jugs] -[:AvailableIn]->
+2024-08-25T19:52:28.940Z [INFO]: Successfully extracted 14 relationships from chunk
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: KINTO USA, Inc. (Organization) -[OfferedBy]-> Trail Tumblers (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: KINTO USA, Inc. (Organization) -[OfferedBy]-> Water Bottles (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: KINTO USA, Inc. (Organization) -[OfferedBy]-> Travel Tumblers (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: KINTO USA, Inc. (Organization) -[OfferedBy]-> Slow Coffee Style Collection (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Features]-> beer glasses (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Features]-> iced tea glasses (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Features]-> water glasses (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Includes]-> green tea glass (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Includes]-> cafe latte mug (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Includes]-> milk mug (Product)
+2024-08-25T19:52:28.941Z [INFO]: Relationship found: CAST (Product) -[Includes]-> coffee cup (Product)
+2024-08-25T19:52:28.942Z [INFO]: Relationship found: CAST (Product) -[Includes]-> espresso cups (Product)
+2024-08-25T19:52:28.942Z [INFO]: Relationship found: CAST (Product) -[Includes]-> bowl (Product)
+2024-08-25T19:52:28.942Z [INFO]: Relationship found: CAST (Product) -[Includes]-> coasters (Product)
+2024-08-25T19:52:28.942Z [INFO]: Extracted 16 unique nodes and 14 relationships
+2024-08-25T19:53:06.294Z [INFO]: Starting relationship extraction process
+2024-08-25T19:53:06.294Z [INFO]: Processing pre-summarized content
+2024-08-25T19:53:06.294Z [INFO]: Processing chunk 1/1
+2024-08-25T19:53:06.297Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:53:09.076Z [WARN]: Invalid relationship format: [Product:Leather Case] -[:SupportedBy]->
+2024-08-25T19:53:09.076Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:53:09.078Z [INFO]: Relationship found: CODE 118 Wallet (Product) -[SupportedBy]-> code-wallets.com (Website)
+2024-08-25T19:53:09.078Z [INFO]: Relationship found: CODE 118 Wallet MagSafe (Product) -[SupportedBy]-> code-wallets.com (Website)
+2024-08-25T19:53:09.078Z [INFO]: Relationship found: CODE 118 Wallet Titanium (Product) -[SupportedBy]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Classic Wallet (Product) -[SupportedBy]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Wallets (Product) -[UsedIn]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Wallet Add-Ons (Product) -[UsedIn]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Wallet Kits & Bundles (Product) -[UsedIn]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: iPhone Cases (Product) -[UsedIn]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: EDC Gear (Product) -[UsedIn]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Gift Cards (Product) -[UsedIn]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Tracker Card (Product) -[SupportedBy]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Relationship found: Modular Backplate (Product) -[SupportedBy]-> code-wallets.com (Website)
+2024-08-25T19:53:09.079Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T19:53:18.539Z [INFO]: Starting relationship extraction process
+2024-08-25T19:53:18.539Z [INFO]: Processing pre-summarized content
+2024-08-25T19:53:18.539Z [INFO]: Processing chunk 1/1
+2024-08-25T19:53:18.543Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:53:19.342Z [INFO]: Successfully extracted 3 relationships from chunk
+2024-08-25T19:53:19.348Z [INFO]: Relationship found: Autodesk Fusion 360 (Product) -[UsedIn]-> Access Denied (Error)
+2024-08-25T19:53:19.349Z [INFO]: Relationship found: Autodesk Fusion 360 (Product) -[DocumentedBy]-> Autodesk Fusion 360 overview (MediaContent)
+2024-08-25T19:53:19.349Z [INFO]: Relationship found: Access Denied (Error) -[SupportedBy]-> Additional error information (MediaContent)
+2024-08-25T19:53:19.349Z [INFO]: Extracted 4 unique nodes and 3 relationships
+2024-08-25T19:53:37.615Z [INFO]: Starting relationship extraction process
+2024-08-25T19:53:37.615Z [INFO]: Processing pre-summarized content
+2024-08-25T19:53:37.615Z [INFO]: Processing chunk 1/1
+2024-08-25T19:53:37.618Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:53:39.760Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[CreatedBy]-> Tim Huckaby (Person)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[UsedIn]-> Blender (Technology)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[UsedIn]-> Excel (Software)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[DependentOn]-> Blender API (Technology)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[DocumentedBy]-> GitHub Repository (Publication)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[MaintainedBy]-> Tim Huckaby (Person)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[SupportedBy]-> GPL-3.0 (Standard)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: Blender-Cut-List (Product) -[GeneratedBy]-> cut-list.csv (Product)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: cut-list.csv (Product) -[UsedIn]-> Excel (Software)
+2024-08-25T19:53:39.762Z [INFO]: Relationship found: cut-list.csv (Product) -[OccuredAt]-> My Documents (Location)
+2024-08-25T19:53:39.762Z [INFO]: Extracted 9 unique nodes and 10 relationships
+2024-08-25T19:57:06.580Z [INFO]: Starting relationship extraction process
+2024-08-25T19:57:06.580Z [INFO]: Processing pre-summarized content
+2024-08-25T19:57:06.580Z [INFO]: Processing chunk 1/1
+2024-08-25T19:57:06.584Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:57:09.939Z [WARN]: Invalid relationship format: [Project:Tornavís] -[:ParticipatedIn]-> [
+2024-08-25T19:57:09.940Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:57:09.941Z [INFO]: Relationship found: Tornavís (Project) -[CreatedBy]-> Blender (Technology)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[DependentOn]-> http://mechanicalblender.org (Website)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[SupportedBy]-> Patreon (Platform)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[SupportedBy]-> Paypal (Platform)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[InvestedIn]-> Blender Development Fund (Organization)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[CollaboratedWith]-> Python (Technology)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[UsedIn]-> Blender (Software)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[DocumentedBy]-> Operator Repeat (Concept)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[DocumentedBy]-> Allow No Modal Transform (Concept)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[DocumentedBy]-> Operator Handlers (Concept)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[ParticipatedIn]-> Code Contributions (Event)
+2024-08-25T19:57:09.942Z [INFO]: Relationship found: Tornavís (Project) -[ParticipatedIn]-> Proposals (Event)
+2024-08-25T19:57:09.942Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T19:57:24.769Z [INFO]: Starting relationship extraction process
+2024-08-25T19:57:24.769Z [INFO]: Processing pre-summarized content
+2024-08-25T19:57:24.769Z [INFO]: Processing chunk 1/1
+2024-08-25T19:57:24.772Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:57:27.707Z [WARN]: Invalid relationship format: [MediaContent:YouTube video
+2024-08-25T19:57:27.707Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:57:27.708Z [INFO]: Relationship found: YouTube video (MediaContent) -[UsedIn]-> FreeCAD (Software)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: FreeCAD (Software) -[CreatedBy]-> Open-source Community (Organization)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[DocumentedBy]-> FreeCAD (Software)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[SupportedBy]-> Woodworking Projects (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[InfluencedBy]-> Woodworking Projects (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[ParticipatedIn]-> Woodworking Tutorial (Event)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: FreeCAD (Software) -[CompatibleWith]-> Woodworking Projects (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[DocumentedBy]-> Step-by-step Instructions (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[UsedIn]-> Design Skills (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[SupportedBy]-> Proper Planning (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[InfluencedBy]-> Customization (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Relationship found: YouTube video (MediaContent) -[DocumentedBy]-> Sketching Tools (Concept)
+2024-08-25T19:57:27.709Z [INFO]: Extracted 10 unique nodes and 12 relationships
+2024-08-25T19:57:43.734Z [INFO]: Starting relationship extraction process
+2024-08-25T19:57:43.734Z [INFO]: Processing pre-summarized content
+2024-08-25T19:57:43.734Z [INFO]: Processing chunk 1/1
+2024-08-25T19:57:43.738Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:57:46.504Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: PyClone (Product) -[CreatedBy]-> Blender 2.93 (Software)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: PyClone (Product) -[ReleasedOn]-> September 27, 2021 (Event)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: PyClone (Product) -[IntegratedInto]-> Home Builder (Product)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: Home Builder Beta (Product) -[UsedIn]-> Blender (Product)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: Extended Asset Library (Product) -[SupportedBy]-> Home Builder Library (Product)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: Home Builder Library (Product) -[Facilitates]-> interior architectural scenes (Concept)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: ToyBox Library (Product) -[Organizes]-> Blender's Object, Collection, Material, and World Assets (Product)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: Extended Asset Library (Product) -[UsedIn]-> Patreon (Platform)
+2024-08-25T19:57:46.506Z [INFO]: Relationship found: Blender (Product) -[DocumentedBy]-> Installation instructions and training articles (MediaContent)
+2024-08-25T19:57:46.508Z [INFO]: Relationship found: Home Builder (Product) -[MaintainedBy]-> Extended Asset Library (Product)
+2024-08-25T19:57:46.508Z [INFO]: Extracted 13 unique nodes and 10 relationships
+2024-08-25T19:58:02.250Z [INFO]: Starting relationship extraction process
+2024-08-25T19:58:02.250Z [INFO]: Processing pre-summarized content
+2024-08-25T19:58:02.250Z [INFO]: Processing chunk 1/1
+2024-08-25T19:58:02.255Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:58:05.830Z [WARN]: Invalid relationship format: [Product:blender-woodworking] -
+2024-08-25T19:58:05.831Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[CreatedBy]-> GitHub (Platform)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[UsedIn]-> Blender (Technology)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[CompatibleWith]-> GPL-2.0 (Standard)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[DocumentedBy]-> User Preferences (MediaContent)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[ImplementedBy]-> 3D view area (Technology)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[UsedIn]-> woodworking (Concept)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[SupportedBy]-> French (Language)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[InfluencedBy]-> unit settings (Concept)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[UsedIn]-> workpieces (Concept)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[UsedIn]-> tenons (Concept)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[UsedIn]-> mortises (Concept)
+2024-08-25T19:58:05.831Z [INFO]: Relationship found: blender-woodworking (Product) -[UsedIn]-> dimensions (Concept)
+2024-08-25T19:58:05.831Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T19:59:14.226Z [INFO]: Starting relationship extraction process
+2024-08-25T19:59:14.226Z [INFO]: Processing pre-summarized content
+2024-08-25T19:59:14.226Z [INFO]: Processing chunk 1/1
+2024-08-25T19:59:14.229Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:59:16.590Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-25T19:59:16.591Z [INFO]: Relationship found: Canoo (Organization) -[CreatedBy]-> Lifestyle Vehicle (Product)
+2024-08-25T19:59:16.591Z [INFO]: Relationship found: Canoo (Organization) -[UsedIn]-> Proprietary platform (Technology)
+2024-08-25T19:59:16.591Z [INFO]: Relationship found: Canoo (Organization) -[ImplementedBy]-> Sustainability (Concept)
+2024-08-25T19:59:16.591Z [INFO]: Relationship found: Canoo (Organization) -[UsedIn]-> Skateboard architecture (Technology)
+2024-08-25T19:59:16.591Z [INFO]: Relationship found: Canoo (Organization) -[SupportedBy]-> Subscription-based ownership models (Concept)
+2024-08-25T19:59:16.591Z [INFO]: Relationship found: Canoo (Organization) -[CollaboratedWith]-> Various organizations (Organization)
+2024-08-25T19:59:16.592Z [INFO]: Relationship found: Canoo (Organization) -[PlannedToLaunch]-> Multi-purpose delivery vehicle (MPDV) (Product)
+2024-08-25T19:59:16.592Z [INFO]: Relationship found: Canoo (Organization) -[DocumentedBy]-> Website (MediaContent)
+2024-08-25T19:59:16.592Z [INFO]: Extracted 9 unique nodes and 8 relationships
+2024-08-25T19:59:27.910Z [INFO]: Starting relationship extraction process
+2024-08-25T19:59:27.910Z [INFO]: Processing pre-summarized content
+2024-08-25T19:59:27.910Z [INFO]: Processing chunk 1/1
+2024-08-25T19:59:27.913Z [INFO]: Using openai service for relationship extraction
+2024-08-25T19:59:30.507Z [WARN]: Invalid relationship format: [Platform:PICO-8] -[:ImplementedBy
+2024-08-25T19:59:30.508Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T19:59:30.508Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[CreatedBy]-> PICO-8 (Platform)
+2024-08-25T19:59:30.508Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[UsedIn]-> programming (Concept)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[UsedIn]-> game development (Concept)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[DependentOn]-> Lua (Technology)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[SupportedBy]-> educators (Person)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[CompatibleWith]-> creativity (Concept)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[CompatibleWith]-> learning (Concept)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[ParticipatedIn]-> STEAM education (Concept)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 Education Edition (Platform) -[DocumentedBy]-> https://www.pico-8-edu (Website)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 (Platform) -[UsedIn]-> small games (Concept)
+2024-08-25T19:59:30.509Z [INFO]: Relationship found: PICO-8 (Platform) -[UsedIn]-> interactive experiences (Concept)
+2024-08-25T19:59:30.510Z [INFO]: Relationship found: PICO-8 (Platform) -[MaintainedBy]-> PICO-8 community (Community)
+2024-08-25T19:59:30.510Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T20:01:31.710Z [INFO]: Starting relationship extraction process
+2024-08-25T20:01:31.710Z [INFO]: Processing pre-summarized content
+2024-08-25T20:01:31.710Z [INFO]: Processing chunk 1/1
+2024-08-25T20:01:31.714Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:01:36.359Z [WARN]: Invalid relationship format: [Webpage:Moontower website] -[:DocumentedBy]-> [Webpage:Design
+2024-08-25T20:01:36.360Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: Design Your Own Engine (Webpage) -[UsedIn]-> engine metaphor (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: Author (Person) -[InfluencedBy]-> 21-year trading career (CareerTransition)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: True North (Concept) -[DocumentedBy]-> Design Your Own Engine (Webpage)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: engine metaphor (Concept) -[ConsistsOf]-> Intake (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: engine metaphor (Concept) -[ConsistsOf]-> Compression (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: engine metaphor (Concept) -[ConsistsOf]-> Combustion (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: engine metaphor (Concept) -[ConsistsOf]-> Exhaust (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: turbocharger (Device) -[Symbolizes]-> efficiency (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: sustainability (Concept) -[SupportedBy]-> creation of value (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: Readers (Person) -[EncouragedTo]-> identify tools and capabilities (Concept)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: importance of community (Concept) -[Promotes]-> individuals (Person)
+2024-08-25T20:01:36.362Z [INFO]: Relationship found: personal projects (Concept) -[RecommendedToBe]-> experiments (Concept)
+2024-08-25T20:01:36.363Z [INFO]: Extracted 19 unique nodes and 12 relationships
+2024-08-25T20:01:50.268Z [INFO]: Starting relationship extraction process
+2024-08-25T20:01:50.269Z [INFO]: Processing pre-summarized content
+2024-08-25T20:01:50.269Z [INFO]: Processing chunk 1/1
+2024-08-25T20:01:50.272Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:01:53.544Z [WARN]: Invalid relationship format: [Product:JHK Forecasts database] -[:ParticipatedIn]-> [Event:overall race
+2024-08-25T20:01:53.544Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[UsedIn]-> historical election forecasts (Concept)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[OrganizedBy]-> Brier score (Standard)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[AnalyzedBy]-> Users (Person)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: Users (Person) -[Examined]-> JHK Forecasts database (Product)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[IncludedIn]-> elections (Event)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[DocumentedBy]-> forecast histories (MediaContent)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[SupportedBy]-> electoral votes (Technology)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[ProvidesAccessTo]-> https://projects.jhkforecasts.com/forecast-history/index.html (Location)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[TestedBy]-> forecasting accuracy (Concept)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[CompatibleWith]-> election performance (Concept)
+2024-08-25T20:01:53.546Z [INFO]: Relationship found: JHK Forecasts database (Product) -[MaintainedBy]-> Users (Person)
+2024-08-25T20:01:53.547Z [INFO]: Extracted 10 unique nodes and 11 relationships
+2024-08-25T20:02:03.888Z [INFO]: Starting relationship extraction process
+2024-08-25T20:02:03.888Z [INFO]: Processing pre-summarized content
+2024-08-25T20:02:03.888Z [INFO]: Processing chunk 1/1
+2024-08-25T20:02:03.891Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:02:05.375Z [INFO]: Successfully extracted 7 relationships from chunk
+2024-08-25T20:02:05.376Z [INFO]: Relationship found: FundRazr (Platform) -[SupportedBy]-> Alex Stokes (Person)
+2024-08-25T20:02:05.377Z [INFO]: Relationship found: FundRazr (Platform) -[UsedIn]-> Fundraising Campaign (Event)
+2024-08-25T20:02:05.377Z [INFO]: Relationship found: Fundraising Campaign (Event) -[ParticipatedIn]-> Alex Stokes (Person)
+2024-08-25T20:02:05.377Z [INFO]: Relationship found: HTTP Status Code #403 Forbidden (Technology) -[DocumentedBy]-> FundRazr (Platform)
+2024-08-25T20:02:05.377Z [INFO]: Relationship found: FundRazr (Platform) -[MaintainedBy]-> Website Administrator (Organization)
+2024-08-25T20:02:05.377Z [INFO]: Relationship found: User (Person) -[DependentOn]-> Internet Connection (Technology)
+2024-08-25T20:02:05.377Z [INFO]: Relationship found: User (Person) -[UsedIn]-> FundRazr (Platform)
+2024-08-25T20:02:05.377Z [INFO]: Extracted 7 unique nodes and 7 relationships
+2024-08-25T20:02:21.879Z [INFO]: Starting relationship extraction process
+2024-08-25T20:02:21.879Z [INFO]: Processing pre-summarized content
+2024-08-25T20:02:21.879Z [INFO]: Processing chunk 1/1
+2024-08-25T20:02:21.881Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:02:25.065Z [WARN]: Invalid relationship format: [Concept:political dissent] -[:CompatibleWith]->
+2024-08-25T20:02:25.066Z [INFO]: Successfully extracted 9 relationships from chunk
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: Alex Stokes (Person) -[ParticipatedIn]-> January 6th Capitol riot (Event)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: Alex Stokes (Person) -[Received]-> 20-year prison sentence (Punishment)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: January 6th Capitol riot (Event) -[DocumentedBy]-> YouTube video titled "Free Alex Stokes - Antifascist gets 20 years for January 6th actions!" (MediaContent)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: YouTube video titled "Free Alex Stokes - Antifascist gets 20 years for January 6th actions!" (MediaContent) -[PublishedBy]-> YouTube (Organization)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: Alex Stokes (Person) -[SupportedBy]-> activist groups (NonProfitOrganization)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: activist groups (NonProfitOrganization) -[CollaboratedWith]-> political dissent (Concept)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: January 6th Capitol riot (Event) -[OccurredAt]-> Capitol (Location)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: January 6th Capitol riot (Event) -[InfluencedBy]-> political tensions (Concept)
+2024-08-25T20:02:25.066Z [INFO]: Relationship found: Alex Stokes (Person) -[DependentOn]-> civil liberties (Concept)
+2024-08-25T20:02:25.066Z [INFO]: Extracted 10 unique nodes and 9 relationships
+2024-08-25T20:02:54.539Z [INFO]: Starting relationship extraction process
+2024-08-25T20:02:54.539Z [INFO]: Processing pre-summarized content
+2024-08-25T20:02:54.539Z [INFO]: Processing chunk 1/1
+2024-08-25T20:02:54.542Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:02:56.720Z [WARN]: Invalid relationship format: [Concept:trust and transparency issues] -[:Influenced
+2024-08-25T20:02:56.720Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[CollaboratedWith]-> Adobe (Organization)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[CollaboratedWith]-> The New York Times (Organization)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[SupportedBy]-> industry leaders (Organization)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[Promotes]-> content attribution (Standard)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[Utilizes]-> blockchain technology (Technology)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[Addresses]-> trust and transparency issues (Concept)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[Empowers]-> creators (Person)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[DocumentedBy]-> official website (MediaContent)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: Content Authenticity Initiative (Organization) -[Encourages]-> developers (Developer)
+2024-08-25T20:02:56.720Z [INFO]: Relationship found: content attribution (Standard) -[ImplementedBy]-> applications (Software)
+2024-08-25T20:02:56.721Z [INFO]: Relationship found: blockchain technology (Technology) -[UsedIn]-> tamper-proof records (Service)
+2024-08-25T20:02:56.721Z [INFO]: Relationship found: trust and transparency issues (Concept) -[InfluencedBy]-> deepfakes (Product)
+2024-08-25T20:02:56.721Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T20:03:08.514Z [INFO]: Starting relationship extraction process
+2024-08-25T20:03:08.514Z [INFO]: Processing pre-summarized content
+2024-08-25T20:03:08.514Z [INFO]: Processing chunk 1/1
+2024-08-25T20:03:08.518Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:03:10.147Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[UsedIn]-> Moment.js (Product)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[CompatibleWith]-> Moment.js (Product)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[DocumentedBy]-> Official website (Publication)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[SupportedBy]-> Modern API (Concept)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[ImplementedBy]-> JavaScript (Technology)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[TestedBy]-> Modern browsers (Location)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[DependentOn]-> Immutability (Concept)
+2024-08-25T20:03:10.148Z [INFO]: Relationship found: Day.js (Product) -[UsedIn]-> Internationalization (I18n) (Concept)
+2024-08-25T20:03:10.149Z [INFO]: Extracted 8 unique nodes and 8 relationships
+2024-08-25T20:03:38.824Z [INFO]: Starting relationship extraction process
+2024-08-25T20:03:38.824Z [INFO]: Processing pre-summarized content
+2024-08-25T20:03:38.824Z [INFO]: Processing chunk 1/1
+2024-08-25T20:03:38.828Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:03:41.075Z [WARN]: Invalid relationship format: [Person:Juan Tamariz] -[:CompatibleWith]-> [Technology
+2024-08-25T20:03:41.075Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T20:03:41.075Z [INFO]: Relationship found: Juan Tamariz (Person) -[InfluencedBy]-> David Blaine (Person)
+2024-08-25T20:03:41.075Z [INFO]: Relationship found: Juan Tamariz (Person) -[CreatedBy]-> Escuela Mágica de Madrid (Event)
+2024-08-25T20:03:41.075Z [INFO]: Relationship found: Juan Tamariz (Person) -[ParticipatedIn]-> Tiempo de Magia (MediaContent)
+2024-08-25T20:03:41.075Z [INFO]: Relationship found: Juan Tamariz (Person) -[Pioneered]-> Close-up Magic (Concept)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[SupportedBy]-> Mircea Eliade (Person)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[DocumentedBy]-> Guiding Manifesto (Publication)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[UsedIn]-> El Cochecito (Product)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[MaintainedBy]-> Cultural Icon in Spain (Organization)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[InfluencedBy]-> Penn & Teller’s "Fool Us" (Event)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[CollaboratedWith]-> Spanish Magic Community (Organization)
+2024-08-25T20:03:41.076Z [INFO]: Relationship found: Juan Tamariz (Person) -[TestedBy]-> Audience Engagement (Concept)
+2024-08-25T20:03:41.076Z [INFO]: Extracted 12 unique nodes and 11 relationships
+2024-08-25T20:03:51.812Z [INFO]: Starting relationship extraction process
+2024-08-25T20:03:51.812Z [INFO]: Processing pre-summarized content
+2024-08-25T20:03:51.812Z [INFO]: Processing chunk 1/1
+2024-08-25T20:03:51.814Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:03:53.983Z [INFO]: Successfully extracted 9 relationships from chunk
+2024-08-25T20:03:53.983Z [INFO]: Relationship found: Vivus (Product) -[CreatedBy]-> maxwellito (Organization)
+2024-08-25T20:03:53.983Z [INFO]: Relationship found: Vivus (Product) -[DependentOn]-> JavaScript (Technology)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[CompatibleWith]-> SVG (Concept)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[UsedIn]-> Animation (Event)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[DocumentedBy]-> GitHub page (Publication)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[SupportedBy]-> DOM (Technology)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[ImplementedBy]-> Delayed (AnimationType)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[ImplementedBy]-> Sync (AnimationType)
+2024-08-25T20:03:53.984Z [INFO]: Relationship found: Vivus (Product) -[ImplementedBy]-> OneByOne (AnimationType)
+2024-08-25T20:03:53.984Z [INFO]: Extracted 10 unique nodes and 9 relationships
+2024-08-25T20:04:13.104Z [INFO]: Starting relationship extraction process
+2024-08-25T20:04:13.104Z [INFO]: Processing pre-summarized content
+2024-08-25T20:04:13.104Z [INFO]: Processing chunk 1/1
+2024-08-25T20:04:13.108Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:04:15.054Z [WARN]: Invalid relationship format: [
+2024-08-25T20:04:15.054Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[SupportedBy]-> Stampty (Organization)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[UsedIn]-> clay (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[UsedIn]-> soap (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[UsedIn]-> dough (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[CompatibleWith]-> flat clay surfaces (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[CompatibleWith]-> polymer clay (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[CompatibleWith]-> raw ceramics (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[ImplementedBy]-> laser-cutting (Technology)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[DocumentedBy]-> digital proof (MediaContent)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Stampty (Organization) -[LocatedAt]-> 71-75 Shelton Street, Covent Garden, London (Location)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[DependentOn]-> recycled clear acrylic (Material)
+2024-08-25T20:04:15.056Z [INFO]: Relationship found: Custom Pottery Stamp (Product) -[DependentOn]-> reclaimed wood (Material)
+2024-08-25T20:04:15.056Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T20:04:42.823Z [INFO]: Starting relationship extraction process
+2024-08-25T20:04:42.823Z [INFO]: Processing pre-summarized content
+2024-08-25T20:04:42.823Z [INFO]: Processing chunk 1/1
+2024-08-25T20:04:42.826Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:04:44.905Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T20:04:44.907Z [INFO]: Relationship found: Dodu Bed (Product) -[AvailableOn]-> Blu Dot (Organization)
+2024-08-25T20:04:44.907Z [INFO]: Relationship found: Dodu Bed (Product) -[Features]-> Woven Felt Slipcover (Material)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[ConstructedFrom]-> Padded Solid Hardwood (Material)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[CompatibleWith]-> Barto Fabrics (Fabric)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[CompatibleWith]-> Vesper Felts (Fabric)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[Requires]-> Assembly (Service)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[ShippedBy]-> Freight (Service)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[SupportedBy]-> 5-Year Warranty (Standard)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Dodu Bed (Product) -[PromotedBy]-> Blu Dot (Organization)
+2024-08-25T20:04:44.908Z [INFO]: Relationship found: Blu Dot (Organization) -[Supports]-> Sustainability (Concept)
+2024-08-25T20:04:44.908Z [INFO]: Extracted 10 unique nodes and 10 relationships
+2024-08-25T20:04:58.466Z [INFO]: Starting relationship extraction process
+2024-08-25T20:04:58.466Z [INFO]: Processing pre-summarized content
+2024-08-25T20:04:58.466Z [INFO]: Processing chunk 1/1
+2024-08-25T20:04:58.469Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:05:01.903Z [WARN]: Invalid relationship format: [Concept:large language
+2024-08-25T20:05:01.904Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT Takes the Bar Exam (Publication) -[CreatedBy]-> Michael Bommarito II (Person)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT Takes the Bar Exam (Publication) -[CreatedBy]-> Daniel Martin Katz (Person)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT Takes the Bar Exam (Publication) -[PublishedBy]-> arXiv (Platform)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: text-davinci-003 (Product) -[UsedIn]-> GPT Takes the Bar Exam (Publication)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: text-davinci-003 (Product) -[DependentOn]-> GPT-3.5 (Technology)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT-3.5 (Technology) -[TestedBy]-> Bar Exam (Event)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: Bar Exam (Event) -[DocumentedBy]-> GPT Takes the Bar Exam (Publication)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT-3.5 (Technology) -[SupportedBy]-> hyperparameter optimization (Concept)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT-3.5 (Technology) -[SupportedBy]-> prompt engineering (Concept)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT-3.5 (Technology) -[InfluencedBy]-> zero-shot capabilities (Concept)
+2024-08-25T20:05:01.906Z [INFO]: Relationship found: GPT-3.5 (Technology) -[UsedIn]-> NCBE MBE practice exam (Event)
+2024-08-25T20:05:01.906Z [INFO]: Extracted 11 unique nodes and 11 relationships
+2024-08-25T20:05:11.842Z [INFO]: Starting relationship extraction process
+2024-08-25T20:05:11.842Z [INFO]: Processing pre-summarized content
+2024-08-25T20:05:11.842Z [INFO]: Processing chunk 1/1
+2024-08-25T20:05:11.846Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:05:13.044Z [INFO]: Successfully extracted 6 relationships from chunk
+2024-08-25T20:05:13.046Z [INFO]: Relationship found: Mermaid (Product) -[UsedIn]-> JavaScript (Technology)
+2024-08-25T20:05:13.046Z [INFO]: Relationship found: Mermaid (Product) -[DocumentedBy]-> official website (MediaContent)
+2024-08-25T20:05:13.046Z [INFO]: Relationship found: Mermaid (Product) -[UsedIn]-> Mermaid Live Editor (Product)
+2024-08-25T20:05:13.046Z [INFO]: Relationship found: Mermaid (Product) -[SupportedBy]-> Mermaid Chart (Organization)
+2024-08-25T20:05:13.046Z [INFO]: Relationship found: Mermaid (Product) -[InfluencedBy]-> JavaScript Open Source Award (Award)
+2024-08-25T20:05:13.046Z [INFO]: Relationship found: JavaScript Open Source Award (Award) -[OccuredAt]-> 2019 (Event)
+2024-08-25T20:05:13.046Z [INFO]: Extracted 7 unique nodes and 6 relationships
+2024-08-25T20:05:18.140Z [INFO]: Starting relationship extraction process
+2024-08-25T20:05:18.140Z [INFO]: Raw content split into 1 chunks
+2024-08-25T20:05:18.140Z [INFO]: Processing chunk 1/1
+2024-08-25T20:05:18.144Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:05:18.592Z [INFO]: Successfully extracted 1 relationships from chunk
+2024-08-25T20:05:18.594Z [INFO]: Relationship found: RSS feed (Technology) -[UsedIn]-> Nuxt Content site (Product)
+2024-08-25T20:05:18.594Z [INFO]: Extracted 2 unique nodes and 1 relationships
+2024-08-25T20:05:52.546Z [INFO]: Starting relationship extraction process
+2024-08-25T20:05:52.547Z [INFO]: Processing pre-summarized content
+2024-08-25T20:05:52.547Z [INFO]: Processing chunk 1/1
+2024-08-25T20:05:52.550Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:05:54.428Z [INFO]: Successfully extracted 7 relationships from chunk
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[UsedIn]-> hum3d.com (Platform)
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[CompatibleWith]-> Solid/CAD/NURBS software (Software)
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[DocumentedBy]-> Royalty Free License (License)
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[SupportedBy]-> low poly optimization (Service)
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[SupportedBy]-> UV-mapping (Service)
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[SupportedBy]-> Unity/Unreal asset packages (Service)
+2024-08-25T20:05:54.428Z [INFO]: Relationship found: Kawasaki Versys-X 300 2017 3D model (Product) -[MaintainedBy]-> V-Ray (Software)
+2024-08-25T20:05:54.429Z [INFO]: Extracted 8 unique nodes and 7 relationships
+2024-08-25T20:06:13.885Z [INFO]: Starting relationship extraction process
+2024-08-25T20:06:13.885Z [INFO]: Processing pre-summarized content
+2024-08-25T20:06:13.885Z [INFO]: Processing chunk 1/1
+2024-08-25T20:06:13.888Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:06:16.239Z [WARN]: Invalid relationship format: [Person:South
+2024-08-25T20:06:16.240Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Williamsville, NY (Location) -[DependentOn]-> Snowstorm (Event)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Campagna family (Person) -[SupportedBy]-> Williamsville, NY (Location)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Campagna family (Person) -[CollaboratedWith]-> South Korean tour group (Person)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: South Korean tour group (Person) -[ParticipatedIn]-> Tour (Event)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Yellow Balloon (Organization) -[OrganizedBy]-> Tour (Event)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: South Korean tour group (Person) -[UsedIn]-> Niagara Falls (Location)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: South Korean tour group (Person) -[UsedIn]-> New York City (Location)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: South Korean tour group (Person) -[UsedIn]-> Washington, D.C. (Location)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Campagna family (Person) -[ProvidedBy]-> Meals (Product)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Meals (Product) -[Included]-> jeyuk bokkeum (Food)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: Meals (Product) -[Included]-> dakdori tang (Food)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: South Korean tour group (Person) -[InfluencedBy]-> Campagna family (Person)
+2024-08-25T20:06:16.241Z [INFO]: Relationship found: South Korean tour group (Person) -[PlannedToReturn]-> New York City (Location)
+2024-08-25T20:06:16.242Z [INFO]: Extracted 12 unique nodes and 13 relationships
+2024-08-25T20:06:32.159Z [INFO]: Starting relationship extraction process
+2024-08-25T20:06:32.159Z [INFO]: Processing pre-summarized content
+2024-08-25T20:06:32.159Z [INFO]: Processing chunk 1/1
+2024-08-25T20:06:32.163Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:06:38.975Z [WARN]: Invalid relationship format: [MediaContent:YouTube video "Proportion Drawing -
+2024-08-25T20:06:38.975Z [INFO]: Successfully extracted 7 relationships from chunk
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[DocumentedBy]-> techniques for achieving accurate proportions in drawing (Concept)
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[UsedIn]-> grids (Concept)
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[UsedIn]-> sighting (Concept)
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[UsedIn]-> measuring with a pencil (Concept)
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[InfluencedBy]-> understanding the relationship between different parts of the subject (Concept)
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[UsedIn]-> breaking down complex shapes into simpler forms (Concept)
+2024-08-25T20:06:38.977Z [INFO]: Relationship found: YouTube video "Proportion Drawing - How to Draw Accurately" (MediaContent) -[AimedAt]-> artists of all skill levels (Person)
+2024-08-25T20:06:38.978Z [INFO]: Extracted 8 unique nodes and 7 relationships
+2024-08-25T20:06:55.875Z [INFO]: Starting relationship extraction process
+2024-08-25T20:06:55.875Z [INFO]: Processing pre-summarized content
+2024-08-25T20:06:55.875Z [INFO]: Processing chunk 1/1
+2024-08-25T20:06:55.879Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:06:57.615Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: After Effects plugins (Product) -[UsedIn]-> 2022 (Event)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Red Giant Universe (Product) -[SupportedBy]-> effects and transitions (Technology)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Element 3D (Product) -[CreatedBy]-> Video Copilot (Organization)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Particular (Product) -[CreatedBy]-> Red Giant (Organization)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Sapphire (Product) -[CreatedBy]-> Boris FX (Organization)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Optical Flares (Product) -[CreatedBy]-> Video Copilot (Organization)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Twixtor (Product) -[UsedIn]-> slow-motion effects (Technology)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Mocha AE (Product) -[UsedIn]-> planar tracking and masking tools (Technology)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: Animation Composer (Product) -[UsedIn]-> animations and motion graphics (Technology)
+2024-08-25T20:06:57.616Z [INFO]: Relationship found: video (MediaContent) -[DocumentedBy]-> YouTube (Platform)
+2024-08-25T20:06:57.616Z [INFO]: Extracted 19 unique nodes and 10 relationships
+2024-08-25T20:07:22.409Z [INFO]: Starting relationship extraction process
+2024-08-25T20:07:22.409Z [INFO]: Processing pre-summarized content
+2024-08-25T20:07:22.409Z [INFO]: Processing chunk 1/1
+2024-08-25T20:07:22.413Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:07:24.030Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T20:07:24.031Z [INFO]: Relationship found: Roadbook navigation (Concept) -[UsedIn]-> roadbook (Product)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: roadbook (Product) -[CreatedBy]-> Rally organizers (Organization)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: GPS (Technology) -[DependentOn]-> real-time location updates (Concept)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: roadbook (Product) -[CompatibleWith]-> 3pMaster (Product)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: roadbook (Product) -[CompatibleWith]-> Trip Master (Product)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: Ride Expeditions (Startup) -[PublishedBy]-> roadbook navigation guide (MediaContent)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: roadbook (Product) -[MaintainedBy]-> Rally organizers (Organization)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: rally (Event) -[ParticipatedIn]-> roadbook (Product)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: manual roadbook reader (Product) -[ImplementedBy]-> rollers (Device)
+2024-08-25T20:07:24.032Z [INFO]: Relationship found: electric reader (Product) -[SimplifiedBy]-> roadbook (Product)
+2024-08-25T20:07:24.032Z [INFO]: Extracted 13 unique nodes and 10 relationships
+2024-08-25T20:07:40.340Z [INFO]: Starting relationship extraction process
+2024-08-25T20:07:40.340Z [INFO]: Processing pre-summarized content
+2024-08-25T20:07:40.340Z [INFO]: Processing chunk 1/1
+2024-08-25T20:07:40.344Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:07:43.287Z [WARN]: Invalid relationship format: [MediaContent:Video] -[:Includes]-> [Concept:
+2024-08-25T20:07:43.288Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Homeless Shepherd (Person) -[SharedInsightsOn]-> Hunter-Gatherer Diet (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Discusses]-> Survival Tips (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Emphasizes]-> Resourcefulness in Nature (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[TeachesAbout]-> Edible Plants (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[TeachesAbout]-> Wild Game (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[TeachesAbout]-> Natural Food Sources (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Provides]-> Practical Cooking Advice (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Homeless Shepherd (Person) -[Highlights]-> Challenges of Living Off the Land (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Promotes]-> Self-Sufficiency (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Promotes]-> Resilience in Adverse Conditions (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Includes]-> Sustainability (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Relationship found: Video (MediaContent) -[Includes]-> Nutrition from Foraged Sources (Concept)
+2024-08-25T20:07:43.290Z [INFO]: Extracted 14 unique nodes and 12 relationships
+2024-08-25T20:07:58.544Z [INFO]: Starting relationship extraction process
+2024-08-25T20:07:58.544Z [INFO]: Processing pre-summarized content
+2024-08-25T20:07:58.544Z [INFO]: Processing chunk 1/1
+2024-08-25T20:07:58.548Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:08:01.510Z [WARN]: Invalid relationship format: [Concept:Digital Fashion] -[:UsedIn]-> [Concept:
+2024-08-25T20:08:01.510Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:08:01.511Z [INFO]: Relationship found: DIGITAL FASHION in Blender (MediaContent) -[HostedOn]-> YouTube (Platform)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: DIGITAL FASHION in Blender (MediaContent) -[DocumentedBy]-> Blender (Software)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Blender (Software) -[UsedIn]-> Digital Fashion (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Digital Fashion (Concept) -[DependentOn]-> Blender (Software)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Digital Fashion (Concept) -[SupportedBy]-> 3D Modeling (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Blender (Software) -[TestedBy]-> Sustainable Design (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: DIGITAL FASHION in Blender (MediaContent) -[FocusedOn]-> Digital Fashion (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Blender (Software) -[ImplementedBy]-> Texturing and Rendering (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Digital Fashion (Concept) -[CompatibleWith]-> 3D Creation Suite (Technology)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Digital Fashion (Concept) -[InfluencedBy]-> Virtual Clothing (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Digital Fashion (Concept) -[InfluencedBy]-> Digital Environments (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Relationship found: Digital Fashion (Concept) -[CollaboratedWith]-> Fashion Design (Concept)
+2024-08-25T20:08:01.512Z [INFO]: Extracted 11 unique nodes and 12 relationships
+2024-08-25T20:08:16.517Z [INFO]: Starting relationship extraction process
+2024-08-25T20:08:16.517Z [INFO]: Processing pre-summarized content
+2024-08-25T20:08:16.517Z [INFO]: Processing chunk 1/1
+2024-08-25T20:08:16.521Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:08:18.061Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[UsedIn]-> GitHub (Technology)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[DistributedUnder]-> ISC license (Standard)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[ImplementedBy]-> yarn (Software)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[DocumentedBy]-> chart_svg.js (MediaContent)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[DocumentedBy]-> chart_html.js (MediaContent)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[CompatibleWith]-> JavaScript (Technology)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[TestedBy]-> convert (Product)
+2024-08-25T20:08:18.061Z [INFO]: Relationship found: Fil/plot-cli (Product) -[SupportedBy]-> GitHub repository (Location)
+2024-08-25T20:08:18.062Z [INFO]: Extracted 9 unique nodes and 8 relationships
+2024-08-25T20:08:33.743Z [INFO]: Starting relationship extraction process
+2024-08-25T20:08:33.743Z [INFO]: Processing pre-summarized content
+2024-08-25T20:08:33.743Z [INFO]: Processing chunk 1/1
+2024-08-25T20:08:33.747Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:08:37.646Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-25T20:08:37.647Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[PublishedBy]-> REI (Organization)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[UsedIn]-> The Ten Essentials (Concept)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[SupportedBy]-> YouTube (Technology)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[DocumentedBy]-> Outdoor Enthusiast (Person)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[ParticipatedIn]-> Outdoor Activities (Event)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[InfluencedBy]-> Knot Tying (Concept)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[CompatibleWith]-> Outdoor Skills (Concept)
+2024-08-25T20:08:37.648Z [INFO]: Relationship found: Best Knots for the Outdoors (MediaContent) -[MaintainedBy]-> REI (Organization)
+2024-08-25T20:08:37.648Z [INFO]: Extracted 8 unique nodes and 8 relationships
+2024-08-25T20:08:49.304Z [INFO]: Starting relationship extraction process
+2024-08-25T20:08:49.304Z [INFO]: Processing pre-summarized content
+2024-08-25T20:08:49.304Z [INFO]: Processing chunk 1/1
+2024-08-25T20:08:49.308Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:08:51.275Z [INFO]: Successfully extracted 10 relationships from chunk
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: mathemagic1an (Person) -[PublishedBy]-> Twitter Link (MediaContent)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: Browser (Product) -[SupportedBy]-> x.com (Website)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: x.com (Website) -[MaintainedBy]-> X Corp. (Organization)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: X Corp. (Organization) -[CreatedBy]-> Terms of Service (Publication)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: X Corp. (Organization) -[CreatedBy]-> Privacy Policy (Publication)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: X Corp. (Organization) -[CreatedBy]-> Cookie Policy (Publication)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: X Corp. (Organization) -[CreatedBy]-> Imprint (Publication)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: X Corp. (Organization) -[CreatedBy]-> Ads info (Publication)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: X Corp. (Organization) -[DocumentedBy]-> Help Center (Publication)
+2024-08-25T20:08:51.277Z [INFO]: Relationship found: 2024 (Year) -[DependentOn]-> X Corp. (Organization)
+2024-08-25T20:08:51.277Z [INFO]: Extracted 12 unique nodes and 10 relationships
+2024-08-25T20:09:23.566Z [INFO]: Starting relationship extraction process
+2024-08-25T20:09:23.566Z [INFO]: Processing pre-summarized content
+2024-08-25T20:09:23.566Z [INFO]: Processing chunk 1/1
+2024-08-25T20:09:23.569Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:09:25.446Z [INFO]: Successfully extracted 9 relationships from chunk
+2024-08-25T20:09:25.447Z [INFO]: Relationship found: Stockton Roadside Tool Kit (Product) -[UsedIn]-> motorcycle roadside assistance (Concept)
+2024-08-25T20:09:25.447Z [INFO]: Relationship found: Stockton Roadside Tool Kit (Product) -[UsedIn]-> repairs (Concept)
+2024-08-25T20:09:25.447Z [INFO]: Relationship found: Stockton Roadside Tool Kit (Product) -[CompatibleWith]-> casual riders (Audience)
+2024-08-25T20:09:25.447Z [INFO]: Relationship found: Stockton Roadside Tool Kit (Product) -[CompatibleWith]-> long-distance travelers (Audience)
+2024-08-25T20:09:25.447Z [INFO]: Relationship found: Stockton Roadside Tool Kit (Product) -[CreatedBy]-> RevZilla (Organization)
+2024-08-25T20:09:25.447Z [INFO]: Relationship found: RevZilla (Organization) -[SupportedBy]-> Stockton Roadside Tool Kit (Product)
+2024-08-25T20:09:25.448Z [INFO]: Relationship found: RevZilla (Organization) -[SpecializesIn]-> motorcycle gear (Concept)
+2024-08-25T20:09:25.448Z [INFO]: Relationship found: RevZilla (Organization) -[SpecializesIn]-> accessories (Concept)
+2024-08-25T20:09:25.448Z [INFO]: Relationship found: RevZilla (Organization) -[SpecializesIn]-> tools (Concept)
+2024-08-25T20:09:25.448Z [INFO]: Extracted 9 unique nodes and 9 relationships
+2024-08-25T20:09:46.731Z [INFO]: Starting relationship extraction process
+2024-08-25T20:09:46.731Z [INFO]: Processing pre-summarized content
+2024-08-25T20:09:46.731Z [INFO]: Processing chunk 1/1
+2024-08-25T20:09:46.735Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:09:48.649Z [INFO]: Successfully extracted 8 relationships from chunk
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[UsedIn]-> Artists (Person)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[SupportedBy]-> Digital Products (Product)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[CollaboratedWith]-> Challenges (Event)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[CollaboratedWith]-> Contests (Event)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[MaintainedBy]-> Art Community (Organization)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[ParticipatedIn]-> Community Forum (Event)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[CompatibleWith]-> Portfolio (Technology)
+2024-08-25T20:09:48.651Z [INFO]: Relationship found: ArtStation (Platform) -[CreatedBy]-> ArtStation Inc. (Startup)
+2024-08-25T20:09:48.651Z [INFO]: Extracted 9 unique nodes and 8 relationships
+2024-08-25T20:10:11.272Z [INFO]: Starting relationship extraction process
+2024-08-25T20:10:11.272Z [INFO]: Processing pre-summarized content
+2024-08-25T20:10:11.272Z [INFO]: Processing chunk 1/1
+2024-08-25T20:10:11.275Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:10:14.122Z [WARN]: Invalid relationship format: [Event
+2024-08-25T20:10:14.122Z [INFO]: Successfully extracted 14 relationships from chunk
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Article (Publication) -[DocumentedBy]-> Mastodon (Platform)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Mastodon (Platform) -[UsedIn]-> GitHub Actions (Product)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: GitHub Actions (Product) -[ImplementedBy]-> YAML (Technology)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: YAML (Technology) -[UsedIn]-> GitHub Actions (Product)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: GitHub Actions (Product) -[CompatibleWith]-> Node.js (Technology)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Node.js (Technology) -[SupportedBy]-> mastodon (Package)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Node.js (Technology) -[SupportedBy]-> glob (Package)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Node.js (Technology) -[SupportedBy]-> path (Package)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Node.js (Technology) -[SupportedBy]-> gray-matter (Package)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: GitHub Actions (Product) -[UsedIn]-> Post (Event)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Post (Event) -[DependentOn]-> Mastodon (Platform)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Joshua Iz (Person) -[PublishedBy]-> Article (Publication)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Node.js script (Software) -[UsedIn]-> Gather latest post (Event)
+2024-08-25T20:10:14.124Z [INFO]: Relationship found: Gather latest post (Event) -[PerformedBy]-> gray-matter (Technology)
+2024-08-25T20:10:14.124Z [INFO]: Extracted 14 unique nodes and 14 relationships
+2024-08-25T20:10:37.297Z [INFO]: Starting relationship extraction process
+2024-08-25T20:10:37.297Z [INFO]: Processing pre-summarized content
+2024-08-25T20:10:37.297Z [INFO]: Processing chunk 1/1
+2024-08-25T20:10:37.300Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:10:39.542Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[CreatedBy]-> Livin' The Dream (Publication)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: Livin' The Dream (Publication) -[PublishedBy]-> Antelope Hill Publishing (Organization)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[UsedIn]-> Telegram (Technology)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[CollaboratedWith]-> National Justice Party (Organization)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[ParticipatedIn]-> NJP conferences (Event)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[DocumentedBy]-> Identity Evropa (MediaContent)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[InfluencedBy]-> The Hyphen Report (Publication)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[ParticipatedIn]-> The Right Stuff (MediaContent)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[DependentOn]-> Middletown, NY (Location)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[MaintainedBy]-> Shawangunk Correctional Facility (Event)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[TestedBy]-> New York Police Department (GovernmentAgency)
+2024-08-25T20:10:39.544Z [INFO]: Relationship found: John Robert Metz (Person) -[InfluencedBy]-> white nationalist ideology (Concept)
+2024-08-25T20:10:39.544Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T20:10:55.463Z [INFO]: Starting relationship extraction process
+2024-08-25T20:10:55.463Z [INFO]: Processing pre-summarized content
+2024-08-25T20:10:55.463Z [INFO]: Processing chunk 1/1
+2024-08-25T20:10:55.468Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:10:57.943Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T20:10:57.944Z [INFO]: Relationship found: Remote Impact (Organization) -[SpecializesIn]-> remote job opportunities (Concept)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: Remote Impact (Organization) -[SupportedBy]-> mission-led organizations (IndustryGroup)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote react jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote python jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote frontend jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote backend jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote php jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote ios developer jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: remote job opportunities (Concept) -[DependentOn]-> remote linux jobs (Technology)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: impact areas (Concept) -[Includes]-> climate change (Concept)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: impact areas (Concept) -[Includes]-> education (Concept)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: impact areas (Concept) -[Includes]-> healthcare (Concept)
+2024-08-25T20:10:57.945Z [INFO]: Relationship found: impact areas (Concept) -[Includes]-> food and agriculture (Concept)
+2024-08-25T20:10:57.945Z [INFO]: Extracted 15 unique nodes and 13 relationships
+2024-08-25T20:11:20.382Z [INFO]: Starting relationship extraction process
+2024-08-25T20:11:20.382Z [INFO]: Processing pre-summarized content
+2024-08-25T20:11:20.382Z [INFO]: Processing chunk 1/1
+2024-08-25T20:11:20.385Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:11:23.030Z [WARN]: Invalid relationship format: [Person:Viggo Mortensen] -[:DependentOn]-> [Event:Filming
+2024-08-25T20:11:23.030Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T20:11:23.031Z [INFO]: Relationship found: Helm’s Deep (Location) -[FilmedAt]-> Dry Creek Quarry, New Zealand (Location)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Filming of Helm’s Deep (Event) -[OccurredAt]-> Dry Creek Quarry, New Zealand (Location)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Helm's Deep (Product) -[CreatedBy]-> Peter Jackson (Person)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Andrew Lesnie (Person) -[UsedIn]-> Helm's Deep (Product)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Viggo Mortensen (Person) -[ParticipatedIn]-> Filming of Helm’s Deep (Event)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Bruce Hopkins (Person) -[CollaboratedWith]-> Peter Jackson (Person)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Helm's Deep (Product) -[SupportedBy]-> Miramax (Organization)
+2024-08-25T20:11:23.032Z [INFO]: Relationship found: Miramax (Organization) -[Dropped]-> Helm's Deep (Product)
+2024-08-25T20:11:23.033Z [INFO]: Relationship found: New Line (Organization) -[TookOver]-> Helm's Deep (Product)
+2024-08-25T20:11:23.033Z [INFO]: Relationship found: Andrew Lesnie (Person) -[MaintainedBy]-> Lighting Techniques (Technology)
+2024-08-25T20:11:23.033Z [INFO]: Relationship found: Peter Jackson (Person) -[InfluencedBy]-> Andrew Lesnie (Person)
+2024-08-25T20:11:23.033Z [INFO]: Extracted 11 unique nodes and 11 relationships
+2024-08-25T20:11:39.303Z [INFO]: Starting relationship extraction process
+2024-08-25T20:11:39.303Z [INFO]: Processing pre-summarized content
+2024-08-25T20:11:39.303Z [INFO]: Processing chunk 1/1
+2024-08-25T20:11:39.306Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:11:40.628Z [INFO]: Successfully extracted 3 relationships from chunk
+2024-08-25T20:11:40.630Z [INFO]: Relationship found: Relaxed Tapered Cargo Pants (Product) -[UsedIn]-> G-Star RAW (Organization)
+2024-08-25T20:11:40.630Z [INFO]: Relationship found: Relaxed Tapered Cargo Pants (Product) -[SupportedBy]-> Better Cotton Initiative (NonProfitOrganization)
+2024-08-25T20:11:40.630Z [INFO]: Relationship found: Relaxed Tapered Cargo Pants (Product) -[DocumentedBy]-> Official Website (MediaContent)
+2024-08-25T20:11:40.630Z [INFO]: Extracted 4 unique nodes and 3 relationships
+2024-08-25T20:11:53.855Z [INFO]: Starting relationship extraction process
+2024-08-25T20:11:53.855Z [INFO]: Processing pre-summarized content
+2024-08-25T20:11:53.855Z [INFO]: Processing chunk 1/1
+2024-08-25T20:11:53.859Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:11:56.045Z [WARN]: Invalid relationship format: [Product:
+2024-08-25T20:11:56.046Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:11:56.047Z [INFO]: Relationship found: YouTube Reporting API (Product) -[UsedIn]-> YouTube Analytics API (Product)
+2024-08-25T20:11:56.047Z [INFO]: Relationship found: YouTube Analytics API (Product) -[DocumentedBy]-> YouTube Blog (Publication)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Reporting API (Product) -[DocumentedBy]-> YouTube Blog (Publication)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Analytics API (Product) -[CollaboratedWith]-> GitHub (Platform)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Analytics API (Product) -[SupportedBy]-> Stack Overflow (Platform)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Reporting API (Product) -[SupportedBy]-> Stack Overflow (Platform)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Partner Program (Organization) -[UsedIn]-> YouTube Analytics API (Product)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Partner Program (Organization) -[UsedIn]-> YouTube Reporting API (Product)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: Channel Owners (Person) -[ParticipatedIn]-> YouTube Analytics API (Product)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: Content Owners (Person) -[ParticipatedIn]-> YouTube Analytics API (Product)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: Content Owners (Person) -[ParticipatedIn]-> YouTube Reporting API (Product)
+2024-08-25T20:11:56.048Z [INFO]: Relationship found: YouTube Analytics API (Product) -[CompatibleWith]-> Java (Technology)
+2024-08-25T20:11:56.048Z [INFO]: Extracted 9 unique nodes and 12 relationships
+2024-08-25T20:14:21.994Z [INFO]: Starting relationship extraction process
+2024-08-25T20:14:21.994Z [INFO]: Processing pre-summarized content
+2024-08-25T20:14:21.994Z [INFO]: Processing chunk 1/1
+2024-08-25T20:14:21.997Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:14:24.149Z [WARN]: Invalid relationship format: [Product:Console Ninja] -[:UsedIn]-> [Concept
+2024-08-25T20:14:24.150Z [INFO]: Successfully extracted 14 relationships from chunk
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[CreatedBy]-> Wallaby.js (Organization)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[UsedIn]-> Visual Studio Code (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[CompatibleWith]-> Node.js (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[CompatibleWith]-> Vite (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[CompatibleWith]-> Webpack (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[CompatibleWith]-> Next.js (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[CompatibleWith]-> Nest.js (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[SupportedBy]-> Jest (Technology)
+2024-08-25T20:14:24.150Z [INFO]: Relationship found: Console Ninja (Product) -[SupportedBy]-> Cypress.io (Technology)
+2024-08-25T20:14:24.151Z [INFO]: Relationship found: Console Ninja (Product) -[DependentOn]-> Local websocket server (Product)
+2024-08-25T20:14:24.151Z [INFO]: Relationship found: Console Ninja (Product) -[ImplementedBy]-> Community feature set (Service)
+2024-08-25T20:14:24.151Z [INFO]: Relationship found: Console Ninja (Product) -[ImplementedBy]-> PRO features (Service)
+2024-08-25T20:14:24.151Z [INFO]: Relationship found: Console Ninja (Product) -[DocumentedBy]-> official page (MediaContent)
+2024-08-25T20:14:24.151Z [INFO]: Relationship found: Console Ninja (Product) -[ParticipatedIn]-> log viewer (Event)
+2024-08-25T20:14:24.151Z [INFO]: Extracted 15 unique nodes and 14 relationships
+2024-08-25T20:14:43.459Z [INFO]: Starting relationship extraction process
+2024-08-25T20:14:43.460Z [INFO]: Processing pre-summarized content
+2024-08-25T20:14:43.460Z [INFO]: Processing chunk 1/1
+2024-08-25T20:14:43.463Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:14:45.975Z [INFO]: Successfully extracted 11 relationships from chunk
+2024-08-25T20:14:45.976Z [INFO]: Relationship found: zūmo® XT (Product) -[UsedIn]-> zūmo® XT2 GPS navigator (Product)
+2024-08-25T20:14:45.976Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[DependentOn]-> Wireless Map and Software Updates (Technology)
+2024-08-25T20:14:45.976Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[CompatibleWith]-> JPEG (Format)
+2024-08-25T20:14:45.976Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[IncompatibleWith]-> PDF (Format)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[IncompatibleWith]-> BMP (Format)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[IncompatibleWith]-> PNG (Format)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[IncompatibleWith]-> GIF (Format)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: Google Earth Pro (Product) -[UsedIn]-> zūmo® XT2 GPS navigator (Product)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: GIMP (Software) -[UsedIn]-> zūmo® XT2 GPS navigator (Product)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[ImplementedBy]-> creating custom maps (Action)
+2024-08-25T20:14:45.977Z [INFO]: Relationship found: zūmo® XT2 GPS navigator (Product) -[MaintainedBy]-> saving the custom map as a .kmz file (Action)
+2024-08-25T20:14:45.977Z [INFO]: Extracted 12 unique nodes and 11 relationships
+2024-08-25T20:15:07.130Z [INFO]: Starting relationship extraction process
+2024-08-25T20:15:07.130Z [INFO]: Processing pre-summarized content
+2024-08-25T20:15:07.130Z [INFO]: Processing chunk 1/1
+2024-08-25T20:15:07.134Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:15:09.313Z [WARN]: Invalid relationship format: [Organization:Goodreads]
+2024-08-25T20:15:09.313Z [INFO]: Successfully extracted 13 relationships from chunk
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[UsedIn]-> Obsidian vault (Technology)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[UsedIn]-> Goodreads (Platform)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[DependentOn]-> RSS feed (Technology)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[CompatibleWith]-> Dataview plugin (Product)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[CompatibleWith]-> minimal theme (Product)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[CreatedBy]-> GitHub (Organization)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: GitHub (Organization) -[DocumentedBy]-> Booksidian plugin (Product)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Developer (Person) -[CollaboratedWith]-> Booksidian plugin (Product)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Sync Command (Event) -[ParticipatedIn]-> Booksidian plugin (Product)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Configuration (Event) -[ImplementedBy]-> Booksidian plugin (Product)
+2024-08-25T20:15:09.315Z [INFO]: Relationship found: Booksidian plugin (Product) -[SupportedBy]-> User (Person)
+2024-08-25T20:15:09.316Z [INFO]: Relationship found: User (Person) -[UsedIn]-> Booksidian plugin (Product)
+2024-08-25T20:15:09.316Z [INFO]: Relationship found: Booksidian plugin (Product) -[MaintainedBy]-> Developer (Person)
+2024-08-25T20:15:09.316Z [INFO]: Extracted 11 unique nodes and 13 relationships
+2024-08-25T20:15:29.578Z [INFO]: Starting relationship extraction process
+2024-08-25T20:15:29.578Z [INFO]: Processing pre-summarized content
+2024-08-25T20:15:29.578Z [INFO]: Processing chunk 1/1
+2024-08-25T20:15:29.581Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:15:32.539Z [WARN]: Invalid relationship format: [Organization:Home Depot] -[:
+2024-08-25T20:15:32.539Z [INFO]: Successfully extracted 14 relationships from chunk
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Husky 5 Tier Heavy Duty Steel Garage Storage Shelving Unit (Product) -[AvailableAt]-> Home Depot (Organization)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Offers]-> Appliances (Product)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Offers]-> Bath & Faucets (Product)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Offers]-> Cleaning (Product)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Provides]-> Tool Rental (Service)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Provides]-> DIY Projects (Service)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Provides]-> Installation Services (Service)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Features]-> Military Discount Benefit (Concept)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Features]-> Rebate Center (Concept)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Allows]-> Check Order Status (Concept)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Allows]-> Manage Credit Cards (Concept)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Allows]-> Review Return Policies (Concept)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot app (Product) -[CanBeDownloadedFrom]-> Home Depot (Organization)
+2024-08-25T20:15:32.540Z [INFO]: Relationship found: Home Depot (Organization) -[Includes]-> Privacy & Security Center (Concept)
+2024-08-25T20:15:32.540Z [INFO]: Extracted 15 unique nodes and 14 relationships
+2024-08-25T20:17:37.057Z [INFO]: Starting relationship extraction process
+2024-08-25T20:17:37.058Z [INFO]: Processing pre-summarized content
+2024-08-25T20:17:37.058Z [INFO]: Processing chunk 1/1
+2024-08-25T20:17:37.061Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:17:39.657Z [WARN]: Invalid relationship format: [Product
+2024-08-25T20:17:39.657Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:17:39.658Z [INFO]: Relationship found: ULINE (Organization) -[Offers]-> sliding storage shelves (Product)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: sliding storage shelves (Product) -[ConstructedFrom]-> chrome-plated steel (Material)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: sliding storage shelves (Product) -[CompatibleWith]-> smooth floor (Concept)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: sliding storage shelves (Product) -[IncludedIn]-> safety brakes (Feature)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: sliding storage shelves (Product) -[UsedIn]-> loading and unloading (Concept)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: sliding storage shelves (Product) -[DocumentedBy]-> NSF certified (Standard)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: Model H-2901 (Product) -[Features]-> 48"x18" (Dimension)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: Model H-2901 (Product) -[HasCapacity]-> 800 lbs (Capacity)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: Model H-2901 (Product) -[PricedAt]-> $990 (Price)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: Model H-2902 (Product) -[Features]-> 60"x18" (Dimension)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: Model H-2902 (Product) -[HasCapacity]-> 1,120 lbs (Capacity)
+2024-08-25T20:17:39.659Z [INFO]: Relationship found: Model H-2902 (Product) -[PricedAt]-> $1,065 (Price)
+2024-08-25T20:17:39.659Z [INFO]: Extracted 15 unique nodes and 12 relationships
+2024-08-25T20:17:54.324Z [INFO]: Starting relationship extraction process
+2024-08-25T20:17:54.324Z [INFO]: Processing pre-summarized content
+2024-08-25T20:17:54.324Z [INFO]: Processing chunk 1/1
+2024-08-25T20:17:54.328Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:17:55.850Z [INFO]: Successfully extracted 9 relationships from chunk
+2024-08-25T20:17:55.851Z [INFO]: Relationship found: Willy Loman Big Band (Organization) -[HostedBy]-> YouTube tutorial (MediaContent)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[DocumentedBy]-> mask-making (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[SupportedBy]-> materials needed (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[SupportedBy]-> shaping techniques (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[SupportedBy]-> painting techniques (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[SupportedBy]-> safety precautions (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[SupportedBy]-> realistic facial features (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[SupportedBy]-> attaching methods (Concept)
+2024-08-25T20:17:55.852Z [INFO]: Relationship found: YouTube tutorial (MediaContent) -[CollaboratedWith]-> community interaction (MediaContent)
+2024-08-25T20:17:55.852Z [INFO]: Extracted 10 unique nodes and 9 relationships
+2024-08-25T20:18:05.972Z [INFO]: Starting relationship extraction process
+2024-08-25T20:18:05.972Z [INFO]: Processing pre-summarized content
+2024-08-25T20:18:05.972Z [INFO]: Processing chunk 1/1
+2024-08-25T20:18:05.976Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:18:08.365Z [INFO]: Successfully extracted 7 relationships from chunk
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[SupportedBy]-> User (Organization)
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[DocumentedBy]-> Terms of Service (Publication)
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[OccuredAt]-> 98.15.209 (Location)
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[UsedIn]-> script or application (Product)
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[CollaboratedWith]-> User-Agent (Person)
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[TestedBy]-> Reddit support (Organization)
+2024-08-25T20:18:08.366Z [INFO]: Relationship found: Reddit (Organization) -[PublishedBy]-> blocked content (MediaContent)
+2024-08-25T20:18:08.366Z [INFO]: Extracted 8 unique nodes and 7 relationships
+2024-08-25T20:18:44.737Z [INFO]: Starting relationship extraction process
+2024-08-25T20:18:44.737Z [INFO]: Processing pre-summarized content
+2024-08-25T20:18:44.737Z [INFO]: Processing chunk 1/1
+2024-08-25T20:18:44.740Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:18:47.543Z [WARN]: Invalid relationship format: [Person:Researchers] -[:ParticipatedIn
+2024-08-25T20:18:47.543Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: John Hildebrand (Person) -[CollaboratedWith]-> Mark McDonald (Person)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: Researchers (ResearchGroup) -[DocumentedBy]-> 2009 article (Publication)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: 2009 article (Publication) -[SupportedBy]-> climate change (Concept)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: 2009 article (Publication) -[SupportedBy]-> whaling (Concept)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: 2009 article (Publication) -[SupportedBy]-> rising ocean noise (Concept)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: 1968 whaling moratorium (Event) -[InfluencedBy]-> population recovery hypothesis (Concept)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: population recovery hypothesis (Concept) -[UsedIn]-> communication over shorter distances (Concept)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: communication over shorter distances (Concept) -[DependentOn]-> lower pitch songs (Technology)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: lower pitch songs (Technology) -[MaintainedBy]-> blue whale (Species)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: blue whale (Species) -[ParticipatedIn]-> population recovery (Event)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: blue whale songs (Product) -[TestedBy]-> decibel measurement (Technology)
+2024-08-25T20:18:47.545Z [INFO]: Relationship found: blue whale songs (Product) -[UsedIn]-> marine environments (Location)
+2024-08-25T20:18:47.545Z [INFO]: Extracted 16 unique nodes and 12 relationships
+2024-08-25T20:19:07.365Z [INFO]: Starting relationship extraction process
+2024-08-25T20:19:07.365Z [INFO]: Processing pre-summarized content
+2024-08-25T20:19:07.366Z [INFO]: Processing chunk 1/1
+2024-08-25T20:19:07.369Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:19:13.429Z [WARN]: Invalid relationship format: [Person:Patrick Berhan] -[:ParticipatedIn]-> [Event
+2024-08-25T20:19:13.429Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:19:13.431Z [INFO]: Relationship found: East Contra Costa police (Organization) -[InvestedIn]-> Investigation (Event)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Armando Montalvo (Person) -[ParticipatedIn]-> Charges for possessing and selling assault weapons (Event)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Patrick Berhan (Person) -[CollaboratedWith]-> Ernesto Mejia (Person)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Humberto Martinez (Person) -[InfluencedBy]-> Controversial restraint death (Event)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Antioch (Organization) -[SupportedBy]-> Pay increase for degrees (Product)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Pittsburg (Organization) -[SupportedBy]-> Investigation (Event)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Daniel Harris (Person) -[ParticipatedIn]-> Investigation (Event)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: FBI (Organization) -[CollaboratedWith]-> Contra Costa District Attorney’s Office (Organization)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Investigation (Event) -[OccuredAt]-> Contra Costa (Location)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Investigation (Event) -[DependentOn]-> College degree scheme (Concept)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Investigation (Event) -[DocumentedBy]-> Mercury News (Publication)
+2024-08-25T20:19:13.432Z [INFO]: Relationship found: Armando Montalvo (Person) -[DependentOn]-> Online courses (Technology)
+2024-08-25T20:19:13.432Z [INFO]: Extracted 18 unique nodes and 12 relationships
+2024-08-25T20:19:28.466Z [INFO]: Starting relationship extraction process
+2024-08-25T20:19:28.467Z [INFO]: Processing pre-summarized content
+2024-08-25T20:19:28.467Z [INFO]: Processing chunk 1/1
+2024-08-25T20:19:28.469Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:19:31.125Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[UsedIn]-> Tokenization (Concept)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[UsedIn]-> One-hot Encoding (Concept)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[UsedIn]-> Positional Encoding (Concept)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[UsedIn]-> Multi-head Attention (Concept)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[DependentOn]-> Byte Pair Encoding (Technology)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[DependentOn]-> Feed-forward Block (Technology)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[ImplementedBy]-> Output Matrix (Matrix)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[SupportedBy]-> Top-k (Parameter)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[DocumentedBy]-> Architecture Sketch (MediaContent)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[CompatibleWith]-> Embedding Matrix (Matrix)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[CollaboratedWith]-> Softmax Operation (Technology)
+2024-08-25T20:19:31.127Z [INFO]: Relationship found: GPT-3 (Technology) -[TestedBy]-> Controlled Text Generation (Service)
+2024-08-25T20:19:31.127Z [INFO]: Extracted 13 unique nodes and 12 relationships
+2024-08-25T20:19:45.759Z [INFO]: Starting relationship extraction process
+2024-08-25T20:19:45.759Z [INFO]: Processing pre-summarized content
+2024-08-25T20:19:45.759Z [INFO]: Processing chunk 1/1
+2024-08-25T20:19:45.762Z [INFO]: Using openai service for relationship extraction
+2024-08-25T20:19:50.142Z [WARN]: Invalid relationship format: [MediaContent:video
+2024-08-25T20:19:50.142Z [INFO]: Successfully extracted 12 relationships from chunk
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[DocumentedBy]-> Five Panel Camp Hat (Product)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[SupportedBy]-> video format (Technology)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[SupportedBy]-> verbal instructions (Concept)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[UsedIn]-> beginners (Audience)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[UsedIn]-> experienced sewists (Audience)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: Five Panel Camp Hat (Product) -[FavoredFor]-> casual wear (Concept)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: Five Panel Camp Hat (Product) -[FavoredFor]-> outdoor activities (Concept)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[IncludedIn]-> materials list (Product)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[IncludedIn]-> tools required (Product)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[RelatedTo]-> project on building a nightstand (MediaContent)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: project on building a nightstand (MediaContent) -[AimsToImprove]-> improved sleep (Concept)
+2024-08-25T20:19:50.144Z [INFO]: Relationship found: video tutorial (MediaContent) -[Features]-> sewing techniques (Concept)
+2024-08-25T20:19:50.144Z [INFO]: Extracted 13 unique nodes and 12 relationships
