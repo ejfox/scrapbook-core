@@ -20,9 +20,9 @@ const limiter = new Bottleneck({
 });
 
 function chooseLLMService() {
-  // return process.env.USE_OPENAI === "true" ? "openai" : "local";
+  return process.env.USE_OPENAI === "true" ? "openai" : "local";
   // hardcode geolocation to local LLM, it's not worth the cost to pay for it
-  return "local";
+  // return "local";
 }
 
 export default async function extractLocation(content, options = {}) {

@@ -96,7 +96,7 @@ export async function summarizeString(content) {
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
         // gpt-4o-mini,
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.7,
         max_tokens: 1024,
@@ -152,7 +152,7 @@ ${metaSummaryContent}`,
     if (llmService === "openai") {
       const response = await openai.chat.completions.create({
         // gpt-4o-mini,
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.2,
         max_tokens: 32,

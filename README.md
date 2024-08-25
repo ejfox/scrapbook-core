@@ -30,7 +30,7 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 
 ## Database Schema
 
-Scraps table
+### Scraps table
 ```sql
 create table
   public.scraps (
@@ -46,6 +46,7 @@ create table
     scrap_id text null,
     embedding public.vector null,
     title text null,
+    graph_imported boolean null default false,
     constraint scraps_pkey primary key (id),
     constraint scraps_id_key unique (id),
     constraint scraps_scrap_id_key unique (scrap_id)
