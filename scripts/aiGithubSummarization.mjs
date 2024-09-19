@@ -14,8 +14,8 @@ const limiter = new Bottleneck({
 });
 
 function chooseLLMService() {
-  // return process.env.USE_OPENAI === "true" ? "openai" : "local";
-  return "local";
+  return process.env.USE_OPENAI === "true" ? "openai" : "local";
+  // return "local";
 }
 
 export async function summarizeGitHubActivity(activity, options = {}) {
