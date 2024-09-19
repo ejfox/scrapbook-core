@@ -189,7 +189,9 @@ export async function fetchPageContent(url) {
     "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
   // set up puppeteer
 
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "domcontentloaded" });
   // wait a second for the page to load
