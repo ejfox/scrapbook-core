@@ -10,3 +10,8 @@ RUN npm ci
 COPY . .
 
 CMD ["node", "scripts/index.mjs", "--all"]
+
+RUN mkdir -p /usr/src/app/public/data/scrapbook && \
+    chown -R node:node /usr/src/app/public
+
+USER node
