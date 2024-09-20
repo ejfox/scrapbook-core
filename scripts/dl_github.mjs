@@ -1,8 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import ora from "ora";
 import dotenv from "dotenv";
-import * as fs from "fs";
-import path from "path";
 import { subDays } from "date-fns";
 
 dotenv.config();
@@ -14,60 +11,37 @@ const FETCH_DAYS = 60;
 const octokit = new Octokit({
   auth: token,
   userAgent: `${username}-scrapbook`,
-  previews: ["mercy-preview"], // enable the `mercy` preview to access the check run API
+  previews: ["mercy-preview"],
 });
 
 const extractMediaUrl = (text) => {
   const urls = [];
   if (!text) return urls;
 
-  // Decode URL-encoded text
   const decodedText = decodeURIComponent(text);
 
   console.log(`Extracting media URLs from text: ${decodedText}`);
 
-  // Inline URLs
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  let match;
-  while ((match = urlRegex.exec(decodedText))) {
-    if (
-      /\.(png|jpe?g|gif|mp4|webm)$/i.test(match[0]) ||
-      /\/assets\//.test(match[0])
-    ) {
-      console.log(`Found inline media URL: ${match[0]}`);
-      urls.push(match[0]);
-    }
-  }
-
-  // Markdown image links
   const markdownImageRegex = /!\[[^\]]*\]\((https?:\/\/[^\s]+)\)/g;
-  while ((match = markdownImageRegex.exec(decodedText))) {
-    if (
-      /\.(png|jpe?g|gif|mp4|webm)$/i.test(match[1]) ||
-      /\/assets\//.test(match[1])
-    ) {
-      console.log(`Found markdown media URL: ${match[1]}`);
-      urls.push(match[1]);
-    }
-  }
-
-  // HTML image tags
   const htmlImageRegex = /<img [^>]*src="(https?:\/\/[^"]+)"/g;
-  while ((match = htmlImageRegex.exec(decodedText))) {
-    if (
-      /\.(png|jpe?g|gif|mp4|webm)$/i.test(match[1]) ||
-      /\/assets\//.test(match[1])
-    ) {
-      console.log(`Found HTML media URL: ${match[1]}`);
-      urls.push(match[1]);
+
+  [urlRegex, markdownImageRegex, htmlImageRegex].forEach((regex) => {
+    let match;
+    while ((match = regex.exec(decodedText))) {
+      const url = match[1] || match[0];
+      if (/\.(png|jpe?g|gif|mp4|webm)$/i.test(url) || /\/assets\//.test(url)) {
+        console.log(`Found media URL: ${url}`);
+        urls.push(url);
+      }
     }
-  }
+  });
 
   return urls;
 };
 
-const fetchGithubData = async () => {
-  const spinner = ora("Initializing GitHub data download...").start();
+export const fetchGithubData = async () => {
+  console.log("Initializing GitHub data download...");
 
   const sinceDate = subDays(new Date(), FETCH_DAYS).toISOString();
   console.log(`Fetching data since: ${sinceDate}`);
@@ -76,7 +50,6 @@ const fetchGithubData = async () => {
     const [
       userGists,
       userRepos,
-
       userReleases,
       userPRs,
       starredRepos,
@@ -91,7 +64,6 @@ const fetchGithubData = async () => {
         per_page: 25,
         since: sinceDate,
       }),
-
       octokit.search.issuesAndPullRequests({
         q: `author:${username} is:public type:release updated:>${sinceDate}`,
       }),
@@ -110,60 +82,25 @@ const fetchGithubData = async () => {
       }),
     ]);
 
-    spinner.succeed("Downloaded GitHub data");
+    console.log("Downloaded GitHub data");
 
     const enhancedUserRepos = await Promise.all(
       userRepos.data.map(async (repo) => {
         try {
-          await octokit.repos.get({
-            owner: username,
-            repo: repo.name,
-          });
-
-          // const readme = Buffer.from(readmeData.content, "base64").toString(
-          //   "utf-8"
-          // );
-
           const readme = await getRepoReadme(username, repo.name);
-
-          const { data: contents } = await octokit.repos.getContent({
-            owner: username,
-            repo: repo.name,
-            path: "",
-          });
-
-          // get any images in the README
-          const imageFiles = readme.match(
-            /!\[[^\]]*\]\((https?:\/\/[^\s]+)\)/g
-          );
-
-          const images = imageFiles;
-
-          return {
-            ...repo,
-            readme,
-            images,
-          };
+          const images = readme.match(/!\[[^\]]*\]\((https?:\/\/[^\s]+)\)/g);
+          return { ...repo, readme, images };
         } catch (error) {
-          if (error.status === 404) {
-            console.warn(
-              `Repo ${repo.name} not found or has been moved/deleted.`
-            );
-            return null;
-          }
           console.error(`Error fetching data for repo ${repo.name}:`, error);
           return null;
         }
       })
     );
 
-    const validRepos = enhancedUserRepos.filter(Boolean);
-
     const enhancedUserPRs = await Promise.all(
       userPRs.data.items.map(async (pr) => {
         try {
           console.log(`Processing PR #${pr.number}`);
-
           const mediaUrls = extractMediaUrl(pr.body);
           const images = mediaUrls.map((url) => ({
             url,
@@ -171,17 +108,8 @@ const fetchGithubData = async () => {
             description: `Image from PR #${pr.number}`,
           }));
 
-          // Extract repo information safely
-          let repoInfo = {
-            name: null,
-            full_name: null,
-            repo: null,
-          };
-
-          // get the name of the repo
-          // and the author from the repo URL
-          // like this: "repository_url":"https://api.github.com/repos/ejfox/website"
           const repoUrl = pr.repository_url;
+          let repoInfo = { name: null, full_name: null, repo: null };
           if (repoUrl) {
             const repoMatch = repoUrl.match(/repos\/([^/]+\/[^/]+)$/);
             if (repoMatch) {
@@ -194,16 +122,12 @@ const fetchGithubData = async () => {
             }
           }
 
-          console.log(`Fetching repo info for ${repoInfo.full_name}`);
-
-          // get a list of the names of the files changed in this PR
           const { data: files } = await octokit.pulls.listFiles({
             owner: repoInfo.full_name.split("/")[0],
             repo: repoInfo.full_name.split("/")[1],
             pull_number: pr.number,
           });
 
-          // convert the list into a comma-separated string
           const changedFiles = files.map((file) => file.filename).join(", ");
 
           return {
@@ -230,35 +154,22 @@ const fetchGithubData = async () => {
       })
     );
 
-    const validPRs = enhancedUserPRs.filter(Boolean);
-
-    // enhance userGists with the contents of the gist (if only 1 file)
     const enhancedUserGists = await Promise.all(
       userGists.data.map(async (gist) => {
         try {
           const { data: gistData } = await octokit.gists.get({
             gist_id: gist.id,
           });
-
-          // get the list of files for the gist
           const files = Object.values(gistData.files);
-
-          // log the stringified files
-          console.log(`Files for gist ${gist.id}:`, JSON.stringify(files));
-
           let content = "";
-
-          // get the contents of the first file
           if (files.length === 1) {
             const file = files[0];
             const fileData = await octokit.gists.get({
               gist_id: gist.id,
               file: file.filename,
             });
-
             content = fileData.data.files[file.filename].content;
           }
-
           return {
             ...gist,
             content,
@@ -273,15 +184,13 @@ const fetchGithubData = async () => {
 
     return {
       starredRepos: starredRepos.data,
-      userRepos: validRepos,
+      userRepos: enhancedUserRepos.filter(Boolean),
       userIssues: userIssues.data.items,
-      // userGists: userGists.data,
       userGists: enhancedUserGists.filter(Boolean),
       userReleases: userReleases.data.items,
-      userPRs: validPRs,
+      userPRs: enhancedUserPRs.filter(Boolean),
     };
   } catch (error) {
-    spinner.fail("Error downloading GitHub data");
     console.error("Error fetching GitHub data:", error.message);
     if (error.response) {
       console.error("Response status:", error.response.status);
@@ -311,33 +220,28 @@ const fetchGithubRepoInfo = (repoFullName) => {
     });
 };
 
-// a public function to get the README for any repo
-async function getRepoReadme(owner, repo) {
+export async function getRepoReadme(owner, repo) {
   try {
-    const { data } = await octokit.repos.getReadme({
-      owner,
-      repo,
-    });
-
-    const content = Buffer.from(data.content, "base64").toString("utf-8");
-    return content;
+    const { data } = await octokit.repos.getReadme({ owner, repo });
+    return Buffer.from(data.content, "base64").toString("utf-8");
   } catch (error) {
     console.error("Error fetching repo README:", error.message);
     return null;
   }
 }
 
-const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
-const filePath = path.join(dirPath, "github.json");
-
-const saveGithubData = async (githubData) => {
-  try {
-    await fs.promises.mkdir(dirPath, { recursive: true });
-    await fs.promises.writeFile(filePath, JSON.stringify(githubData, null, 2));
-    console.log("GitHub data saved successfully");
-  } catch (error) {
-    console.error("Error saving GitHub data:", error);
-  }
-};
-
-export { fetchGithubData, saveGithubData, fetchGithubRepoInfo, getRepoReadme };
+if (require.main === module) {
+  fetchGithubData()
+    .then((data) => {
+      console.log("GitHub data fetched successfully");
+      console.log(`Repos: ${data.userRepos.length}`);
+      console.log(`PRs: ${data.userPRs.length}`);
+      console.log(`Issues: ${data.userIssues.length}`);
+      console.log(`Gists: ${data.userGists.length}`);
+      console.log(`Releases: ${data.userReleases.length}`);
+      console.log(`Starred Repos: ${data.starredRepos.length}`);
+    })
+    .catch((error) => {
+      console.error("Error in main execution:", error);
+    });
+}
