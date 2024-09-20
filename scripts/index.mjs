@@ -6,20 +6,16 @@ import { fetchStatuses, fetchUserId } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache } from "./dl_pinboard.mjs";
 import { fetchGithubData, getRepoReadme } from "./dl_github.mjs";
 import * as helpers from "../helpers.js";
-import { updateManifest } from "./manifestHelpers.mjs";
 import { createClient } from "@supabase/supabase-js";
 import puppeteer from "puppeteer";
 import Bottleneck from "bottleneck";
-import fs, { mkdir } from "fs/promises";
-import axios from "axios";
+// import fs, { mkdir } from "fs/promises";
 import { summarizeContent, metaSummaryToTags } from "./aiSummarization.mjs";
 import {
   summarizeGitHubActivity,
   gitHubSummaryToTags,
 } from "./aiGithubSummarization.mjs";
 import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
-import path from "path";
-import terminalImage from "terminal-image";
 import extractLocation from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
@@ -35,10 +31,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const CHECKPOINT_FILE =
-  process.env.NODE_ENV === "production"
-    ? "/tmp/checkpoint.json"
-    : "./data/checkpoint.json";
 let DEBUG = false;
 let isShuttingDown = false;
 
@@ -116,16 +108,6 @@ async function extractAndAddRelationships(scrapObj) {
   }
 }
 
-async function ensureDirectoryExists(dirPath) {
-  try {
-    await mkdir(dirPath, { recursive: true });
-  } catch (error) {
-    if (error.code !== "EEXIST") {
-      throw error;
-    }
-  }
-}
-
 async function getExistingScrap(scrapId) {
   const { data, error } = await supabase
     .from("scraps")
@@ -138,34 +120,6 @@ async function getExistingScrap(scrapId) {
   }
 
   return data;
-}
-
-async function loadCheckpoint() {
-  try {
-    await fs.mkdir(path.dirname(CHECKPOINT_FILE), { recursive: true });
-    const data = await fs.readFile(CHECKPOINT_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.log("No checkpoint file found, creating a new one.");
-    const checkpoint = {
-      pinboard: new Date(0).toISOString(),
-      mastodon: new Date(0).toISOString(),
-      arena: new Date(0).toISOString(),
-      github: new Date(0).toISOString(),
-    };
-    await saveCheckpoint(checkpoint);
-    return checkpoint;
-  }
-}
-
-async function saveCheckpoint(checkpoint) {
-  try {
-    await fs.mkdir(path.dirname(CHECKPOINT_FILE), { recursive: true });
-    await fs.writeFile(CHECKPOINT_FILE, JSON.stringify(checkpoint, null, 2));
-    console.log("Checkpoint saved.");
-  } catch (error) {
-    console.error("Error saving checkpoint:", error);
-  }
 }
 
 async function upsertScrap(scrap, newOnly = false) {
@@ -206,17 +160,13 @@ async function upsertScrap(scrap, newOnly = false) {
   }
 }
 
-async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
+async function fetchAndUpsertPinboardBookmarks(newOnly) {
   try {
-    console.log(`Fetching Pinboard bookmarks since ${lastScrapTime}...`);
+    console.log("Fetching Pinboard bookmarks...");
     const pinboardBookmarks = await fetchBookmarksWithCache(false);
     log(`Fetched ${pinboardBookmarks.length} Pinboard bookmarks`);
 
-    if (pinboardBookmarks) {
-      await updateManifest("pinboard", { lastFetch: new Date().toISOString() });
-    }
-
-    if (isShuttingDown) return lastScrapTime;
+    if (isShuttingDown) return;
 
     for (const bookmark of pinboardBookmarks) {
       console.log("Processing bookmark:", bookmark.href);
@@ -225,176 +175,161 @@ async function fetchAndUpsertPinboardBookmarks(lastScrapTime, newOnly) {
         break;
       }
 
-      if (!lastScrapTime || new Date(bookmark.time) > new Date(lastScrapTime)) {
-        const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
-        const existingScrap = await getExistingScrap(scrapId);
+      const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
+      const existingScrap = await getExistingScrap(scrapId);
 
-        if (newOnly && existingScrap) {
-          console.log(`Scrap ${scrapId} already exists, skipping.`);
-          continue;
-        }
-
-        let pageContent = "";
-        let summary = existingScrap?.summary || "";
-
-        if (!summary) {
-          try {
-            pageContent = await browserLimiter.schedule(() =>
-              helpers.fetchPageContent(bookmark.href)
-            );
-            console.log(`Fetched ${pageContent.length} characters of content`);
-
-            // if the length is over 100,000 characters, truncate it
-            if (pageContent.length > 100000) {
-              pageContent = pageContent.substring(0, 100000);
-            }
-            summary = await limiter.schedule(() =>
-              summarizeContent(pageContent, { metaSummary: true })
-            );
-          } catch (error) {
-            console.error("Error processing bookmark:", error);
-          }
-        }
-
-        let location = existingScrap?.metadata?.location;
-        let latitude = existingScrap?.metadata?.latitude;
-        let longitude = existingScrap?.metadata?.longitude;
-
-        if (!location) {
-          const locationData = await limiter.schedule(() =>
-            extractLocation(summary)
-          );
-          location = locationData.location;
-          latitude = locationData.latitude;
-          longitude = locationData.longitude;
-        }
-
-        let tags = await limiter.schedule(() => metaSummaryToTags(summary));
-        tags = tags.split("\n").map((tag) => tag.trim());
-        const combinedTags = [...new Set([...tags, ...bookmark.tags])];
-
-        let screenshotUrl = existingScrap?.metadata?.screenshotUrl;
-        if (!screenshotUrl) {
-          await browserLimiter.schedule(async () => {
-            screenshotUrl = await generateWebpageScreenshot(bookmark.href);
-          });
-        }
-
-        let bookmarkObj = {
-          // title: bookmark.title,
-          scrap_id: scrapId,
-          source: "pinboard",
-          content: bookmark.description,
-          created_at: bookmark.time,
-          updated_at: new Date().toISOString(),
-          summary: summary,
-          tags: combinedTags,
-          metadata: {
-            title: bookmark.title,
-            href: bookmark.href,
-            screenshotUrl: screenshotUrl,
-            location: location,
-            latitude: latitude,
-            longitude: longitude,
-          },
-        };
-
-        // Extract and add relationships
-        bookmarkObj = await extractAndAddRelationships(bookmarkObj);
-
-        await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
+      if (newOnly && existingScrap) {
+        console.log(`Scrap ${scrapId} already exists, skipping.`);
+        continue;
       }
+
+      let pageContent = "";
+      let summary = existingScrap?.summary || "";
+
+      if (!summary) {
+        try {
+          pageContent = await browserLimiter.schedule(() =>
+            helpers.fetchPageContent(bookmark.href)
+          );
+          console.log(`Fetched ${pageContent.length} characters of content`);
+
+          if (pageContent.length > 100000) {
+            pageContent = pageContent.substring(0, 100000);
+          }
+          summary = await limiter.schedule(() =>
+            summarizeContent(pageContent, { metaSummary: true })
+          );
+        } catch (error) {
+          console.error("Error processing bookmark:", error);
+        }
+      }
+
+      let location = existingScrap?.metadata?.location;
+      let latitude = existingScrap?.metadata?.latitude;
+      let longitude = existingScrap?.metadata?.longitude;
+
+      if (!location) {
+        const locationData = await limiter.schedule(() =>
+          extractLocation(summary)
+        );
+        location = locationData.location;
+        latitude = locationData.latitude;
+        longitude = locationData.longitude;
+      }
+
+      let tags = await limiter.schedule(() => metaSummaryToTags(summary));
+      tags = tags.split("\n").map((tag) => tag.trim());
+      const combinedTags = [...new Set([...tags, ...bookmark.tags])];
+
+      let screenshotUrl = existingScrap?.metadata?.screenshotUrl;
+      if (!screenshotUrl) {
+        await browserLimiter.schedule(async () => {
+          screenshotUrl = await generateWebpageScreenshot(bookmark.href);
+        });
+      }
+
+      let bookmarkObj = {
+        scrap_id: scrapId,
+        source: "pinboard",
+        content: bookmark.description,
+        created_at: bookmark.time,
+        updated_at: new Date().toISOString(),
+        summary: summary,
+        tags: combinedTags,
+        metadata: {
+          title: bookmark.title,
+          href: bookmark.href,
+          screenshotUrl: screenshotUrl,
+          location: location,
+          latitude: latitude,
+          longitude: longitude,
+        },
+      };
+
+      bookmarkObj = await extractAndAddRelationships(bookmarkObj);
+
+      await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
     }
 
     console.log(
       `${pinboardBookmarks.length} Pinboard bookmarks processed and upserted.`
     );
-
-    return new Date().toISOString();
   } catch (error) {
     console.error("Error in fetchAndUpsertPinboardBookmarks:", error);
   }
 }
-
-async function fetchAndUpsertMastodonStatuses(lastScrapTime) {
+async function fetchAndUpsertMastodonStatuses(newOnly) {
   try {
     console.log("Fetching Mastodon statuses...");
     const userId = await fetchUserId();
     const statuses = await fetchStatuses(userId);
     log(`Fetched ${statuses.length} Mastodon statuses`);
 
-    if (isShuttingDown) return lastScrapTime;
-
-    if (statuses) {
-      await updateManifest("mastodon", { lastFetch: new Date().toISOString() });
-    }
+    if (isShuttingDown) return;
 
     for (const status of statuses) {
-      console.log("Processing Mastodonstatus:", status.content);
+      console.log("Processing Mastodon status:", status.content);
       if (isShuttingDown) {
         console.log("Shutting down, skipping status processing");
         break;
       }
 
-      if (
-        !lastScrapTime ||
-        new Date(status.created_at) > new Date(lastScrapTime)
-      ) {
-        const images = status.media_attachments
-          .filter((attachment) => attachment.type === "image")
-          .map((attachment) => ({
-            url: attachment.url,
-            preview_url: attachment.preview_url,
-            description: attachment.description,
-          }));
+      const scrapId = helpers.scrapToUUID("mastodon" + status.id);
+      const existingScrap = await getExistingScrap(scrapId);
 
-        // Generate tags
-        const aiGeneratedTags = await generateMastodonTags(status);
-
-        const statusObj = {
-          scrap_id: helpers.scrapToUUID("mastodon" + status.id),
-          source: "mastodon",
-          content: status.content,
-          created_at: status.created_at,
-          updated_at: new Date().toISOString(),
-          tags: [
-            ...new Set([
-              ...status.tags.map((tag) => tag.name),
-              ...aiGeneratedTags,
-            ]),
-          ],
-          metadata: {
-            url: status.url,
-            visibility: status.visibility,
-            favourites_count: status.favourites_count,
-            reblogs_count: status.reblogs_count,
-            images: images,
-          },
-        };
-
-        await upsertLimiter.schedule(() => upsertScrap(statusObj));
+      if (newOnly && existingScrap) {
+        console.log(`Scrap ${scrapId} already exists, skipping.`);
+        continue;
       }
+
+      const images = status.media_attachments
+        .filter((attachment) => attachment.type === "image")
+        .map((attachment) => ({
+          url: attachment.url,
+          preview_url: attachment.preview_url,
+          description: attachment.description,
+        }));
+
+      // Generate tags
+      const aiGeneratedTags = await generateMastodonTags(status);
+
+      const statusObj = {
+        scrap_id: scrapId,
+        source: "mastodon",
+        content: status.content,
+        created_at: status.created_at,
+        updated_at: new Date().toISOString(),
+        tags: [
+          ...new Set([
+            ...status.tags.map((tag) => tag.name),
+            ...aiGeneratedTags,
+          ]),
+        ],
+        metadata: {
+          url: status.url,
+          visibility: status.visibility,
+          favourites_count: status.favourites_count,
+          reblogs_count: status.reblogs_count,
+          images: images,
+        },
+      };
+
+      await upsertLimiter.schedule(() => upsertScrap(statusObj, newOnly));
     }
 
     console.log(`${statuses.length} Mastodon statuses processed and upserted.`);
-
-    return new Date().toISOString();
   } catch (error) {
     console.error("Error in fetchAndUpsertMastodonStatuses:", error);
   }
 }
 
-async function fetchAndUpsertArenaBlocks(lastScrapTime) {
+async function fetchAndUpsertArenaBlocks(newOnly) {
   try {
     console.log("Fetching Are.na blocks...");
     const blocks = await fetchAllBlocks();
     log(`Fetched ${blocks.length} Are.na blocks`);
 
-    if (isShuttingDown) return lastScrapTime;
-
-    if (blocks) {
-      await updateManifest("arena", { lastFetch: new Date().toISOString() });
-    }
+    if (isShuttingDown) return;
 
     for (const block of blocks) {
       console.log("Processing block:", block.title);
@@ -403,65 +338,60 @@ async function fetchAndUpsertArenaBlocks(lastScrapTime) {
         break;
       }
 
-      if (
-        !lastScrapTime ||
-        new Date(block.created_at) > new Date(lastScrapTime)
-      ) {
-        const blockObj = {
-          scrap_id: helpers.scrapToUUID("arena" + block.id),
-          // title: block.title,
-          source: "arena",
-          content: block.content,
-          created_at: block.created_at,
-          updated_at: new Date().toISOString(),
-          tags: block.tags,
-          metadata: {
-            title: block.title,
-            description: block.description,
-            source: block.source,
-            image: block.image,
-          },
-          relationships: [], // We'll populate this next
-        };
+      const scrapId = helpers.scrapToUUID("arena" + block.id);
+      const existingScrap = await getExistingScrap(scrapId);
 
-        // Extract relationships based on channels
-        if (
-          block.connected_to_channels &&
-          block.connected_to_channels.length > 0
-        ) {
-          blockObj.relationships = block.connected_to_channels.map(
-            (channel) => ({
-              source: {
-                type: "Block",
-                name: block.title || `Block ${block.id}`,
-              },
-              target: { type: "Channel", name: channel.title },
-              type: "BELONGS_TO",
-            })
-          );
-        }
-
-        await upsertLimiter.schedule(() => upsertScrap(blockObj));
+      if (newOnly && existingScrap) {
+        console.log(`Scrap ${scrapId} already exists, skipping.`);
+        continue;
       }
+
+      const blockObj = {
+        scrap_id: scrapId,
+        source: "arena",
+        content: block.content,
+        created_at: block.created_at,
+        updated_at: new Date().toISOString(),
+        tags: block.tags,
+        metadata: {
+          title: block.title,
+          description: block.description,
+          source: block.source,
+          image: block.image,
+        },
+        relationships: [],
+      };
+
+      // Extract relationships based on channels
+      if (
+        block.connected_to_channels &&
+        block.connected_to_channels.length > 0
+      ) {
+        blockObj.relationships = block.connected_to_channels.map((channel) => ({
+          source: {
+            type: "Block",
+            name: block.title || `Block ${block.id}`,
+          },
+          target: { type: "Channel", name: channel.title },
+          type: "BELONGS_TO",
+        }));
+      }
+
+      await upsertLimiter.schedule(() => upsertScrap(blockObj, newOnly));
     }
 
     console.log(`${blocks.length} Are.na blocks processed and upserted.`);
-
-    return new Date().toISOString();
   } catch (error) {
     console.error("Error in fetchAndUpsertArenaBlocks:", error);
   }
 }
-
-async function fetchAndUpsertGithubData() {
+async function fetchAndUpsertGithubData(newOnly) {
   try {
     console.log("Fetching GitHub data...");
     const githubData = await fetchGithubData();
     console.log(`Fetched GitHub data`);
 
-    if (githubData) {
-      await updateManifest("github", { lastFetch: new Date().toISOString() });
-    }
+    if (isShuttingDown) return;
 
     const allScraps = [
       ...githubData.userRepos.map((repo) => ({ ...repo, type: "repository" })),
@@ -479,10 +409,18 @@ async function fetchAndUpsertGithubData() {
     ];
 
     for (const scrap of allScraps) {
-      console.log("Processing github scrap:", scrap.title);
+      console.log("Processing github scrap:", scrap.title || scrap.name);
       if (isShuttingDown) {
         console.log("Shutting down, skipping GitHub data processing");
         break;
+      }
+
+      const scrapId = helpers.scrapToUUID("github" + scrap.id);
+      const existingScrap = await getExistingScrap(scrapId);
+
+      if (newOnly && existingScrap) {
+        console.log(`Scrap ${scrapId} already exists, skipping.`);
+        continue;
       }
 
       let content = "";
@@ -498,22 +436,14 @@ async function fetchAndUpsertGithubData() {
         content = scrap.description || "";
       }
 
-      // if it's a repo, fetch the README content to summarize
-      // we need the owner and repo name
       if (scrap.type === "repository") {
-        // console.log("Getting README for", scrap.full_name);
-
         const [owner, repo] = scrap.full_name.split("/");
         const readmeText = await getRepoReadme(owner, repo);
         scrap.readme = readmeText;
-
-        // console.log("README TEXT!");
-        // console.log(readmeText);
       }
 
       let summary = "";
       let aiGeneratedTags = [];
-      // Generate summary and tags
       try {
         summary = await summarizeGitHubActivity(scrap);
         aiGeneratedTags = await gitHubSummaryToTags(summary);
@@ -522,7 +452,7 @@ async function fetchAndUpsertGithubData() {
       }
 
       const scrapObj = {
-        scrap_id: helpers.scrapToUUID("github" + scrap.id),
+        scrap_id: scrapId,
         source: "github",
         content: content,
         summary: summary,
@@ -547,12 +477,12 @@ async function fetchAndUpsertGithubData() {
       };
 
       try {
-        await upsertLimiter.schedule(() => upsertScrap(scrapObj));
+        await upsertLimiter.schedule(() => upsertScrap(scrapObj, newOnly));
         console.log(
           `Scrap processed: ${scrapObj.scrap_id} ${scrapObj.content.substring(
             0,
             50
-          )}... ${scrapObj.source}`
+          )}... ${scrap.type}`
         );
       } catch (error) {
         console.error(`Error processing scrap:`, error);
@@ -560,8 +490,6 @@ async function fetchAndUpsertGithubData() {
     }
 
     console.log(`GitHub data processed.`);
-
-    return new Date().toISOString();
   } catch (error) {
     console.error("Error in fetchAndUpsertGithubData:", error);
   }
@@ -592,19 +520,10 @@ async function generateWebpageScreenshot(webUrl) {
     console.log(`Navigating to: ${webUrl}`);
     await page.goto(webUrl, { waitUntil: "networkidle0", timeout: 60000 });
 
-    const { baseUrl } = splitQueryParams(webUrl);
-    const filename = cleanAndFormatFilename(baseUrl);
-    const screenshotDir =
-      process.env.NODE_ENV === "production"
-        ? "/tmp/screenshots"
-        : "./screenshots";
-    await ensureDirectoryExists(screenshotDir);
-    const screenshotPath = path.join(screenshotDir, `${filename}.png`);
+    const screenshot = await page.screenshot({ encoding: "base64" });
+    console.log(`Screenshot captured for ${webUrl}`);
 
-    await page.screenshot({ path: screenshotPath, fullPage: false });
-    console.log(`Screenshot saved: ${screenshotPath}`);
-
-    // ... rest of the function remains the same
+    return `data:image/png;base64,${screenshot}`;
   } catch (error) {
     console.error(`Error capturing screenshot for ${webUrl}:`, error);
     return null;
@@ -641,7 +560,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
 async function main(options = {}) {
   options = {
-    useManifest: true,
+    useManifest: false, // Changed to false
     newOnly: true,
     ...options,
   };
@@ -654,9 +573,6 @@ async function main(options = {}) {
         .join("\n")
   );
 
-  const checkpoint = await loadCheckpoint();
-  console.log("📍 Loaded checkpoint:", JSON.stringify(checkpoint, null, 2));
-
   process.on("SIGINT", gracefulShutdown);
   process.on("SIGTERM", gracefulShutdown);
 
@@ -668,16 +584,11 @@ async function main(options = {}) {
   ];
 
   for (const source of sources) {
-    console.log(`\n📦 Processing ${source.name.toUpperCase()}...`);
     if (options[source.name] || options.all) {
       console.log(`\n📦 Processing ${source.name.toUpperCase()}...`);
       try {
         console.time(`${source.name} processing time`);
-        const result = await source.func(
-          checkpoint[source.name],
-          options.newOnly
-        );
-        checkpoint[source.name] = result;
+        await source.func(options.newOnly);
         console.timeEnd(`${source.name} processing time`);
         console.log(
           `✅ ${source.name.toUpperCase()} processing completed successfully`
@@ -692,9 +603,6 @@ async function main(options = {}) {
       console.log(`⏭️  Skipping ${source.name.toUpperCase()} (not selected)`);
     }
   }
-
-  await saveCheckpoint(checkpoint);
-  console.log("\n📍 Updated checkpoint:", JSON.stringify(checkpoint, null, 2));
 
   console.log("\n🏁 Scrapbook Core: Main function completed");
   console.log("📊 Summary:");
