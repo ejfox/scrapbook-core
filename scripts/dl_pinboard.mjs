@@ -3,14 +3,6 @@ import axios from "axios";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 
-let isShuttingDown = false;
-let cachedBookmarks = null;
-let lastUpdateTimestamp = 0;
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.log("Unhandled Rejection at:", promise, "reason:", reason);
-});
-
 dotenv.config();
 
 const DEBUG = process.env.DEBUG === "true";
@@ -21,8 +13,6 @@ function log(...args) {
   }
 }
 
-log("Debug mode is on");
-
 const limiter = new Bottleneck({ minTime: 333 });
 const apiToken = process.env.PINBOARD_TOKEN;
 
@@ -31,7 +21,7 @@ if (!apiToken) {
   process.exit(1);
 }
 
-const fetchBookmarks = async (fromdt = null) => {
+const fetchBookmarks = async () => {
   log("Fetching bookmarks from Pinboard API");
   let allBookmarks = [];
   let start = 0;
@@ -47,9 +37,6 @@ const fetchBookmarks = async (fromdt = null) => {
         start,
         results: resultCount,
       };
-      if (fromdt) {
-        params.fromdt = fromdt;
-      }
       const response = await limiter.schedule(() =>
         axios.get("https://api.pinboard.in/v1/posts/all", { params })
       );
@@ -65,59 +52,25 @@ const fetchBookmarks = async (fromdt = null) => {
   return allBookmarks;
 };
 
-export async function fetchBookmarksWithCache(forceUpdate = false) {
-  log("Fetching bookmarks with cache");
+export async function fetchBookmarksWithCache() {
+  // This function name is kept for compatibility, but it no longer caches
+  log("Fetching bookmarks");
   try {
-    const currentTimestamp = Date.now();
-    const cacheIsValid =
-      currentTimestamp - lastUpdateTimestamp <= 24 * 60 * 60 * 1000;
-
-    if (!forceUpdate && cachedBookmarks && cacheIsValid) {
-      log("Using cached bookmarks");
-      return cachedBookmarks;
-    } else {
-      log("Fetching new bookmarks");
-      const fromdt = new Date(lastUpdateTimestamp).toISOString();
-      const newBookmarks = await fetchBookmarks(fromdt);
-
-      if (cachedBookmarks) {
-        cachedBookmarks = [...newBookmarks, ...cachedBookmarks];
-      } else {
-        cachedBookmarks = newBookmarks;
-      }
-
-      lastUpdateTimestamp = currentTimestamp;
-      return cachedBookmarks;
-    }
+    return await fetchBookmarks();
   } catch (error) {
     console.error("Error in fetchBookmarksWithCache:", error);
-    if (cachedBookmarks) {
-      console.log("Falling back to cached bookmarks");
-      return cachedBookmarks;
-    }
     return []; // Return empty array if everything fails
   }
 }
 
-async function main(forceUpdate = false) {
-  log("Entering main function");
-  console.time("Time elapsed");
-
-  process.on("SIGINT", async () => {
-    console.log("\nGracefully shutting down...");
-    isShuttingDown = true;
-    process.exit(0);
-  });
-
-  try {
-    const bookmarks = await fetchBookmarksWithCache(forceUpdate);
-    console.timeEnd("Time elapsed");
-    console.log("Bookmarks processed:", bookmarks.length);
-  } catch (error) {
-    console.error("Error in main:", error);
-    process.exit(1);
-  }
+if (require.main === module) {
+  log("Starting main execution");
+  fetchBookmarksWithCache()
+    .then((bookmarks) => {
+      console.log("Bookmarks fetched:", bookmarks.length);
+    })
+    .catch((error) => {
+      console.error("Unhandled error in main:", error);
+      process.exit(1);
+    });
 }
-
-log("Starting main execution");
-main(true).catch((error) => console.error("Unhandled error in main:", error));
