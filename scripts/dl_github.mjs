@@ -230,7 +230,7 @@ export async function getRepoReadme(owner, repo) {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   fetchGithubData()
     .then((data) => {
       console.log("GitHub data fetched successfully");
