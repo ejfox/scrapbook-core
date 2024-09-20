@@ -63,7 +63,7 @@ export async function fetchBookmarksWithCache() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   log("Starting main execution");
   fetchBookmarksWithCache()
     .then((bookmarks) => {
