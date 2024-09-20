@@ -1,11 +1,6 @@
-import * as fs from "fs/promises";
-import path from "path";
 import axios from "axios";
-import ora from "ora";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
-import { readManifest } from "./manifestHelpers.mjs";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
@@ -46,7 +41,7 @@ const fetchWithRetry = async (url, params = {}, retries = MAX_RETRIES) => {
   }
 };
 
-const fetchUserId = async () => {
+export const fetchUserId = async () => {
   const data = await fetchWithRetry("accounts/search", {
     q: USERNAME,
     resolve: true,
@@ -71,7 +66,7 @@ const processStatus = (status) => {
   return processedStatus;
 };
 
-const fetchStatuses = async (userId) => {
+export const fetchStatuses = async (userId) => {
   let allStatuses = [];
   let maxId = null;
   const resultCount = 40;
@@ -95,42 +90,28 @@ const fetchStatuses = async (userId) => {
 
     return allStatuses;
   } catch (error) {
+    console.error("Error fetching statuses:", error);
     throw error;
   }
 };
 
-const saveStatuses = async (statuses) => {
-  const dirPath = path.join(process.cwd(), "public", "data", "scrapbook");
-  const filePath = path.join(dirPath, "mastodon.json");
-
-  try {
-    await fs.mkdir(dirPath, { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify(statuses, null, 2));
-    console.log(`Saved ${statuses.length} statuses to ${filePath}`);
-  } catch (error) {
-    console.error("Error saving statuses:", error);
-    throw error;
-  }
-};
-
-const main = async () => {
-  try {
-    const userId = await fetchUserId();
-    if (!userId) {
-      throw new Error("User ID could not be found for the specified username.");
-    }
-
-    const statuses = await fetchStatuses(userId);
-    await saveStatuses(statuses);
-  } catch (error) {
-    console.error("An error occurred:", error.message);
-    process.exit(1);
-  }
-};
-
-// ES module equivalent of `if (require.main === module)`
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const main = async () => {
+    try {
+      const userId = await fetchUserId();
+      if (!userId) {
+        throw new Error(
+          "User ID could not be found for the specified username."
+        );
+      }
+
+      const statuses = await fetchStatuses(userId);
+      console.log(`Fetched ${statuses.length} statuses`);
+    } catch (error) {
+      console.error("An error occurred:", error.message);
+      process.exit(1);
+    }
+  };
+
   main();
 }
-
-export { fetchStatuses, fetchUserId, saveStatuses };
