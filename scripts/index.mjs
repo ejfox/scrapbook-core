@@ -26,6 +26,8 @@ process.on("unhandledRejection", (reason, promise) => {
 
 dotenv.config();
 
+const NODE_ENV = process.env.NODE_ENV;
+
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
