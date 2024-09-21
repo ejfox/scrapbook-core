@@ -21,8 +21,36 @@ if (!apiToken) {
   process.exit(1);
 }
 
-const fetchBookmarks = async () => {
-  log("Fetching bookmarks from Pinboard API");
+export async function fetchBookmarksWithCache() {
+  console.log("Starting fetchBookmarksWithCache function");
+  try {
+    console.log("Initiating fetchBookmarks");
+    const bookmarks = await fetchBookmarks();
+    console.log(`Fetched ${bookmarks.length} bookmarks successfully`);
+
+    console.log("Processing fetched bookmarks");
+    bookmarks.forEach((bookmark, index) => {
+      console.log(`Processing bookmark ${index + 1}/${bookmarks.length}`);
+      console.log(`Bookmark URL: ${bookmark.href}`);
+      console.log(`Bookmark Title: ${bookmark.title}`);
+      console.log(`Bookmark Tags: ${bookmark.tags}`);
+      console.log(`Bookmark Time: ${bookmark.time}`);
+      console.log("---");
+    });
+
+    console.log("Finished processing all bookmarks");
+    return bookmarks;
+  } catch (error) {
+    console.error("Error in fetchBookmarksWithCache:", error);
+    console.error("Stack trace:", error.stack);
+    return []; // Return empty array if everything fails
+  } finally {
+    console.log("Exiting fetchBookmarksWithCache function");
+  }
+}
+
+async function fetchBookmarks() {
+  console.log("Starting fetchBookmarks function");
   let allBookmarks = [];
   let start = 0;
   let fetching = true;
@@ -30,7 +58,7 @@ const fetchBookmarks = async () => {
   const resultCount = 100;
   while (fetching) {
     try {
-      log(`Fetching bookmarks starting from index ${start}`);
+      console.log(`Fetching bookmarks batch starting from index ${start}`);
       const params = {
         auth_token: apiToken,
         format: "json",
@@ -43,30 +71,25 @@ const fetchBookmarks = async () => {
           timeout: 30000,
         })
       );
-      log(`Fetched ${response.data.length} bookmarks`);
+      console.log(
+        `Successfully fetched ${response.data.length} bookmarks in this batch`
+      );
       allBookmarks = allBookmarks.concat(response.data);
       start += resultCount;
       fetching = response.data.length === resultCount;
+      console.log(`Total bookmarks fetched so far: ${allBookmarks.length}`);
     } catch (error) {
-      console.error("Error fetching bookmarks:", error.message);
+      console.error("Error fetching bookmarks batch:", error.message);
       console.error("Full error:", error);
+      console.error("Stack trace:", error.stack);
       break; // Stop fetching on error, but don't throw
     }
   }
 
-  log(`Total bookmarks fetched: ${allBookmarks.length}`);
+  console.log(
+    `Finished fetching all bookmarks. Total count: ${allBookmarks.length}`
+  );
   return allBookmarks;
-};
-
-export async function fetchBookmarksWithCache() {
-  // This function name is kept for compatibility, but it no longer caches
-  log("Fetching bookmarks");
-  try {
-    return await fetchBookmarks();
-  } catch (error) {
-    console.error("Error in fetchBookmarksWithCache:", error);
-    return []; // Return empty array if everything fails
-  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
