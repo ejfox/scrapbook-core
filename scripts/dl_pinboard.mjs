@@ -38,17 +38,23 @@ const fetchBookmarks = async () => {
         results: resultCount,
       };
       const response = await limiter.schedule(() =>
-        axios.get("https://api.pinboard.in/v1/posts/all", { params })
+        axios.get("https://api.pinboard.in/v1/posts/all", {
+          params,
+          timeout: 30000,
+        })
       );
+      log(`Fetched ${response.data.length} bookmarks`);
       allBookmarks = allBookmarks.concat(response.data);
       start += resultCount;
       fetching = response.data.length === resultCount;
     } catch (error) {
       console.error("Error fetching bookmarks:", error.message);
+      console.error("Full error:", error);
       break; // Stop fetching on error, but don't throw
     }
   }
 
+  log(`Total bookmarks fetched: ${allBookmarks.length}`);
   return allBookmarks;
 };
 
