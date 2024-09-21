@@ -1,4 +1,9 @@
-FROM ghcr.io/puppeteer/puppeteer:19.7.2
+# syntax = docker/dockerfile:1
+
+# Adjust NODE_VERSION as desired
+ARG NODE_VERSION=xxx
+FROM node:${NODE_VERSION}-slim as base
+
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
