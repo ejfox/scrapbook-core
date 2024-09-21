@@ -187,30 +187,36 @@ export function generatePassword(titleSlug) {
 export async function fetchPageContent(url) {
   const ALLOWED_TEXT_ELEMENTS =
     "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
+
   // set up puppeteer
+  try {
+    const browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    // wait a second for the page to load
 
-  const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-  const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "domcontentloaded" });
-  // wait a second for the page to load
+    const pageTitle = await page.title();
 
-  const pageTitle = await page.title();
+    const content = await page.content();
 
-  const content = await page.content();
-  await browser.close();
+    // parse out the allowed element content with cheerio
+    const $ = cheerio.load(content);
+    const allowedContent = $(ALLOWED_TEXT_ELEMENTS)
+      .map((index, element) => {
+        return $(element).text();
+      })
+      .get()
+      .join(" ");
 
-  // parse out the allowed element content with cheerio
-  const $ = cheerio.load(content);
-  const allowedContent = $(ALLOWED_TEXT_ELEMENTS)
-    .map((index, element) => {
-      return $(element).text();
-    })
-    .get()
-    .join(" ");
+    await browser.close();
 
-  return `#${pageTitle}\n##${url}\n${allowedContent}`;
+    return `#${pageTitle}\n##${url}\n${allowedContent}`;
+  } catch (error) {
+    console.error(`Error processing ${url}:`, error);
+    return `Error processing ${url}: ${error.message}`;
+  }
 }
 
 // this breaks the large content into smaller chunks
