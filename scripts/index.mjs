@@ -164,7 +164,7 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
   try {
     console.log("Fetching Pinboard bookmarks...");
     const pinboardBookmarks = await fetchBookmarksWithCache(false);
-    log(`Fetched ${pinboardBookmarks.length} Pinboard bookmarks`);
+    console.log(`Fetched ${pinboardBookmarks.length} Pinboard bookmarks`);
 
     if (isShuttingDown) return;
 
@@ -177,18 +177,22 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
 
       const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
       console.log("Scrap ID:", scrapId);
+      console.log("Checking for existing scrap...");
       const existingScrap = await getExistingScrap(scrapId);
+      console.log("Existing scrap check complete");
 
       if (newOnly && existingScrap) {
         console.log(`Scrap ${scrapId} already exists, skipping.`);
         continue;
       }
 
+      console.log("Preparing to fetch page content...");
       let pageContent = "";
       let summary = existingScrap?.summary || "";
 
       if (!summary) {
         try {
+          console.log("Fetching page content...");
           pageContent = await browserLimiter.schedule(() =>
             helpers.fetchPageContent(bookmark.href)
           );
@@ -196,10 +200,13 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
 
           if (pageContent.length > 100000) {
             pageContent = pageContent.substring(0, 100000);
+            console.log("Content truncated to 100000 characters");
           }
+          console.log("Summarizing content...");
           summary = await limiter.schedule(() =>
             summarizeContent(pageContent, { metaSummary: true })
           );
+          console.log("Content summarized");
         } catch (error) {
           console.error("Error processing bookmark:", error);
         }
@@ -207,32 +214,39 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
 
       console.log("Summary length:", summary.length);
 
+      console.log("Extracting location...");
       let location = existingScrap?.metadata?.location;
       let latitude = existingScrap?.metadata?.latitude;
       let longitude = existingScrap?.metadata?.longitude;
 
       if (!location) {
+        console.log("Location not found, extracting from summary...");
         const locationData = await limiter.schedule(() =>
           extractLocation(summary)
         );
         location = locationData.location;
         latitude = locationData.latitude;
         longitude = locationData.longitude;
+        console.log("Location extracted:", location);
       }
 
       console.log("Generating tags for summary...");
       let tags = await limiter.schedule(() => metaSummaryToTags(summary));
       tags = tags.split("\n").map((tag) => tag.trim());
       const combinedTags = [...new Set([...tags, ...bookmark.tags])];
+      console.log("Tags generated:", combinedTags);
 
+      console.log("Checking for existing screenshot...");
       let screenshotUrl = existingScrap?.metadata?.screenshotUrl;
       if (!screenshotUrl) {
         console.log("Generating screenshot for bookmark...");
         await browserLimiter.schedule(async () => {
           screenshotUrl = await generateWebpageScreenshot(bookmark.href);
         });
+        console.log("Screenshot generated");
       }
 
+      console.log("Preparing bookmark object...");
       let bookmarkObj = {
         scrap_id: scrapId,
         source: "pinboard",
@@ -253,9 +267,11 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
 
       console.log("Extracting relationships for bookmark...");
       bookmarkObj = await extractAndAddRelationships(bookmarkObj);
+      console.log("Relationships extracted");
 
       console.log("Upserting bookmark...");
       await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
+      console.log("Bookmark upserted");
     }
 
     console.log(
@@ -265,6 +281,7 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
     console.error("Error in fetchAndUpsertPinboardBookmarks:", error);
   }
 }
+
 async function fetchAndUpsertMastodonStatuses(newOnly) {
   try {
     console.log("Fetching Mastodon statuses...");
