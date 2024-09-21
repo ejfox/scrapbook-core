@@ -534,8 +534,18 @@ function splitQueryParams(url) {
 
 async function generateWebpageScreenshot(webUrl) {
   const browser = await puppeteer.launch({
+    executablePath:
+      NODE_ENV !== "development"
+        ? CHROME_EXECUTABLE_PATH || "/usr/bin/chromium"
+        : undefined,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-gpu",
+      "--disable-software-rasterizer",
+    ],
+    // @ts-ignore
     headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1080, height: 1920 });

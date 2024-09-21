@@ -191,7 +191,18 @@ export async function fetchPageContent(url) {
   // set up puppeteer
   try {
     const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath:
+        NODE_ENV !== "development"
+          ? CHROME_EXECUTABLE_PATH || "/usr/bin/chromium"
+          : undefined,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+      ],
+      // @ts-ignore
+      headless: "new",
     });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "domcontentloaded" });
