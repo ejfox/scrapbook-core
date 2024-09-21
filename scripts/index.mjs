@@ -176,6 +176,7 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
       }
 
       const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
+      console.log("Scrap ID:", scrapId);
       const existingScrap = await getExistingScrap(scrapId);
 
       if (newOnly && existingScrap) {
@@ -204,6 +205,8 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
         }
       }
 
+      console.log("Summary length:", summary.length);
+
       let location = existingScrap?.metadata?.location;
       let latitude = existingScrap?.metadata?.latitude;
       let longitude = existingScrap?.metadata?.longitude;
@@ -217,12 +220,14 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
         longitude = locationData.longitude;
       }
 
+      console.log("Generating tags for summary...");
       let tags = await limiter.schedule(() => metaSummaryToTags(summary));
       tags = tags.split("\n").map((tag) => tag.trim());
       const combinedTags = [...new Set([...tags, ...bookmark.tags])];
 
       let screenshotUrl = existingScrap?.metadata?.screenshotUrl;
       if (!screenshotUrl) {
+        console.log("Generating screenshot for bookmark...");
         await browserLimiter.schedule(async () => {
           screenshotUrl = await generateWebpageScreenshot(bookmark.href);
         });
@@ -246,8 +251,10 @@ async function fetchAndUpsertPinboardBookmarks(newOnly) {
         },
       };
 
+      console.log("Extracting relationships for bookmark...");
       bookmarkObj = await extractAndAddRelationships(bookmarkObj);
 
+      console.log("Upserting bookmark...");
       await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
     }
 
