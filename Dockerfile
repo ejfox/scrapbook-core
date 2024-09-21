@@ -1,12 +1,4 @@
-
-
-
 FROM ghcr.io/puppeteer/puppeteer:19.7.2
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
-
-ENV NODE_ENV=production
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -20,6 +12,10 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_SKIP_DOWNLOAD=true \
     CHROME_EXECUTABLE_PATH="/usr/bin/chromium"
 
+ENV NODE_ENV=production
+
+RUN npm update @flydotio/dockerfile
+RUN npx dockerfile
 
 WORKDIR /usr/src/app
 
