@@ -3,6 +3,11 @@ import { md5 } from "js-md5";
 import cheerio from "cheerio";
 import puppeteer from "puppeteer";
 import llamaTokenizer from "llama-tokenizer-js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const NODE_ENV = process.env.NODE_ENV;
+const CHROME_EXECUTABLE_PATH = "/usr/bin/chromium-browser";
 
 export const getHumanReadableContent = (scrap) => {
   if (scrap.pull_request) {
