@@ -25,8 +25,8 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 
 ENV NODE_ENV=production
 
-RUN npm update @flydotio/dockerfile
-RUN npx dockerfile
+# RUN npm update @flydotio/dockerfile
+# RUN npx dockerfile
 
 WORKDIR /usr/src/app
 
