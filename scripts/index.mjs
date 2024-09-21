@@ -27,6 +27,7 @@ process.on("unhandledRejection", (reason, promise) => {
 dotenv.config();
 
 const NODE_ENV = process.env.NODE_ENV;
+const CHROME_EXECUTABLE_PATH = "/usr/bin/chromium-browser";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
