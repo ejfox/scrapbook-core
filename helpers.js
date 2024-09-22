@@ -1,13 +1,13 @@
 import CryptoJS from "crypto-js";
 import { md5 } from "js-md5";
 import cheerio from "cheerio";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core"; // Changed to puppeteer-core
 import llamaTokenizer from "llama-tokenizer-js";
 import dotenv from "dotenv";
 dotenv.config();
 
 const NODE_ENV = process.env.NODE_ENV;
-const CHROME_EXECUTABLE_PATH = "/usr/bin/google-chrome";
+const CHROME_EXECUTABLE_PATH = "/usr/bin/chromium"; // Updated path
 
 export const getHumanReadableContent = (scrap) => {
   if (scrap.pull_request) {
@@ -35,6 +35,7 @@ export function generateShortId(data, length = 8) {
     .replace(/=+$/, "");
   return base64.substring(0, length);
 }
+
 export function scrapToUUID(scrapIdString) {
   return generateShortId(scrapIdString);
 }
@@ -66,7 +67,6 @@ function articleExists(article) {
 export function countWords(article) {
   if (!articleExists(article)) return 0;
   if (!article.excerpt.children) return 0;
-  // console.log('Counting words in', article)
   const words = article.excerpt.children
     .filter(
       (node) =>
@@ -115,7 +115,6 @@ export function extractFirstPhoto(article) {
 
 export function countLinks(article) {
   if (!articleExists(article)) return 0;
-  // look inside all paragraphs and headings for links
   if (!article.excerpt.children) return 0;
   const links = article.excerpt.children
     .filter(
@@ -137,7 +136,6 @@ export function countLinks(article) {
 
 export function filterStrongTags(article) {
   if (!articleExists(article)) return [];
-  // look 3 levels deep in article.body.children for strong tags
   const strongTags = article.body.children
     .filter(
       (node) =>
@@ -172,19 +170,13 @@ export function isValidHttpUrl(string) {
 }
 
 export function generatePassword(titleSlug) {
-  // start with todays date in YYYY-MM-DD format
   const date = new Date();
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
   const day = date.getDate();
-
-  // add the title slug
   const title = titleSlug;
-
   const rawPassword = `${year}-${month}-${day}-${title}`;
-  // make a hash of the raw password
   const hash = md5(rawPassword);
-  // take the first 8 characters of the hash and the last 8 characters of the hash
   const password = hash.slice(0, 8) + hash.slice(-8);
   return password;
 }
@@ -193,12 +185,11 @@ export async function fetchPageContent(url) {
   const ALLOWED_TEXT_ELEMENTS =
     "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
 
-  // set up puppeteer
   try {
     const browser = await puppeteer.launch({
       executablePath:
         NODE_ENV !== "development"
-          ? CHROME_EXECUTABLE_PATH || "/usr/bin/google-chrome"
+          ? CHROME_EXECUTABLE_PATH || "/usr/bin/chromium" // Updated default path
           : undefined,
       args: [
         "--no-sandbox",
@@ -206,18 +197,13 @@ export async function fetchPageContent(url) {
         "--disable-gpu",
         "--disable-software-rasterizer",
       ],
-      // @ts-ignore
       headless: "new",
     });
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "domcontentloaded" });
-    // wait a second for the page to load
-
     const pageTitle = await page.title();
-
     const content = await page.content();
 
-    // parse out the allowed element content with cheerio
     const $ = cheerio.load(content);
     const allowedContent = $(ALLOWED_TEXT_ELEMENTS)
       .map((index, element) => {
@@ -235,54 +221,36 @@ export async function fetchPageContent(url) {
   }
 }
 
-// this breaks the large content into smaller chunks
+// Function to break content into chunks
 export function breakContentIntoChunks(content, chunkSizeTokens) {
-  // Split the content into sentences using a regular expression
-  // The regular expression matches common sentence delimiters: periods, exclamation marks, and question marks
-  // It accounts for common abbreviations and edge cases to avoid splitting on false sentence boundaries
-
   if (!content) return [];
   const sentences = content.match(/[^.!?]+[.!?]+/g);
 
-  // Initialize an empty array to store the chunks
   const chunks = [];
-
-  // Initialize a variable to keep track of the current chunk being built
   let currentChunk = "";
 
-  // Iterate over each sentence
   for (const sentence of sentences) {
     const sentenceTokenSize = llamaTokenizer.encode(
       currentChunk + sentence
     ).length;
 
-    // Check if adding the current sentence to the current chunk would exceed the chunk size limit
     if (sentenceTokenSize > chunkSizeTokens) {
-      // If the chunk size limit is exceeded, add the current chunk to the chunks array
       chunks.push(currentChunk.trim());
-
-      // Reset the current chunk to start building a new chunk
       currentChunk = "";
     }
 
-    // Append the current sentence to the current chunk
     currentChunk += sentence + " ";
   }
 
-  // log the chunk sizes in tokens
   chunks.forEach((chunk, index) => {
     console.log(`Chunk ${index} size: ${llamaTokenizer.encode(chunk).length}`);
   });
 
-  // After processing all sentences, add the remaining current chunk to the chunks array
   if (currentChunk.trim() !== "") {
     chunks.push(currentChunk.trim());
-
-    // Log the size of the last chunk
     console.log(`Chunk size: ${llamaTokenizer.encode(currentChunk).length}`);
   }
 
-  // Return the array of chunks
   return chunks;
 }
 
@@ -290,7 +258,7 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
  * Splits content into chunks of a specified maximum size.
  * @param {string} content - The text content to be split into chunks.
  * @param {Object} options - Configuration options.
- * @param {number} [options.chunkMaxChars=2048] - Maximum number of characters per chunk.
+ * @param {number} [options.chunkMaxChars=16384] - Maximum number of characters per chunk.
  * @returns {string[]} An array of content chunks.
  */
 export function contentToChunks(content, options = {}) {
@@ -298,12 +266,8 @@ export function contentToChunks(content, options = {}) {
   const chunks = [];
   let currentChunk = "";
 
-  // Split the content into paragraphs
   const paragraphs = content.split("\n");
 
-  /**
-   * Helper function to add the current chunk to the chunks array and reset it.
-   */
   const addChunk = () => {
     if (currentChunk.trim()) {
       chunks.push(currentChunk.trim());
@@ -311,10 +275,6 @@ export function contentToChunks(content, options = {}) {
     }
   };
 
-  /**
-   * Helper function to split a long paragraph into smaller chunks.
-   * @param {string} paragraph - The paragraph to split.
-   */
   const splitLongParagraph = (paragraph) => {
     const words = paragraph.split(" ");
     for (const word of words) {
@@ -326,13 +286,10 @@ export function contentToChunks(content, options = {}) {
     addChunk();
   };
 
-  // Process each paragraph
   for (const paragraph of paragraphs) {
     if (currentChunk.length + paragraph.length <= chunkMaxChars) {
-      // If the paragraph fits in the current chunk, add it
       currentChunk += (currentChunk ? "\n" : "") + paragraph;
     } else {
-      // If it doesn't fit, add the current chunk and process the paragraph
       addChunk();
       if (paragraph.length <= chunkMaxChars) {
         currentChunk = paragraph;
@@ -342,7 +299,6 @@ export function contentToChunks(content, options = {}) {
     }
   }
 
-  // Add any remaining content in the current chunk
   addChunk();
 
   console.log(`Chunks: ${chunks.length}`);
