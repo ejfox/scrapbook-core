@@ -18,10 +18,12 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+
 # Set environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_SKIP_DOWNLOAD=true \
-    CHROME_EXECUTABLE_PATH="/usr/bin/google-chrome"
+    CHROME_EXECUTABLE_PATH="/usr/bin/chromium"
+
 
 ENV NODE_ENV=production
 
