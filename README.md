@@ -28,6 +28,15 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 - <scripts/search_sqlite_scraps.js>
 - <Local\ Scrap\ Search.1.1.alfredworkflow.zip>
 
+## Deploying
+`flyctl deploy`
+
+### Running
+`flyctl ssh console -C "node scripts/index.mjs --all"`
+
+### Get logs
+`flyctl logs`
+
 ## Database Schema
 
 ### Scraps table

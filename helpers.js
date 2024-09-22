@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const NODE_ENV = process.env.NODE_ENV;
-const CHROME_EXECUTABLE_PATH = "/usr/bin/chromium-browser";
+const CHROME_EXECUTABLE_PATH = "/usr/bin/google-chrome";
 
 export const getHumanReadableContent = (scrap) => {
   if (scrap.pull_request) {
@@ -198,7 +198,7 @@ export async function fetchPageContent(url) {
     const browser = await puppeteer.launch({
       executablePath:
         NODE_ENV !== "development"
-          ? CHROME_EXECUTABLE_PATH || "/usr/bin/chromium"
+          ? CHROME_EXECUTABLE_PATH || "/usr/bin/google-chrome"
           : undefined,
       args: [
         "--no-sandbox",

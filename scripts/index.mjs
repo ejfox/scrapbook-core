@@ -27,7 +27,7 @@ process.on("unhandledRejection", (reason, promise) => {
 dotenv.config();
 
 const NODE_ENV = process.env.NODE_ENV;
-const CHROME_EXECUTABLE_PATH = "/usr/bin/chromium-browser";
+const CHROME_EXECUTABLE_PATH = "/usr/bin/google-chrome";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -539,7 +539,7 @@ async function generateWebpageScreenshot(webUrl) {
   const browser = await puppeteer.launch({
     executablePath:
       NODE_ENV !== "development"
-        ? CHROME_EXECUTABLE_PATH || "/usr/bin/chromium"
+        ? CHROME_EXECUTABLE_PATH || "/usr/bin/google-chrome"
         : undefined,
     args: [
       "--no-sandbox",
