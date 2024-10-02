@@ -13,8 +13,8 @@ app = "scrapbook-core"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 2048
-  swap_size_mb = 2048
+  memory_mb = 4096
+  swap_size_mb = 4096
 
 [processes]
   app = "node scripts/index.mjs --all"
