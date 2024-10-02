@@ -25,8 +25,8 @@ app = "scrapbook-core"
   auto_start_machines = true
   min_machines_running = 0
 
-[scheduled_tasks]
-  [[scheduled_tasks.job]]
+[scheduled_jobs]
+  [[scheduled_jobs.jobs]]
     name = "run-scraper"
     schedule = "@daily"
     command = "node scripts/index.mjs --all"
