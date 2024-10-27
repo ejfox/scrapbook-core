@@ -1,13 +1,80 @@
 import CryptoJS from "crypto-js";
 import { md5 } from "js-md5";
 import cheerio from "cheerio";
-import puppeteer from "puppeteer-core"; // Changed to puppeteer-core
+import puppeteer from "puppeteer-core"; // Using puppeteer-core
 import llamaTokenizer from "llama-tokenizer-js";
 import dotenv from "dotenv";
+import os from "os";
+import { execSync } from "child_process";
+
 dotenv.config();
 
-const NODE_ENV = process.env.NODE_ENV;
-const CHROME_EXECUTABLE_PATH = "/usr/bin/chromium"; // Updated path
+const NODE_ENV = process.env.NODE_ENV || "production";
+
+// Dynamically determine Chrome executable path based on environment
+async function getChromeExecutablePath() {
+  if (os.platform() === "darwin") {
+    // macOS
+    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  } else if (os.platform() === "linux") {
+    // Linux (Docker environment)
+    try {
+      const chromiumPath = execSync("which chromium-browser || which chromium")
+        .toString()
+        .trim();
+      return chromiumPath;
+    } catch (error) {
+      console.error("Chromium not found on Linux, ensure it is installed.");
+      return null;
+    }
+  } else {
+    throw new Error(`Unsupported platform: ${os.platform()}`);
+  }
+}
+
+// Fetch page content using Puppeteer with dynamic Chrome path
+export async function fetchPageContent(url) {
+  const ALLOWED_TEXT_ELEMENTS =
+    "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
+
+  const chromePath = await getChromeExecutablePath();
+  if (!chromePath) {
+    return `Error: No valid Chrome executable path found for platform ${os.platform()}`;
+  }
+
+  try {
+    const browser = await puppeteer.launch({
+      executablePath: NODE_ENV !== "development" ? chromePath : undefined,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+      ],
+      headless: "new",
+    });
+
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    const pageTitle = await page.title();
+    const content = await page.content();
+    const $ = cheerio.load(content);
+
+    const allowedContent = $(ALLOWED_TEXT_ELEMENTS)
+      .map((index, element) => {
+        return $(element).text();
+      })
+      .get()
+      .join(" ");
+
+    await browser.close();
+
+    return `#${pageTitle}\n##${url}\n${allowedContent}`;
+  } catch (error) {
+    console.error(`Error processing ${url}:`, error);
+    return `Error processing ${url}: ${error.message}`;
+  }
+}
 
 export const getHumanReadableContent = (scrap) => {
   if (scrap.pull_request) {
@@ -179,46 +246,6 @@ export function generatePassword(titleSlug) {
   const hash = md5(rawPassword);
   const password = hash.slice(0, 8) + hash.slice(-8);
   return password;
-}
-
-export async function fetchPageContent(url) {
-  const ALLOWED_TEXT_ELEMENTS =
-    "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
-
-  try {
-    const browser = await puppeteer.launch({
-      executablePath:
-        NODE_ENV !== "development"
-          ? CHROME_EXECUTABLE_PATH || "/usr/bin/chromium" // Updated default path
-          : undefined,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-gpu",
-        "--disable-software-rasterizer",
-      ],
-      headless: "new",
-    });
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded" });
-    const pageTitle = await page.title();
-    const content = await page.content();
-
-    const $ = cheerio.load(content);
-    const allowedContent = $(ALLOWED_TEXT_ELEMENTS)
-      .map((index, element) => {
-        return $(element).text();
-      })
-      .get()
-      .join(" ");
-
-    await browser.close();
-
-    return `#${pageTitle}\n##${url}\n${allowedContent}`;
-  } catch (error) {
-    console.error(`Error processing ${url}:`, error);
-    return `Error processing ${url}: ${error.message}`;
-  }
 }
 
 // Function to break content into chunks

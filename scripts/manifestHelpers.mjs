@@ -1,22 +1,26 @@
 import fs from "fs/promises";
 import path from "path";
 
-const manifestPath = path.join(
-  process.cwd(),
-  "public",
-  "data",
-  "scrapbook",
-  "manifest.json"
-);
+const manifestDir = path.join(process.cwd(), "public", "data", "scrapbook");
+const manifestPath = path.join(manifestDir, "manifest.json");
+
+async function ensureManifestDir() {
+  try {
+    await fs.mkdir(manifestDir, { recursive: true });
+  } catch (error) {
+    console.error("Failed to create manifest directory:", error);
+    throw error;
+  }
+}
 
 export async function readManifest() {
+  await ensureManifestDir();
   try {
-    // Attempt to read the manifest file if it exists
     const data = await fs.readFile(manifestPath, "utf-8");
     return JSON.parse(data);
   } catch (error) {
-    // If the file does not exist or an error occurs, return a default structure
     console.error("Failed to read manifest:", error);
+    // Return default structure
     return {
       arena: { lastFetch: null, errors: [] },
       github: { lastFetch: null, errors: [] },
@@ -27,13 +31,12 @@ export async function readManifest() {
 }
 
 export async function updateManifest(service, { lastFetch, errors = [] }) {
+  await ensureManifestDir();
   try {
     let data = {};
     try {
-      // Read the current manifest data
       data = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
     } catch (readError) {
-      // If reading fails, initialize data with empty structure for all services
       console.error(
         "Error reading the manifest, initializing new data:",
         readError
@@ -46,7 +49,6 @@ export async function updateManifest(service, { lastFetch, errors = [] }) {
       };
     }
 
-    // Update the specific service data
     if (!data[service]) {
       data[service] = { lastFetch: null, errors: [] };
     }
@@ -55,11 +57,10 @@ export async function updateManifest(service, { lastFetch, errors = [] }) {
       data[service].errors.push(...errors);
     }
 
-    // Write the updated data back to the manifest file
     await fs.writeFile(manifestPath, JSON.stringify(data, null, 2));
     console.log(`Manifest updated successfully for ${service}`);
   } catch (updateError) {
     console.error(`Failed to update manifest for ${service}:`, updateError);
-    throw updateError; // Rethrow to allow higher level handling if necessary
+    throw updateError;
   }
 }

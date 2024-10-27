@@ -1,7 +1,11 @@
 #!/usr/bin/env node
+
 import axios from "axios";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
+import fs from "fs/promises";
+import path from "path";
+import { readManifest, updateManifest } from "./manifestHelpers.mjs";
 
 dotenv.config();
 
@@ -21,22 +25,63 @@ if (!apiToken) {
   process.exit(1);
 }
 
+// Define the path to store cached bookmarks
+const bookmarksCachePath = path.join(process.cwd(), "data", "pinboard.json");
+
+async function fetchLastUpdateTime() {
+  const params = {
+    auth_token: apiToken,
+    format: "json",
+  };
+  const response = await limiter.schedule(() =>
+    axios.get("https://api.pinboard.in/v1/posts/update", { params })
+  );
+  return response.data.update_time;
+}
+
 export async function fetchBookmarksWithCache() {
   console.log("Starting fetchBookmarksWithCache function");
   try {
-    console.log("Initiating fetchBookmarks");
-    const bookmarks = await fetchBookmarks();
-    console.log(`Fetched ${bookmarks.length} bookmarks successfully`);
+    const lastUpdateTime = await fetchLastUpdateTime();
+    log("Last update time from Pinboard:", lastUpdateTime);
 
-    console.log("Processing fetched bookmarks");
-    bookmarks.forEach((bookmark, index) => {
-      console.log(`Processing bookmark ${index + 1}/${bookmarks.length}`);
-      console.log(`Bookmark URL: ${bookmark.href}`);
-      console.log(`Bookmark Title: ${bookmark.title}`);
-      console.log(`Bookmark Tags: ${bookmark.tags}`);
-      console.log(`Bookmark Time: ${bookmark.time}`);
-      console.log("---");
-    });
+    const manifest = await readManifest();
+    const cachedUpdateTime = manifest.pinboard.lastFetch;
+    log("Cached last update time:", cachedUpdateTime);
+
+    let bookmarks = [];
+
+    if (lastUpdateTime !== cachedUpdateTime) {
+      console.log("Bookmarks have been updated. Fetching new bookmarks.");
+      bookmarks = await fetchBookmarks();
+      // Save bookmarks to cache
+      await fs.writeFile(
+        bookmarksCachePath,
+        JSON.stringify(bookmarks, null, 2)
+      );
+      // Update manifest
+      await updateManifest("pinboard", { lastFetch: lastUpdateTime });
+    } else {
+      console.log("No new updates. Using cached bookmarks.");
+      try {
+        const data = await fs.readFile(bookmarksCachePath, "utf-8");
+        bookmarks = JSON.parse(data);
+      } catch (error) {
+        console.error("Failed to read cached bookmarks:", error);
+        console.log("Fetching bookmarks from API as a fallback.");
+        bookmarks = await fetchBookmarks();
+        // Save bookmarks to cache
+        await fs.writeFile(
+          bookmarksCachePath,
+          JSON.stringify(bookmarks, null, 2)
+        );
+        // Update manifest
+        await updateManifest("pinboard", { lastFetch: lastUpdateTime });
+      }
+    }
+
+    console.log(`Processing ${bookmarks.length} bookmarks`);
+    // You can add your processing logic here
 
     console.log("Finished processing all bookmarks");
     return bookmarks;
