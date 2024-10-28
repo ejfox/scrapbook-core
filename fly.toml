@@ -11,10 +11,10 @@ app = "scrapbook-core"
   destination = "/usr/src/app/data"
 
 [[vm]]
-  cpu_kind = "shared"
+  cpu_kind = "performance"
   cpus = 1
-  memory_mb = 8192  # Increase memory to 8GB
-  swap_size_mb = 8192  # Increase swap size to 8GB
+  memory_mb = 8192
+  swap_size_mb = 8192
 
 [processes]
   app = "node scripts/index.mjs --all"
