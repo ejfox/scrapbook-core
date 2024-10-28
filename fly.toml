@@ -16,10 +16,9 @@ app = "scrapbook-core"
   memory_mb = 8192
   swap_size_mb = 8192
 
-[processes]
-  app = "node scripts/index.mjs --all"
-
 [[services]]
+  internal_port = 8080
+  protocol = "tcp"
   processes = ["app"]
   auto_stop_machines = true
   auto_start_machines = true
