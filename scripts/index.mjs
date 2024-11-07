@@ -18,6 +18,7 @@ import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import extractLocation from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
+import { addSeconds, parseISO } from "date-fns";
 
 dotenv.config();
 
@@ -41,8 +42,10 @@ const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
 const upsertLimiter = new Bottleneck({ maxConcurrent: 3, minTime: 1500 });
 const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
 
+const MACHINE_ID = process.env.FLY_MACHINE_ID || 'local';
+
 function log(...args) {
-  if (DEBUG) console.log(...args);
+  if (DEBUG) console.log(`[${MACHINE_ID}]`, ...args);
 }
 
 // Graceful shutdown logic
@@ -157,63 +160,124 @@ async function generateWebpageScreenshot(webUrl) {
   }
 }
 
+// Modify the acquireLock function to use scraps table
+async function acquireLock(lockName, ttlSeconds = 300) {
+  const now = new Date();
+  const expires = addSeconds(now, ttlSeconds);
+  const lockId = `lock_${lockName}`;
+
+  // Try to insert or update lock
+  const { data, error } = await supabase
+    .from('scraps')
+    .upsert({
+      scrap_id: lockId,
+      source: 'lock',
+      content: 'Lock record',
+      metadata: {
+        machine_id: MACHINE_ID,
+        expires_at: expires.toISOString(),
+        lock_type: lockName
+      },
+      updated_at: now.toISOString()
+    }, {
+      onConflict: 'scrap_id'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    log(`Failed to acquire lock: ${lockName}`, error);
+    return false;
+  }
+
+  // Check if lock is expired
+  const existingLock = data?.metadata?.expires_at;
+  if (existingLock && new Date(existingLock) > now) {
+    log(`Lock ${lockName} is held by ${data.metadata.machine_id}`);
+    return false;
+  }
+
+  return true;
+}
+
+async function releaseLock(lockName) {
+  const lockId = `lock_${lockName}`;
+  const { error } = await supabase
+    .from('scraps')
+    .delete()
+    .eq('scrap_id', lockId)
+    .eq('metadata->machine_id', MACHINE_ID); // Only delete if we own the lock
+    
+  if (error) log(`Failed to release lock: ${lockName}`, error);
+}
+
 // Fetch and process Pinboard bookmarks
 async function fetchAndUpsertPinboardBookmarks(newOnly) {
-  const pinboardBookmarks = await fetchBookmarksWithCache(false);
-  log(`Fetched ${pinboardBookmarks.length} Pinboard bookmarks`);
+  const lockName = 'pinboard_sync';
+  if (!await acquireLock(lockName)) {
+    log('Another process is syncing Pinboard');
+    return;
+  }
 
-  for (const bookmark of pinboardBookmarks) {
-    if (isShuttingDown) break;
+  try {
+    const pinboardBookmarks = await fetchBookmarksWithCache(false);
+    log(`Fetched ${pinboardBookmarks.length} Pinboard bookmarks`);
 
-    const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
-    if (newOnly && (await getExistingScrap(scrapId))) continue;
+    for (const bookmark of pinboardBookmarks) {
+      if (isShuttingDown) break;
 
-    let summary = "";
-    let pageContent = "";
+      const scrapId = helpers.scrapToUUID("pinboard" + bookmark.href);
+      if (newOnly && (await getExistingScrap(scrapId))) continue;
 
-    try {
-      pageContent = await browserLimiter.schedule(() =>
-        helpers.fetchPageContent(bookmark.href)
-      );
-      summary = await limiter.schedule(() =>
-        summarizeContent(pageContent.slice(0, 100000), { metaSummary: true })
-      );
-    } catch (error) {
-      log(
-        `Failed to process bookmark: ${bookmark.href}, error: ${error.message}`
-      );
+      let summary = "";
+      let pageContent = "";
+
+      try {
+        pageContent = await browserLimiter.schedule(() =>
+          helpers.fetchPageContent(bookmark.href)
+        );
+        summary = await limiter.schedule(() =>
+          summarizeContent(pageContent.slice(0, 100000), { metaSummary: true })
+        );
+      } catch (error) {
+        log(
+          `Failed to process bookmark: ${bookmark.href}, error: ${error.message}`
+        );
+      }
+
+      const locationData = await limiter.schedule(() => extractLocation(summary));
+      const tags = [
+        ...new Set([
+          ...bookmark.tags,
+          ...metaSummaryToTags(summary)
+            .split("\n")
+            .map((tag) => tag.trim()),
+        ]),
+      ];
+
+      const bookmarkObj = {
+        scrap_id: scrapId,
+        source: "pinboard",
+        content: bookmark.description,
+        summary,
+        tags,
+        metadata: {
+          title: bookmark.title,
+          href: bookmark.href,
+          location: locationData.location,
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          screenshotUrl: await browserLimiter.schedule(() =>
+            generateWebpageScreenshot(bookmark.href)
+          ),
+        },
+      };
+
+      bookmarkObj = await extractAndAddRelationships(bookmarkObj);
+      await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
     }
-
-    const locationData = await limiter.schedule(() => extractLocation(summary));
-    const tags = [
-      ...new Set([
-        ...bookmark.tags,
-        ...metaSummaryToTags(summary)
-          .split("\n")
-          .map((tag) => tag.trim()),
-      ]),
-    ];
-
-    const bookmarkObj = {
-      scrap_id: scrapId,
-      source: "pinboard",
-      content: bookmark.description,
-      summary,
-      tags,
-      metadata: {
-        title: bookmark.title,
-        href: bookmark.href,
-        location: locationData.location,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        screenshotUrl: await browserLimiter.schedule(() =>
-          generateWebpageScreenshot(bookmark.href)
-        ),
-      },
-    };
-
-    bookmarkObj = await extractAndAddRelationships(bookmarkObj);
-    await upsertLimiter.schedule(() => upsertScrap(bookmarkObj, newOnly));
+  } finally {
+    await releaseLock(lockName);
   }
 }
 

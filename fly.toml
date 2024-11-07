@@ -5,6 +5,7 @@ app = "scrapbook-core"
 
 [env]
   NODE_ENV = "production"
+  FLY_MACHINE_ID = "{{ env.FLY_MACHINE_ID }}"  # Automatically populated by Fly
 
 [mounts]
   source = "data"
