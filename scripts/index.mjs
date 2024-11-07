@@ -18,6 +18,7 @@ import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import extractLocation from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
+import winston from "winston";
 
 dotenv.config();
 
@@ -41,8 +42,21 @@ const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
 const upsertLimiter = new Bottleneck({ maxConcurrent: 3, minTime: 1500 });
 const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
 
+// Setup logging
+const logger = winston.createLogger({
+  level: process.env.DEBUG === "true" ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [new winston.transports.Console()]
+});
+
+// Replace console.log with logger
 function log(...args) {
-  if (DEBUG) console.log(...args);
+  if (DEBUG) logger.debug(args.join(' '));
 }
 
 // Graceful shutdown logic
@@ -56,8 +70,15 @@ async function gracefulShutdown() {
 }
 
 // Handle uncaught errors and shutdown signals
-process.on("uncaughtException", gracefulShutdown);
-process.on("unhandledRejection", gracefulShutdown);
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception:", error);
+  gracefulShutdown();
+});
+
+process.on("unhandledRejection", (error) => {
+  logger.error("Unhandled Rejection:", error);
+  gracefulShutdown();
+});
 process.on("SIGINT", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
 
@@ -370,14 +391,36 @@ async function fetchAndUpsertGithubData(newOnly) {
 // Main function orchestrating the whole process
 async function main(options = {}) {
   options = { newOnly: true, ...options };
-  log("Starting processing...");
+  logger.info("Starting processing with options:", JSON.stringify(options));
 
-  if (options.pinboard) await fetchAndUpsertPinboardBookmarks(options.newOnly);
-  if (options.mastodon) await fetchAndUpsertMastodonStatuses(options.newOnly);
-  if (options.arena) await fetchAndUpsertArenaBlocks(options.newOnly);
-  if (options.github) await fetchAndUpsertGithubData(options.newOnly);
+  try {
+    // Test Supabase connection
+    const { data, error } = await supabase.from("scraps").select("count");
+    if (error) throw error;
+    logger.info(`Successfully connected to Supabase. Found ${data[0].count} scraps`);
 
-  log("Processing completed.");
+    if (options.pinboard) {
+      logger.info("Starting Pinboard fetch...");
+      await fetchAndUpsertPinboardBookmarks(options.newOnly);
+    }
+    if (options.mastodon) {
+      logger.info("Starting Mastodon fetch...");
+      await fetchAndUpsertMastodonStatuses(options.newOnly);
+    }
+    if (options.arena) {
+      logger.info("Starting Arena fetch...");
+      await fetchAndUpsertArenaBlocks(options.newOnly);
+    }
+    if (options.github) {
+      logger.info("Starting GitHub fetch...");
+      await fetchAndUpsertGithubData(options.newOnly);
+    }
+
+    logger.info("Processing completed successfully.");
+  } catch (error) {
+    logger.error("Error in main process:", error);
+    throw error; // Re-throw to trigger non-zero exit code
+  }
 }
 
 // Command-line interface setup
