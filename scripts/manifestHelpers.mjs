@@ -32,35 +32,32 @@ export async function readManifest() {
 
 export async function updateManifest(service, { lastFetch, errors = [] }) {
   await ensureManifestDir();
-  try {
-    let data = {};
+  
+  // Add retries and transaction-like behavior
+  const maxRetries = 3;
+  for (let i = 0; i < maxRetries; i++) {
     try {
-      data = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
-    } catch (readError) {
-      console.error(
-        "Error reading the manifest, initializing new data:",
-        readError
-      );
-      data = {
-        arena: { lastFetch: null, errors: [] },
-        github: { lastFetch: null, errors: [] },
-        mastodon: { lastFetch: null, errors: [] },
-        pinboard: { lastFetch: null, errors: [] },
+      const currentManifest = await readManifest();
+      
+      // Only update if our lastFetch is newer
+      if (currentManifest[service]?.lastFetch && 
+          new Date(lastFetch) <= new Date(currentManifest[service].lastFetch)) {
+        log(`Skipping manifest update - newer data exists`);
+        return;
+      }
+
+      // Update manifest
+      currentManifest[service] = {
+        ...currentManifest[service],
+        lastFetch,
+        errors: [...(currentManifest[service]?.errors || []), ...errors]
       };
-    }
 
-    if (!data[service]) {
-      data[service] = { lastFetch: null, errors: [] };
+      await fs.writeFile(manifestPath, JSON.stringify(currentManifest, null, 2));
+      return;
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
-    data[service].lastFetch = lastFetch;
-    if (errors.length) {
-      data[service].errors.push(...errors);
-    }
-
-    await fs.writeFile(manifestPath, JSON.stringify(data, null, 2));
-    console.log(`Manifest updated successfully for ${service}`);
-  } catch (updateError) {
-    console.error(`Failed to update manifest for ${service}:`, updateError);
-    throw updateError;
   }
 }
