@@ -19,6 +19,7 @@ import extractLocation from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
@@ -36,6 +37,13 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
+
+// Initialize Cloudinary client
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Bottleneck limiters for rate-limiting async tasks
 const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
@@ -146,7 +154,7 @@ async function extractAndAddRelationships(scrapObj) {
   return scrapObj;
 }
 
-// Generate a webpage screenshot using Puppeteer
+// Generate a webpage screenshot using Puppeteer and upload to Supabase or Cloudinary
 async function generateWebpageScreenshot(webUrl) {
   const browser = await puppeteer.launch({
     executablePath: process.env.CHROME_EXECUTABLE_PATH || "/usr/bin/chromium",
@@ -167,9 +175,37 @@ async function generateWebpageScreenshot(webUrl) {
   try {
     log(`Navigating to: ${webUrl}`);
     await page.goto(webUrl, { waitUntil: "networkidle0", timeout: 60000 });
-    const screenshot = await page.screenshot({ encoding: "base64" });
+    const screenshotBuffer = await page.screenshot({ encoding: "binary" });
     log(`Screenshot captured for ${webUrl}`);
-    return `data:image/png;base64,${screenshot}`;
+
+    let screenshotUrl = null;
+
+    if (process.env.SUPABASE_BUCKET) {
+      const { data, error } = await supabase.storage
+        .from(process.env.SUPABASE_BUCKET)
+        .upload(`screenshots/${Date.now()}.png`, screenshotBuffer, {
+          contentType: "image/png",
+        });
+      if (error) {
+        log(`Failed to upload screenshot to Supabase: ${error.message}`);
+      } else {
+        screenshotUrl = data.Key;
+      }
+    } else if (process.env.CLOUDINARY_FOLDER) {
+      const result = await cloudinary.uploader.upload_stream(
+        { folder: process.env.CLOUDINARY_FOLDER },
+        (error, result) => {
+          if (error) {
+            log(`Failed to upload screenshot to Cloudinary: ${error.message}`);
+          } else {
+            screenshotUrl = result.secure_url;
+          }
+        }
+      );
+      result.end(screenshotBuffer);
+    }
+
+    return screenshotUrl;
   } catch (error) {
     log(`Failed to capture screenshot for ${webUrl}:`, error.message);
     return null;
@@ -274,6 +310,9 @@ async function fetchAndUpsertMastodonStatuses(newOnly) {
         visibility: status.visibility,
         favourites_count: status.favourites_count,
         reblogs_count: status.reblogs_count,
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(status.url)
+        ),
       },
     };
 
@@ -302,6 +341,9 @@ async function fetchAndUpsertArenaBlocks(newOnly) {
         description: block.description,
         source: block.source,
         image: block.image,
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(block.source.url)
+        ),
       },
     };
 
@@ -381,6 +423,9 @@ async function fetchAndUpsertGithubData(newOnly) {
         stargazers_count: scrap.stargazers_count,
         forks_count: scrap.forks_count,
         images: scrap.images || [],
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(scrap.html_url)
+        ),
       },
     };
 
