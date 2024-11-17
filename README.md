@@ -14,7 +14,7 @@ Scrapbook Core is a comprehensive data management system designed to accumulate 
   - Are.na blocks and channels
 - Processes and stores data as "scraps" with unique IDs
 - Generates summaries and extracts entities for easy retrieval
-- Creates screenshots for visual reference
+- Uploads screenshots to Supabase or Cloudinary and stores URLs
 - Syncs data with both Supabase and SQLite databases
 - Includes an Alfred Workflow for quick local database searches
 
@@ -117,6 +117,8 @@ graph TD
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_supabase_key
    PINBOARD_TOKEN=your_pinboard_token
+   SUPABASE_BUCKET=your_supabase_bucket
+   CLOUDINARY_FOLDER=your_cloudinary_folder
    ```
 4. Run the main script: `node index.mjs`
 5. Install the Alfred Workflow:
