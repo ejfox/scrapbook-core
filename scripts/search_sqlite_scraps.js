@@ -22,9 +22,11 @@ async function search(query) {
       SELECT DISTINCT *
       FROM scraps
       WHERE scraps MATCH ?
+      OR json_extract(metadata, '$.shortId') MATCH ?
       ORDER BY created_at DESC
       LIMIT 20
     `,
+      sanitizedQuery,
       sanitizedQuery
     );
 

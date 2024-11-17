@@ -6,6 +6,7 @@ import llamaTokenizer from "llama-tokenizer-js";
 import dotenv from "dotenv";
 import os from "os";
 import { execSync } from "child_process";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -94,26 +95,27 @@ export const getHumanReadableContent = (scrap) => {
   }
 };
 
-export function generateShortId(data, length = 8) {
-  const hash = CryptoJS.SHA256(data);
-  const base64 = CryptoJS.enc.Base64.stringify(hash)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return base64.substring(0, length);
+export function generateShortId(uuid) {
+  // Take first 8 characters of UUID and ensure they're valid hex
+  return uuid.substring(0, 8).replace(/[^0-9a-f]/g, '0');
 }
 
-export function scrapToUUID(scrapIdString) {
-  return generateShortId(scrapIdString);
+export function generateScrapId(source, uniqueIdentifier) {
+  // Generate proper UUID v4
+  const uuid = crypto.randomUUID();
+  return uuid;
 }
 
 export function uuidToScrap(uuid, scrapArray) {
-  if (!scrapArray || !scrapArray.length || !uuid) {
+  if (!scrapArray?.length || !uuid) {
     console.error("Invalid input", uuid);
     return null;
   }
 
-  const scrap = scrapArray.find((scrap) => scrap.scrap_id === uuid);
+  const scrap = scrapArray.find(scrap => 
+    scrap.id === uuid || 
+    scrap.metadata?.shortId === uuid
+  );
 
   if (!scrap) {
     console.error("No scrap found for the given UUID", uuid);
@@ -249,12 +251,20 @@ export function generatePassword(titleSlug) {
 }
 
 // Function to break content into chunks
-export function breakContentIntoChunks(content, chunkSizeTokens) {
+export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
   if (!content) return [];
-  const sentences = content.match(/[^.!?]+[.!?]+/g);
+  
+  // Ensure content is a string and handle null/undefined
+  const text = String(content || '');
+  
+  // Split into sentences more reliably
+  const sentences = text
+    .replace(/([.!?])\s+/g, '$1\n')
+    .split('\n')
+    .filter(Boolean);
 
   const chunks = [];
-  let currentChunk = "";
+  let currentChunk = '';
 
   for (const sentence of sentences) {
     const sentenceTokenSize = llamaTokenizer.encode(
@@ -263,19 +273,14 @@ export function breakContentIntoChunks(content, chunkSizeTokens) {
 
     if (sentenceTokenSize > chunkSizeTokens) {
       chunks.push(currentChunk.trim());
-      currentChunk = "";
+      currentChunk = '';
     }
 
-    currentChunk += sentence + " ";
+    currentChunk += sentence + ' ';
   }
 
-  chunks.forEach((chunk, index) => {
-    console.log(`Chunk ${index} size: ${llamaTokenizer.encode(chunk).length}`);
-  });
-
-  if (currentChunk.trim() !== "") {
+  if (currentChunk.trim()) {
     chunks.push(currentChunk.trim());
-    console.log(`Chunk size: ${llamaTokenizer.encode(currentChunk).length}`);
   }
 
   return chunks;

@@ -38,14 +38,24 @@ async function setupDatabase() {
 
     await db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS scraps USING fts5(
-        scrap_id,
+        id,
         source,
+        type,
         content,
         summary,
         created_at,
         updated_at,
         tags,
-        metadata
+        metadata,
+        embedding,
+        url,
+        screenshot_url,
+        location,
+        title,
+        latitude,
+        longitude,
+        published_at,
+        shared
       );
     `);
 

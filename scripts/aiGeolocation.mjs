@@ -1,292 +1,236 @@
 // aiGeolocation.mjs
 
-import OpenAI from "openai";
 import axios from "axios";
 import Bottleneck from "bottleneck";
-import llamaTokenizer from "llama-tokenizer-js";
-import { breakContentIntoChunks } from "../helpers.js";
-import dotenv from "dotenv";
 import cheerio from "cheerio";
+import { completion, MODELS, PROMPTS } from './llmService.mjs';
 
-dotenv.config();
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const DEBUG = process.env.DEBUG === "true";
+function log(...args) {
+  if (DEBUG) console.log(...args);
+}
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: 1000,
 });
 
-function chooseLLMService() {
-  return process.env.USE_OPENAI === "true" ? "openai" : "local";
-  // hardcode geolocation to local LLM, it's not worth the cost to pay for it
-  // return "local";
-}
+const LOCATION_PROMPTS = {
+  EXTRACT: `Analyze the text and extract locations in this format:
+Primary: [Most significant/central location in City, State/Region, Country format]
+Others: [List other mentioned locations in same format]
 
-export default async function extractLocation(content, options = {}) {
+Choose the primary location based on:
+1. Main focus of the content
+2. First significant location mentioned
+3. Location with most context/detail
+
+Example output:
+Primary: San Francisco, California, USA
+Others:
+- New York City, New York, USA
+- London, England, UK`,
+};
+
+export async function extractLocation(content, options = {}) {
   const { url, rawHtml } = options;
-  const chunkSizeTokens = 6144;
 
-  if (!content) {
-    console.error("No content provided");
-    return { location: null, latitude: null, longitude: null };
+  log("\n[LOCATION EXTRACTION]");
+  log("Processing content:", content?.substring(0, 100) + "...");
+
+  if (!content || typeof content !== 'string') {
+    log("❌ No valid content provided");
+    return { location: null, latitude: null, longitude: null, otherLocations: [] };
   }
-
-  const contextualInfo = await gatherContextualInfo(url, rawHtml);
-  const enhancedContent = `${contextualInfo}\n\n${content}`;
-
-  const flatChunks = breakContentIntoChunks(enhancedContent, chunkSizeTokens);
-
-  console.log(
-    `Broke ${enhancedContent.length} characters into ${flatChunks.length} chunks...`
-  );
-
-  const avgTokensPerChunk = flatChunks.reduce((acc, chunk) => {
-    return acc + llamaTokenizer.encode(chunk).length;
-  }, 0);
-  const avgTokensPerChunkAvg = avgTokensPerChunk / flatChunks.length;
-  console.log(`Avg tokens per chunk: ${avgTokensPerChunkAvg}`);
-  console.log("\n");
-
-  const locations = await Promise.all(
-    flatChunks.map(async (chunk) => {
-      return await extractLocationFromString(chunk);
-    })
-  );
-
-  // console.log(locations);
-
-  const filteredLocations = locations.filter(
-    (location) =>
-      location !== null &&
-      location !== "null" &&
-      location !== "N/A" &&
-      location !== "unknown"
-  );
-
-  if (filteredLocations.length === 0) {
-    console.log("No location found in the content.");
-    return { location: null, latitude: null, longitude: null };
-  }
-
-  const location = filteredLocations[0];
-  console.log("Extracted Location:", location);
-
-  const { latitude, longitude } = await limiter.schedule(() =>
-    reverseGeocode(location)
-  );
-  console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
-
-  return { location, latitude, longitude };
-}
-
-async function gatherContextualInfo(url, rawHtml) {
-  let contextualInfo = "";
-
-  if (url) {
-    const domainInfo = extractDomainInfo(url);
-    contextualInfo += `URL: ${url}\nDomain: ${domainInfo.domain}\nTLD: ${domainInfo.tld}\n`;
-  }
-
-  if (rawHtml) {
-    const metaInfo = extractMetaInfo(rawHtml);
-    contextualInfo += `\nMeta Information:\n${metaInfo}\n`;
-  }
-
-  return contextualInfo;
-}
-
-function extractDomainInfo(url) {
-  const parsedUrl = new URL(url);
-  const domainParts = parsedUrl.hostname.split(".");
-  return {
-    domain: domainParts[domainParts.length - 2],
-    tld: domainParts[domainParts.length - 1],
-  };
-}
-
-function extractMetaInfo(rawHtml) {
-  const $ = cheerio.load(rawHtml);
-  let metaInfo = "";
-
-  $("meta").each((i, elem) => {
-    const name = $(elem).attr("name") || $(elem).attr("property");
-    const content = $(elem).attr("content");
-    if (name && content) {
-      metaInfo += `${name}: ${content}\n`;
-    }
-  });
-
-  return metaInfo;
-}
-
-export async function extractLocationFromString(content) {
-  const llmService = chooseLLMService();
-
-  if (llmService === "openai") {
-    return await extractLocationOpenAI(content);
-  } else {
-    return await extractLocationLocal(content);
-  }
-}
-
-async function extractLocationOpenAI(content) {
-  const messages = [
-    {
-      role: "system",
-      content:
-        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. You must pick a single location that best represents the content of the article. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. If no location is mentioned, you may make a logical guess based clues in the text, if any. If no clear location can be found, return null.",
-    },
-    {
-      role: "user",
-      content: `Extract a single geographic location from this content. If there is no clear location, return null. 
-      # Content
-      ${content}`,
-    },
-  ];
-  const tools = [
-    {
-      type: "function",
-      function: {
-        name: "extractSingleLocation",
-        description: "Extract a single location from the given content",
-        parameters: {
-          type: "object",
-          properties: {
-            city: {
-              type: "string",
-              description: "The name of the city, if applicable",
-            },
-            state: {
-              type: "string",
-              description: "The name of the state or province (if applicable)",
-            },
-            country: {
-              type: "string",
-              description: "The name of the country, if applicable",
-            },
-          },
-          required: ["city", "country"],
-        },
-      },
-    },
-  ];
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: messages,
-      tools: tools,
-      tool_choice: "auto",
-    });
+    // Clean and prepare content
+    const cleanContent = content
+      .replace(/<[^>]*>/g, ' ')  // Remove HTML
+      .replace(/\s+/g, ' ')      // Normalize whitespace
+      .trim();
 
-    const responseMessage = response.choices[0].message;
-    const toolCalls = responseMessage.tool_calls;
+    if (!cleanContent) {
+      log("❌ No content after cleaning");
+      return { location: null, latitude: null, longitude: null, otherLocations: [] };
+    }
 
-    if (toolCalls) {
-      const toolCall = toolCalls[0]; // We expect only one tool call
-      const functionName = toolCall.function.name;
-      const functionArgs = JSON.parse(toolCall.function.arguments);
+    log("Cleaned content length:", cleanContent.length);
 
-      if (functionName === "extractSingleLocation") {
-        const { city, state, country } = functionArgs;
-
-        if (city === "null" && country === "null") {
-          return null;
-        }
-
-        let formattedLocation = city !== "null" ? city : "";
-        if (state && state !== "null") {
-          formattedLocation += formattedLocation ? `, ${state}` : state;
-        }
-        if (country !== "null") {
-          formattedLocation += formattedLocation ? `, ${country}` : country;
-        }
-
-        return formattedLocation || null;
+    // Gather additional context if available
+    let contextualInfo = "";
+    if (url) {
+      log("📍 URL context:", url);
+      const domainInfo = extractDomainInfo(url);
+      contextualInfo += `URL: ${url}\nDomain: ${domainInfo.domain}\nTLD: ${domainInfo.tld}\n`;
+    }
+    if (rawHtml) {
+      log("🔍 Extracting meta info from HTML...");
+      const metaInfo = extractMetaInfo(rawHtml);
+      if (metaInfo) {
+        contextualInfo += `\nMeta Information:\n${metaInfo}\n`;
+        log("Found meta info:", metaInfo);
       }
     }
 
-    return null; // If no location was extracted
+    // Combine content with context
+    const enhancedContent = contextualInfo ? 
+      `${contextualInfo}\n\n${cleanContent}` : 
+      cleanContent;
+
+    log("🤖 Sending to LLM for location extraction...");
+    const locations = await extractLocationsFromString(enhancedContent);
+    
+    if (!locations.primary) {
+      log("❌ No primary location found");
+      return { location: null, latitude: null, longitude: null, otherLocations: [] };
+    }
+
+    log("✅ Primary Location:", locations.primary);
+    if (locations.others.length > 0) {
+      log("📍 Other Locations:", locations.others);
+    }
+
+    // Get coordinates for primary location
+    log("🌍 Getting coordinates for primary location...");
+    const primaryCoords = await limiter.schedule(() => reverseGeocode(locations.primary));
+    
+    // Get coordinates for other locations
+    const otherLocationsWithCoords = await Promise.all(
+      locations.others.map(async loc => {
+        const coords = await limiter.schedule(() => reverseGeocode(loc));
+        return {
+          location: loc,
+          ...coords
+        };
+      })
+    );
+
+    return { 
+      location: locations.primary,
+      latitude: primaryCoords.latitude,
+      longitude: primaryCoords.longitude,
+      otherLocations: otherLocationsWithCoords.filter(l => l.latitude && l.longitude)
+    };
+
   } catch (error) {
-    console.error("Error in OpenAI API call:", error);
-    return null;
+    console.error("❌ Error in location extraction:", error);
+    return { 
+      location: null, 
+      latitude: null, 
+      longitude: null,
+      otherLocations: []
+    };
   }
 }
 
-async function extractLocationLocal(content) {
-  const messages = [
-    {
-      role: "system",
-      content:
-        "You are an expert in extracting location information from text. Your task is to identify the most relevant geographic location mentioned in the given content. Consider both explicit mentions and implicit hints about location. If multiple locations are found, prioritize the most significant or frequently mentioned one. The location should be in the format: 'City, State, Country' or 'City, Country'. If no clear location is found, return 'null'. These must be real, existing locations on earth. Respond with ONLY the location, no other text. Your response must be a SINGLE location, in the format 'City, State, Country' or 'City, Country'.",
-    },
-    // give the robot some examples
-    {
-      role: "user",
-      content: `The brooklyn bridge spans 1,595 feet.\nCan you extract a geographic location from this content?`,
-    },
-    {
-      role: "assistant",
-      content: `Brooklyn, NY, USA`,
-    },
-    {
-      role: "user",
-      content: `The eiffel tower is 1,083 feet tall.\nCan you extract a geographic location from this content?`,
-    },
-    {
-      role: "assistant",
-      content: `Paris, France`,
-    },
-    {
-      role: "user",
-      content: `Bloomberg published an embargo-breaking scoop about the release of Evan Gershkovich and Paul Whelan from Russia on August 1 at 7:41 a.m.\nCan you extract a geographic location from this content?`,
-    },
-    {
-      role: "assistant",
-      content: `Moscow, Russia`,
-    },
-    {
-      role: "user",
-      content: `${content}\nCan you extract a geographic location from this content?`,
-    },
-  ];
-
-  const payload = {
-    model: "Meta-Llama-3-8B-Instruct-imatrix",
-    messages,
-    temperature: 0.7,
-    max_tokens: -1,
-    stream: false,
-  };
-
+function extractDomainInfo(url) {
   try {
-    const response = await axios.post(
-      "http://localhost:1234/v1/chat/completions",
-      payload
-    );
-    const extractedLocation = response.data.choices[0].message.content.trim();
-    return extractedLocation === "null" ? null : extractedLocation;
+    const parsedUrl = new URL(url);
+    const domainParts = parsedUrl.hostname.split(".");
+    return {
+      domain: domainParts[domainParts.length - 2] || "",
+      tld: domainParts[domainParts.length - 1] || "",
+    };
   } catch (error) {
-    console.error("Error in local LLM service:", error);
-    return null;
+    console.error("Error parsing URL:", error);
+    return { domain: "", tld: "" };
+  }
+}
+
+function extractMetaInfo(rawHtml) {
+  try {
+    const $ = cheerio.load(rawHtml);
+    let metaInfo = "";
+
+    // Look for location-related meta tags
+    const locationTags = [
+      'place:location',
+      'geo.placename',
+      'geo.position',
+      'geo.region',
+      'og:locality',
+      'og:region',
+      'og:country'
+    ];
+
+    $('meta').each((i, elem) => {
+      const name = $(elem).attr('name') || $(elem).attr('property');
+      const content = $(elem).attr('content');
+      if (name && content && locationTags.some(tag => name.includes(tag))) {
+        metaInfo += `${name}: ${content}\n`;
+      }
+    });
+
+    return metaInfo;
+  } catch (error) {
+    console.error("Error parsing HTML:", error);
+    return "";
+  }
+}
+
+async function extractLocationsFromString(content) {
+  try {
+    const messages = [
+      { role: "system", content: LOCATION_PROMPTS.EXTRACT },
+      { role: "user", content }
+    ];
+
+    const response = await completion({
+      messages,
+      model: MODELS.EXTRACT_LOCATION,
+      temperature: 0.3,
+      max_tokens: 200
+    });
+
+    // Parse the response
+    const lines = response.split('\n');
+    const primary = lines
+      .find(l => l.startsWith('Primary:'))
+      ?.replace('Primary:', '')
+      .trim();
+      
+    const others = lines
+      .slice(lines.findIndex(l => l.startsWith('Others:')) + 1)
+      .filter(l => l.startsWith('-'))
+      .map(l => l.replace('-', '').trim())
+      .filter(Boolean);
+
+    return {
+      primary: primary === 'null' ? null : primary,
+      others: others || []
+    };
+  } catch (error) {
+    console.error("Error in location extraction:", error);
+    return { primary: null, others: [] };
   }
 }
 
 async function reverseGeocode(location) {
-  const apiKey = process.env.OPENCAGE_API_KEY;
-  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-    location
-  )}&key=${apiKey}`;
+  if (!location || !process.env.OPENCAGE_API_KEY) {
+    log("❌ Missing location or API key");
+    return { latitude: null, longitude: null };
+  }
 
   try {
-    const response = await axios.get(url);
-    const { lat, lng } = response.data.results[0].geometry;
-    return { latitude: lat, longitude: lng };
+    log(`🌍 Geocoding location: ${location}`);
+    const response = await axios.get(
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${process.env.OPENCAGE_API_KEY}&no_annotations=1&limit=1`
+    );
+
+    if (response.data.results && response.data.results.length > 0) {
+      const { lat, lng } = response.data.results[0].geometry;
+      log(`✅ Found coordinates: ${lat}, ${lng}`);
+      return { latitude: lat, longitude: lng };
+    }
+    
+    log("❌ No results found");
+    return { latitude: null, longitude: null };
   } catch (error) {
-    console.error("Error in reverseGeocode:", error);
+    console.error("❌ Error in geocoding:", error.message);
+    if (error.response?.data) {
+      console.error("API Response:", error.response.data);
+    }
     return { latitude: null, longitude: null };
   }
 }
