@@ -206,6 +206,21 @@ SUPABASE_URL=your_project_url
 SUPABASE_KEY=your_anon_key
 ```
 
+### OpenCage Data (for Geolocation)
+1. Go to [OpenCage Data](https://opencagedata.com/)
+2. Sign up for a free account
+3. Create an API key from your dashboard
+4. Add to .env:
+```bash
+OPENCAGE_API_KEY=your_api_key
+```
+
+Note: The free tier includes:
+- 2,500 requests per day
+- 1 request per second rate limit
+- HTTPS encryption
+- Full global coverage
+
 Your final `.env` file should look like:
 ```bash
 # GitHub
@@ -226,4 +241,177 @@ MASTODON_API_URL=https://your.instance
 # Supabase
 SUPABASE_URL=your_project_url
 SUPABASE_KEY=your_anon_key
+
+# OpenCage Data
+OPENCAGE_API_KEY=your_opencage_api_key
+```
+
+## Set Fly Secrets Quickly
+```
+cat .env | grep -v '^#' | grep -v '^$' | while read -r line; do
+  echo "Setting $line..."
+  flyctl secrets set "$line"
+done
+```
+
+## Validation Tools
+
+The project includes two powerful validation utilities for testing data integrity and AI functionality.
+
+### Scrap Validation (`validate_scraps.mjs`)
+
+A comprehensive validation tool for testing data fetching and processing from all sources.
+
+```bash
+# Validate all sources
+node scripts/validate_scraps.mjs
+
+# Validate specific source
+node scripts/validate_scraps.mjs pinboard
+node scripts/validate_scraps.mjs mastodon
+node scripts/validate_scraps.mjs arena
+node scripts/validate_scraps.mjs github
+```
+
+Features:
+- Validates data structure and required fields
+- Checks data types and formats
+- Source-specific validation rules
+- Screenshot validation where applicable
+- Performance benchmarking
+- Detailed error reporting
+- Sample data display
+
+Example output:
+```
+==================================
+   SCRAPBOOK VALIDATION UTILITY   
+==================================
+
+[CHECKING REQUIRED FIELDS]
+  id           [OK]
+  source       [OK]
+  type         [OK]
+  url          [OK]
+  title        [OK]
+  content      [OK]
+  ...
+
+Validation Summary:
+PASS pinboard: 5 scraps, 0 errors, 0 warnings (1234.56ms)
+```
+
+### AI Service Validation (`validate_ai.mjs`)
+
+Tests all AI-powered features with sample content to ensure proper functionality.
+
+```bash
+# Run all AI service tests
+node scripts/validate_ai.mjs
+
+# Test specific services
+node scripts/validate_ai.mjs summarization
+node scripts/validate_ai.mjs location
+node scripts/validate_ai.mjs relationships
+node scripts/validate_ai.mjs github
+node scripts/validate_ai.mjs mastodon
+```
+
+Available services:
+- `summarization`: Tests content summarization and tag generation
+- `location`: Tests geographic location extraction
+- `relationships`: Tests entity relationship detection
+- `github`: Tests GitHub activity analysis
+- `mastodon`: Tests Mastodon content processing
+
+Features:
+- Uses cached test data
+- Tests multiple prompts
+- Shows input/output samples
+- Performance metrics
+- Error handling verification
+- Model fallback testing
+- Individual service testing
+- Detailed logging
+
+Example output:
+```
+╔═══════════════════════════════════════╗
+║         AI VALIDATION UTILITY         ║
+║  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾  ║
+║    [STATUS: INITIALIZING TESTS]       ║
+╚═══════════════════════════════════════╝
+
+[TESTING SUMMARIZATION]
+Summary: ...
+Tags: technology, javascript, web-development
+
+Validation Summary:
+summarization    PASS              
+Duration:        1234.56ms        
+```
+
+### Development Workflow
+
+1. Run `validate_scraps.mjs` after:
+   - Modifying data fetchers
+   - Updating processing logic
+   - Changing data structures
+   - Adding new sources
+
+2. Run `validate_ai.mjs` after:
+   - Updating AI prompts
+   - Changing model settings
+   - Modifying AI processing
+   - Switching LLM providers
+
+3. Both scripts support:
+   - Debug mode: `DEBUG=true node scripts/validate_*.mjs`
+   - Test mode: Uses smaller data samples
+   - Benchmarking: Timing for each operation
+   - Detailed logging: Check `logs/` directory
+
+### Validation Configuration
+
+The validation tools use several environment variables:
+```bash
+# General
+DEBUG=true|false           # Enable detailed logging
+TEST_MODE=true|false      # Use smaller data samples
+
+# LLM Service
+USE_LOCAL_LLM=true|false  # Use local LLaMA model
+USE_OPENAI=true|false     # Use OpenAI
+OPENROUTER_API_KEY=xxx    # OpenRouter API key
+```
+
+### Adding New Validations
+
+1. Add source config in `validate_scraps.mjs`:
+```javascript
+const SOURCE_CONFIG = {
+  new_source: {
+    requiresScreenshot: boolean,
+    validTypes: ['type1', 'type2']
+  }
+};
+```
+
+2. Add AI test in `validate_ai.mjs`:
+```javascript
+// Add test sample
+const TEST_SAMPLES = {
+  new_test: {
+    // test data
+  }
+};
+
+// Add test case
+try {
+  console.log('[TESTING NEW FEATURE]');
+  const result = await newFeature(TEST_SAMPLES.new_test);
+  results.new_feature = { success: true };
+} catch (error) {
+  results.new_feature = { success: false, error };
+}
 ```
