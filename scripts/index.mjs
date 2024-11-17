@@ -20,6 +20,7 @@ import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
 import { generateScreenshot } from './generateScreenshot.mjs';
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
@@ -37,6 +38,13 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
+
+// Initialize Cloudinary client
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Bottleneck limiters for rate-limiting async tasks
 const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
@@ -162,6 +170,65 @@ async function extractAndAddRelationships(scrapObj) {
   return scrapObj;
 }
 
+// Generate a webpage screenshot using Puppeteer and upload to Supabase or Cloudinary
+async function generateWebpageScreenshot(webUrl) {
+  const browser = await puppeteer.launch({
+    executablePath: process.env.CHROME_EXECUTABLE_PATH || "/usr/bin/chromium",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-gpu",
+      "--disable-software-rasterizer",
+      "--single-process", // Add this to reduce memory usage
+      "--disable-dev-shm-usage", // Add this to avoid using /dev/shm
+    ],
+    headless: "new",
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 800, height: 600 }); // Reduce viewport size
+
+  try {
+    log(`Navigating to: ${webUrl}`);
+    await page.goto(webUrl, { waitUntil: "networkidle0", timeout: 60000 });
+    const screenshotBuffer = await page.screenshot({ encoding: "binary" });
+    log(`Screenshot captured for ${webUrl}`);
+
+    let screenshotUrl = null;
+
+    if (process.env.SUPABASE_BUCKET) {
+      const { data, error } = await supabase.storage
+        .from(process.env.SUPABASE_BUCKET)
+        .upload(`screenshots/${Date.now()}.png`, screenshotBuffer, {
+          contentType: "image/png",
+        });
+      if (error) {
+        log(`Failed to upload screenshot to Supabase: ${error.message}`);
+      } else {
+        screenshotUrl = data.Key;
+      }
+    } else if (process.env.CLOUDINARY_FOLDER) {
+      const result = await cloudinary.uploader.upload_stream(
+        { folder: process.env.CLOUDINARY_FOLDER },
+        (error, result) => {
+          if (error) {
+            log(`Failed to upload screenshot to Cloudinary: ${error.message}`);
+          } else {
+            screenshotUrl = result.secure_url;
+          }
+        }
+      );
+      result.end(screenshotBuffer);
+    }
+
+    return screenshotUrl;
+  } catch (error) {
+    log(`Failed to capture screenshot for ${webUrl}:`, error.message);
+    return null;
+  } finally {
+    await browser.close();
+  }
+}
 // Fetch and process Pinboard bookmarks
 async function fetchAndUpsertPinboardBookmarks() {
   const rawBookmarks = await fetchBookmarksWithCache();
@@ -243,6 +310,34 @@ async function fetchAndUpsertArenaBlocks() {
       await upsertScrap(processedBlock);
     } catch (error) {
       log(`Failed to process block: ${block.id}`, error);
+    const scrapId = helpers.scrapToUUID("arena" + block.id);
+    if (newOnly && (await getExistingScrap(scrapId))) continue;
+
+    const blockObj = {
+      scrap_id: scrapId,
+      source: "arena",
+      content: block.content,
+      tags: block.tags,
+      metadata: {
+        title: block.title,
+        description: block.description,
+        source: block.source,
+        image: block.image,
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(block.source.url)
+        ),
+      },
+    };
+
+    if (block.connected_to_channels?.length > 0) {
+      blockObj.relationships = block.connected_to_channels.map((channel) => ({
+        source: {
+          type: "Block",
+          name: block.title || `Block ${block.id}`,
+        },
+        target: { type: "Channel", name: channel.title },
+        type: "BELONGS_TO",
+      }));
     }
   }
 }
@@ -279,6 +374,30 @@ async function fetchAndUpsertGithubData() {
     } catch (error) {
       log(`Failed to process GitHub item: ${scrap.id}`, error);
     }
+
+    const scrapObj = {
+      scrap_id: scrapId,
+      source: "github",
+      content,
+      summary,
+      tags: [...new Set([...(scrap.topics || []), ...aiGeneratedTags])],
+      metadata: {
+        type: scrap.type,
+        name: scrap.name || scrap.title,
+        full_name:
+          scrap.full_name || (scrap.repo && scrap.repo.full_name) || null,
+        href: scrap.html_url,
+        language: scrap.language,
+        stargazers_count: scrap.stargazers_count,
+        forks_count: scrap.forks_count,
+        images: scrap.images || [],
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(scrap.html_url)
+        ),
+      },
+    };
+
+    await upsertLimiter.schedule(() => upsertScrap(scrapObj, newOnly));
   }
 }
 
