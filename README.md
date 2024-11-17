@@ -157,3 +157,73 @@ The included Alfred Workflow allows for quick searching of the local SQLite data
   - Press Enter to open the scrap's URL
   - Press ⌥ (Option) to view full content
   - Press ⌘ (Command) to copy a formatted version of the scrap
+
+## Setting Up Credentials
+
+### GitHub
+1. Go to [GitHub Personal Access Tokens](https://github.com/settings/tokens)
+2. Click "Generate new token (classic)"
+3. Give it a name like "Scrapbook Core"
+4. Select these scopes:
+   - `repo` (for repository access)
+   - `read:user` (for profile info)
+   - `gist` (for gist access)
+5. Copy the token and add to your .env:
+```bash
+GITHUB_TOKEN=github_pat_...
+GITHUB_USERNAME=your_username
+```
+
+### Pinboard
+1. Get your API token from [Pinboard Settings](https://pinboard.in/settings/password)
+2. Add to .env:
+```bash
+PINBOARD_TOKEN=user:hash
+```
+
+### Are.na
+1. Create token at [Are.na Developer Settings](https://dev.are.na/oauth/applications)
+2. Add to .env:
+```bash
+ARENA_ACCESS_TOKEN=your_token
+USER_SLUG=your_username
+```
+
+### Mastodon
+1. Go to your instance's developer settings
+2. Create new application
+3. Add to .env:
+```bash
+MASTODON_ACCESS_TOKEN=your_token
+MASTODON_API_URL=https://your.instance
+```
+
+### Supabase
+1. Get credentials from your Supabase project settings
+2. Add to .env:
+```bash
+SUPABASE_URL=your_project_url
+SUPABASE_KEY=your_anon_key
+```
+
+Your final `.env` file should look like:
+```bash
+# GitHub
+GITHUB_TOKEN=github_pat_...
+GITHUB_USERNAME=your_username
+
+# Pinboard
+PINBOARD_TOKEN=user:hash
+
+# Are.na
+ARENA_ACCESS_TOKEN=your_token
+USER_SLUG=your_username
+
+# Mastodon
+MASTODON_ACCESS_TOKEN=your_token
+MASTODON_API_URL=https://your.instance
+
+# Supabase
+SUPABASE_URL=your_project_url
+SUPABASE_KEY=your_anon_key
+```

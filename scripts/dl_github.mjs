@@ -2,13 +2,16 @@ import { Octokit } from "@octokit/rest";
 import dotenv from "dotenv";
 import { subDays } from "date-fns";
 import { generateScrapId } from '../helpers.js';
-import { generateScreenshot } from './generateScreenshot.mjs';
 
 dotenv.config();
 
-const username = "ejfox";
+const username = process.env.GITHUB_USERNAME || "ejfox";
 const token = process.env.GITHUB_TOKEN;
-const FETCH_DAYS = 60;
+
+if (!token) {
+  console.error("GITHUB_TOKEN is not set in environment variables");
+  process.exit(1);
+}
 
 const octokit = new Octokit({
   auth: token,
@@ -18,66 +21,62 @@ const octokit = new Octokit({
 
 // Process different GitHub item types
 export async function processGithubItem(item, type) {
-  const shortId = generateScrapId('github', item.id).substring(0, 8);
-  
-  // Generate screenshot based on type
-  const screenshot_url = await (async () => {
-    switch(type) {
-      case 'repo':
-        return item.html_url ? 
-          await generateScreenshot({
-            source: 'github',
-            shortId,
-            url: item.html_url
-          }) : null;
-      case 'pr':
-      case 'issue':
-        return item.html_url ?
-          await generateScreenshot({
-            source: 'github',
-            shortId,
-            url: item.html_url
-          }) : null;
-      default:
-        return null;
-    }
-  })();
+  if (!item || !item.id) {
+    console.error('Invalid GitHub item:', type);
+    return null;
+  }
 
-  const baseFields = {
-    id: generateScrapId('github', item.id),
-    source: "github",
-    type,
-    url: item.html_url,
-    title: item.title || item.name || item.description,
-    content: item.body || item.description || '',
-    published_at: item.created_at,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-    shared: !item.private,
-    tags: item.topics || [],
-    screenshot_url,
-  };
+  try {
+    // Get best available URL
+    const url = item.html_url || item.url;
+    
+    // Get best available content
+    const content = (() => {
+      switch(type) {
+        case 'repo':
+          return item.description || 'No description';
+        case 'pr':
+        case 'issue':
+          return item.body || 'No content';
+        case 'gist':
+          return item.description || 'No description';
+        case 'release':
+          return item.body || 'No content';
+        case 'starred':
+          return item.description || 'No description';
+        default:
+          return 'No content';
+      }
+    })();
 
-  // Type-specific processing
-  switch(type) {
-    case 'repo':
-      return {
-        ...baseFields,
-        metadata: {
+    return {
+      id: generateScrapId('github', item.id),
+      source: "github",
+      type,
+      url,
+      title: item.title || item.name || 'Untitled',
+      content,
+      screenshot_url: null,  // GitHub items don't need screenshots
+      published_at: item.created_at,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      shared: false,  // Default to false
+      tags: [
+        ...(item.topics || []),
+        type,
+        item.language?.toLowerCase()
+      ].filter(Boolean),
+      metadata: {
+        // Type-specific metadata
+        ...(type === 'repo' && {
           language: item.language,
           stargazers_count: item.stargazers_count,
           forks_count: item.forks_count,
-          readme: item.readme,
           is_fork: item.fork,
           default_branch: item.default_branch,
           homepage: item.homepage
-        }
-      };
-      
-    case 'pr':
-      return {
-        ...baseFields,
-        metadata: {
+        }),
+        ...(type === 'pr' && {
           state: item.state,
           comments: item.comments,
           labels: item.labels?.map(l => l.name),
@@ -86,13 +85,8 @@ export async function processGithubItem(item, type) {
             name: item.repo?.name,
             full_name: item.repo?.full_name
           }
-        }
-      };
-      
-    case 'issue':
-      return {
-        ...baseFields,
-        metadata: {
+        }),
+        ...(type === 'issue' && {
           state: item.state,
           comments: item.comments,
           labels: item.labels?.map(l => l.name),
@@ -100,52 +94,28 @@ export async function processGithubItem(item, type) {
             name: item.repo?.name,
             full_name: item.repo?.full_name
           }
-        }
-      };
-      
-    case 'gist':
-      return {
-        ...baseFields,
-        metadata: {
-          files: item.files,
-          public: item.public,
-          description: item.description
-        }
-      };
-      
-    case 'release':
-      return {
-        ...baseFields,
-        metadata: {
-          tag_name: item.tag_name,
-          prerelease: item.prerelease,
-          draft: item.draft,
-          repo: {
-            name: item.repo?.name,
-            full_name: item.repo?.full_name
-          }
-        }
-      };
-      
-    case 'starred':
-      return {
-        ...baseFields,
-        metadata: {
+        }),
+        ...(type === 'gist' && {
+          files: Object.keys(item.files || {}),
+          public: item.public
+        }),
+        ...(type === 'starred' && {
+          starred_at: item.starred_at,
           language: item.language,
           stargazers_count: item.stargazers_count,
-          forks_count: item.forks_count,
-          starred_at: item.starred_at
-        }
-      };
-      
-    default:
-      return baseFields;
+          forks_count: item.forks_count
+        })
+      }
+    };
+  } catch (error) {
+    console.error(`Error processing GitHub ${type}:`, error);
+    return null;
   }
 }
 
-export const fetchGithubData = async () => {
+export const fetchGithubData = async (testMode = false) => {
   console.log("Initializing GitHub data download...");
-  const sinceDate = subDays(new Date(), FETCH_DAYS).toISOString();
+  const sinceDate = subDays(new Date(), testMode ? 7 : 60).toISOString();
 
   try {
     // Fetch all data types
@@ -157,7 +127,7 @@ export const fetchGithubData = async () => {
           type: "owner",
           sort: "updated",
           direction: "desc",
-          per_page: 25,
+          per_page: testMode ? 5 : 25,
           since: sinceDate,
         }),
         octokit.search.issuesAndPullRequests({
@@ -168,7 +138,7 @@ export const fetchGithubData = async () => {
         }),
         octokit.activity.listReposStarredByUser({
           username,
-          per_page: 100,
+          per_page: testMode ? 5 : 100,
           sort: "created",
           direction: "desc",
           since: sinceDate,
@@ -204,17 +174,6 @@ export const fetchGithubData = async () => {
     };
   }
 };
-
-// Helper function to get README content
-export async function getRepoReadme(owner, repo) {
-  try {
-    const { data } = await octokit.repos.getReadme({ owner, repo });
-    return Buffer.from(data.content, "base64").toString("utf-8");
-  } catch (error) {
-    console.error("Error fetching repo README:", error.message);
-    return null;
-  }
-}
 
 // CLI execution
 if (import.meta.url === `file://${process.argv[1]}`) {
