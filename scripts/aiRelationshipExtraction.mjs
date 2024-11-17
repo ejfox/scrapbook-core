@@ -28,16 +28,11 @@ const openai = new OpenAI({
 
 const MAX_RELATIONSHIPS = 24;
 const MAX_RETRIES = 2;
-const RETRY_DELAY = 2000; // 1 second
+const RETRY_DELAY = 2000;
 
-// OLD, a bit too strict?
-// const relationshipRegex =
-//   /^\s*\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]\s*-\s*\[:([a-zA-Z0-9_]+)\]\s*->\s*\[([a-zA-Z0-9\s]+):\s*([a-zA-Z0-9\s]+)\]\s*$/;
-
-// NEW, more flexible
+// Relationship format regex
 const relationshipRegex =
   /^\s*\[([^:\]]+):\s*([^\]]+)\]\s*-\s*\[:([^\]]+)\]\s*->\s*\[([^:\]]+):\s*([^\]]+)\]\s*$/;
-// matches: [sourceType:sourceName] -[:relationshipType]-> [targetType:targetName]
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
@@ -49,25 +44,23 @@ function chooseLLMService() {
 }
 
 /**
- * Extract relationships from content
- * @param {string} content - The content to extract relationships from (can be summary or raw text)
+ * Extract relationships from content and return as root-level array
+ * @param {string} content - The content to extract relationships from
  * @param {object} options - Additional options
- * @param {boolean} options.isRawText - Whether the content is raw text that needs chunking
- * @returns {Promise<{relationships: Array}>} - Extracted relationships
+ * @returns {Promise<Array>} - Array of relationship objects
  */
 export async function extractRelationships(content, options = {}) {
-  logger.info("Starting relationship extraction process");
+  logger.info("Starting relationship extraction");
 
   let chunks;
   if (options.isRawText) {
     chunks = contentToChunks(content);
-    logger.info(`Raw content split into ${chunks.length} chunks`);
+    logger.info(`Split content into ${chunks.length} chunks`);
   } else {
-    chunks = [content]; // If it's already a summary, treat it as a single chunk
-    logger.info("Processing pre-summarized content");
+    chunks = [content];
   }
 
-  const relationshipsData = [];
+  const relationships = [];
   const nodes = new Set();
 
   for (let i = 0; i < chunks.length; i++) {
@@ -80,22 +73,24 @@ export async function extractRelationships(content, options = {}) {
       const { source, target, type } = relationship;
       nodes.add(JSON.stringify(source));
       nodes.add(JSON.stringify(target));
-      relationshipsData.push(relationship);
+      relationships.push({
+        source,
+        target,
+        type
+      });
 
       logger.info(
-        `Relationship found: ${source.name} (${source.type}) -[${type}]-> ${target.name} (${target.type})`
+        `Found: ${source.name} (${source.type}) -[${type}]-> ${target.name} (${target.type})`
       );
     }
   }
 
-  const uniqueNodes = Array.from(nodes).map((nodeString) =>
-    JSON.parse(nodeString)
-  );
   logger.info(
-    `Extracted ${uniqueNodes.length} unique nodes and ${relationshipsData.length} relationships`
+    `Extracted ${relationships.length} relationships involving ${nodes.size} unique nodes`
   );
 
-  return { relationships: relationshipsData };
+  // Return just the array - it will be stored at root level
+  return relationships;
 }
 
 async function extractRelationshipsFromChunk(chunk, retryCount = 0) {

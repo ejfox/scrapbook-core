@@ -2,6 +2,8 @@
 import Arena from "are.na";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
+import { generateScrapId } from '../helpers.js';
+import { generateScreenshot } from './generateScreenshot.mjs';
 
 dotenv.config();
 
@@ -51,20 +53,21 @@ export const fetchAllBlocks = async () => {
               direction: "desc",
             })
           );
+          
           const blocks = response || [];
-          allBlocks = allBlocks.concat(
-            blocks.map((block) => ({
-              ...block,
-              channel: channel.title,
-              connected_to_channels: [
-                {
-                  id: channel.id,
-                  title: channel.title,
-                },
-                ...(block.connected_to_channels || []),
-              ],
-            }))
-          );
+          const processedBlocks = blocks.map(block => ({
+            ...block,
+            channel: channel.title,
+            connected_to_channels: [
+              {
+                id: channel.id,
+                title: channel.title,
+              },
+              ...(block.connected_to_channels || []),
+            ],
+          })).map(processBlock);
+
+          allBlocks = allBlocks.concat(processedBlocks);
           fetching = blocks.length > 0;
           page += 1;
         } catch (error) {
@@ -95,4 +98,91 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error("Unhandled error in main:", error);
       process.exit(1);
     });
+}
+
+export async function processBlock(block) {
+  const content = (() => {
+    switch(block.class) {
+      case 'Image':
+        return block.description || block.title || '';
+      case 'Text':
+        return block.content || '';
+      case 'Link':
+        return block.description || block.source?.title || '';
+      case 'Attachment':
+        return block.description || block.title || '';
+      case 'Media':
+        return block.description || block.embed?.title || '';
+      default:
+        return block.content || block.description || '';
+    }
+  })();
+
+  const screenshot_url = (() => {
+    if (block.image?.display?.url) return block.image.display.url;
+    if (block.attachment?.url) return block.attachment.url;
+    if (block.embed?.thumbnail_url) return block.embed.thumbnail_url;
+    return null;
+  })();
+
+  return {
+    id: generateScrapId('arena', block.id),
+    source: "arena",
+    type: "block",
+    
+    url: block.source?.url || block.attachment?.url || block.embed?.url,
+    title: block.title || block.generated_title,
+    content,
+    screenshot_url,
+    
+    published_at: block.created_at,
+    created_at: block.created_at,
+    updated_at: block.updated_at,
+    
+    shared: block.status !== "private",
+    
+    tags: [
+      ...(block.tags || []),
+      block.class.toLowerCase(),
+      block.base_class?.toLowerCase()
+    ].filter(Boolean),
+    
+    metadata: {
+      class: block.class,
+      base_class: block.base_class,
+      
+      channel: block.channel,
+      connected_to_channels: block.connected_to_channels?.map(c => ({
+        id: c.id,
+        title: c.title
+      })),
+      
+      source_data: block.source && {
+        provider: block.source.provider,
+        url: block.source.url,
+        title: block.source.title
+      },
+      
+      image_data: block.image && {
+        thumb: block.image.thumb,
+        square: block.image.square,
+        display: block.image.display
+      },
+      
+      embed: block.embed && {
+        type: block.embed.type,
+        title: block.embed.title,
+        author_name: block.embed.author_name,
+        author_url: block.embed.author_url,
+        thumbnail_url: block.embed.thumbnail_url
+      },
+      
+      attachment: block.attachment && {
+        file_name: block.attachment.file_name,
+        extension: block.attachment.extension,
+        content_type: block.attachment.content_type,
+        file_size: block.attachment.file_size
+      }
+    }
+  };
 }

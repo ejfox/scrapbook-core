@@ -10,6 +10,7 @@ import os from "os";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import readline from "readline";
+import helpers from "./helpers.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
@@ -35,14 +36,23 @@ async function initializeDatabase(db) {
   log("Initializing database...");
   await db.exec(`
     CREATE TABLE IF NOT EXISTS scraps (
-      scrap_id TEXT PRIMARY KEY,
+      id TEXT PRIMARY KEY,
       source TEXT,
+      type TEXT,
       content TEXT,
       summary TEXT,
       created_at TEXT,
       updated_at TEXT,
       tags TEXT,
-      metadata TEXT
+      metadata TEXT,
+      url TEXT,
+      screenshot_url TEXT,
+      location TEXT,
+      title TEXT,
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      published_at TIMESTAMP WITHOUT TIME ZONE,
+      shared BOOLEAN DEFAULT false
     )
   `);
   log("Database initialized.");
@@ -119,7 +129,7 @@ async function syncData(db) {
         } catch (error) {
           console.warn(
             chalk.yellow(
-              `Warning: Failed to summarize content for scrap ${scrap.scrap_id}: ${error.message}`
+              `Warning: Failed to summarize content for scrap ${scrap.id}: ${error.message}`
             )
           );
         }
@@ -128,35 +138,43 @@ async function syncData(db) {
       try {
         log("Inserting scrap into database...");
         await db.run(
-          `INSERT OR REPLACE INTO scraps (scrap_id, source, content, summary, created_at, updated_at, tags, metadata)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO scraps (
+            id, source, type, content, summary, created_at, updated_at, tags, metadata,
+            url, screenshot_url, location, title, latitude, longitude, published_at, shared
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            scrap.scrap_id || scrap.hash,
-            scrap.source || "pinboard",
-            scrap.content || scrap.description,
+            scrap.id,
+            scrap.source,
+            scrap.type || getTypeFromSource(scrap),
+            scrap.content,
             scrap.summary,
-            scrap.created_at || scrap.time,
-            scrap.updated_at || scrap.time,
+            scrap.created_at,
+            scrap.updated_at,
             JSON.stringify(scrap.tags),
-            JSON.stringify(
-              scrap.metadata || { href: scrap.href, extended: scrap.extended }
-            ),
+            JSON.stringify(scrap.metadata),
+            scrap.url || scrap.metadata?.href,
+            scrap.screenshot_url || scrap.metadata?.screenshotUrl,
+            scrap.location || scrap.metadata?.location,
+            scrap.title || scrap.metadata?.title || scrap.content,
+            scrap.latitude || scrap.metadata?.latitude,
+            scrap.longitude || scrap.metadata?.longitude,
+            scrap.published_at || scrap.created_at,
+            scrap.shared || false
           ]
         );
-        log(`Inserted scrap ${scrap.scrap_id || scrap.hash} into database`);
+        log(`Inserted scrap ${scrap.id} into database`);
 
         // Verify the insert
         const verifyResult = await db.get(
-          "SELECT * FROM scraps WHERE scrap_id = ?",
-          scrap.scrap_id || scrap.hash
+          "SELECT * FROM scraps WHERE id = ?",
+          scrap.id
         );
         log(`Verification result: ${JSON.stringify(verifyResult, null, 2)}`);
       } catch (error) {
         console.error(
           chalk.red(
-            `Error inserting scrap ${scrap.scrap_id || scrap.hash}: ${
-              error.message
-            }`
+            `Error inserting scrap ${scrap.id}: ${error.message}`
           )
         );
       }
@@ -210,4 +228,17 @@ async function main() {
 // Make sure to use await when calling main
 if (import.meta.url === `file://${process.argv[1]}`) {
   await main();
+}
+
+// Helper function to determine type
+function getTypeFromSource(scrap) {
+  switch(scrap.source) {
+    case 'pinboard': return 'bookmark';
+    case 'mastodon': return 'status';
+    case 'arena': return 'block';
+    case 'github': 
+      return scrap.metadata?.type || 'repo';
+    default: 
+      return scrap.source;
+  }
 }
