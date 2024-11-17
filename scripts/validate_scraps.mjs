@@ -6,6 +6,7 @@ import chalk from 'chalk';
 import fs from 'fs/promises';
 import { performance } from 'perf_hooks';
 import axios from 'axios';
+import util from 'util';
 
 console.log(`
 ==================================
@@ -47,6 +48,26 @@ async function saveBenchmarks() {
 const VALID_SOURCES = ['pinboard', 'mastodon', 'arena', 'github'];
 const VALID_TYPES = ['bookmark', 'status', 'block', 'repo', 'pr', 'issue', 'gist', 'release', 'starred'];
 
+// Add source-specific validation rules
+const SOURCE_CONFIG = {
+  pinboard: {
+    requiresScreenshot: true,
+    validTypes: ['bookmark']
+  },
+  mastodon: {
+    requiresScreenshot: false,  // Mastodon posts don't need screenshots
+    validTypes: ['status']
+  },
+  arena: {
+    requiresScreenshot: false,  // Arena provides its own images
+    validTypes: ['block']
+  },
+  github: {
+    requiresScreenshot: false,  // GitHub items don't need screenshots
+    validTypes: ['repo', 'pr', 'issue', 'gist', 'release', 'starred']
+  }
+};
+
 async function validateScrap(scrap) {
   startBenchmark(`validate_${scrap.source}_${scrap.type}`);
   
@@ -81,7 +102,7 @@ async function validateScrap(scrap) {
   Object.entries(required).forEach(([field, type]) => {
     process.stdout.write(`  ${field.padEnd(12)} `);
     
-    if (!scrap[field]) {
+    if (scrap[field] === undefined || scrap[field] === null) {
       process.stdout.write(chalk.red('[MISSING]\n'));
       errors.push(`Missing required field: ${field}`);
     } else if (type === 'array' && !Array.isArray(scrap[field])) {
@@ -126,13 +147,17 @@ async function validateScrap(scrap) {
   // Validate screenshot URL if present
   if (scrap.screenshot_url) {
     console.log('\n[CHECKING SCREENSHOT URL]');
-    if (!scrap.screenshot_url.startsWith('https://')) {
-      console.log(chalk.red('  Screenshot URL must be HTTPS'));
-      errors.push('Screenshot URL must be HTTPS');
-    }
-    if (!scrap.screenshot_url.includes('/screenshots/')) {
-      console.log(chalk.red('  Invalid screenshot URL path format'));
-      errors.push('Invalid screenshot URL path format');
+    
+    // Only validate screenshot URL format if this source requires screenshots
+    if (SOURCE_CONFIG[scrap.source].requiresScreenshot) {
+      if (!scrap.screenshot_url.startsWith('https://')) {
+        console.log(chalk.red('  Screenshot URL must be HTTPS'));
+        errors.push('Screenshot URL must be HTTPS');
+      }
+      if (!scrap.screenshot_url.includes('/screenshots/')) {
+        console.log(chalk.red('  Invalid screenshot URL path format'));
+        errors.push('Invalid screenshot URL path format');
+      }
     }
   }
 
@@ -202,6 +227,32 @@ async function validateScrap(scrap) {
   return { errors, warnings };
 }
 
+function formatScrapForDisplay(scrap) {
+  // Deep clone the scrap to avoid modifying original
+  const display = JSON.parse(JSON.stringify(scrap));
+  
+  // Remove large fields we don't need to see
+  delete display.embedding;
+  if (display.metadata?.image_data?.base64) {
+    display.metadata.image_data.base64 = '[TRUNCATED]';
+  }
+  
+  // Truncate long text fields
+  if (display.content?.length > 100) {
+    display.content = display.content.substring(0, 100) + '...';
+  }
+  if (display.summary?.length > 100) {
+    display.summary = display.summary.substring(0, 100) + '...';
+  }
+  
+  // Pretty print with colors
+  return util.inspect(display, {
+    colors: true,
+    depth: null,
+    compact: false
+  });
+}
+
 async function validateSource(source, count = 5) {
   // Set test mode env var
   process.env.TEST_MODE = 'true';
@@ -220,14 +271,14 @@ async function validateSource(source, count = 5) {
     case 'pinboard':
       process.stdout.write('Fetching bookmarks from Pinboard API...');
       // Use recent endpoint for validation instead of all
-      const response = await axios.get("https://api.pinboard.in/v1/posts/recent", {
+      const pinboardResponse = await axios.get("https://api.pinboard.in/v1/posts/recent", {
         params: {
           auth_token: process.env.PINBOARD_TOKEN,
           format: "json",
           count: 5 // Just get 5 most recent
         }
       });
-      const bookmarks = response.data.posts;
+      const bookmarks = pinboardResponse.data.posts;
       console.log(chalk.green(` Found ${bookmarks.length} recent bookmarks`));
       
       process.stdout.write('Processing bookmarks...\n');
@@ -241,18 +292,26 @@ async function validateSource(source, count = 5) {
       break;
       
     case 'mastodon':
-      process.stdout.write('Fetching user ID...');
-      const userId = await fetchUserId();
-      console.log(chalk.green(` Found: ${userId}`));
-      
       process.stdout.write('Fetching statuses...');
-      const statuses = await fetchStatuses(userId);
+      // Use the statuses/home endpoint directly with test mode
+      const mastodonResponse = await axios.get(
+        `${process.env.MASTODON_API_URL}/api/v1/timelines/home`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.MASTODON_ACCESS_TOKEN}`
+          },
+          params: {
+            limit: 5  // Just get 5 for validation
+          }
+        }
+      );
+      const statuses = mastodonResponse.data;
       console.log(chalk.green(` Found ${statuses.length} statuses`));
       
-      process.stdout.write('Processing first 5 statuses...\n');
+      process.stdout.write('Processing statuses...\n');
       scraps = await Promise.all(
-        statuses.slice(0, count).map(async (status, i) => {
-          process.stdout.write(`  [${i + 1}/${count}] Processing status: ${status.id}\r`);
+        statuses.map(async (status, i) => {
+          process.stdout.write(`  [${i + 1}/${statuses.length}] Processing status: ${status.id}\r`);
           return await processStatus(status);
         })
       );
@@ -261,7 +320,7 @@ async function validateSource(source, count = 5) {
       
     case 'arena':
       process.stdout.write('Fetching blocks...');
-      const blocks = await fetchAllBlocks();
+      const blocks = await fetchAllBlocks(true);
       console.log(chalk.green(` Found ${blocks.length} blocks`));
       
       process.stdout.write('Processing first 5 blocks...\n');
@@ -302,6 +361,13 @@ async function validateSource(source, count = 5) {
 
   const processDuration = endBenchmark(`process_${source}`);
   console.log(chalk.blue(`Processing ${source} took ${processDuration.toFixed(2)}ms`));
+
+  if (scraps.length > 0) {
+    console.log('\n+------------------------+');
+    console.log('| SAMPLE SCRAP FORMAT   |');
+    console.log('+------------------------+\n');
+    console.log(formatScrapForDisplay(scraps[0]));
+  }
 
   return { totalErrors, totalWarnings, processed: scraps.length };
 }
