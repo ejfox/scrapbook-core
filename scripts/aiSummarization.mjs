@@ -1,178 +1,162 @@
-import axios from "axios";
-import Bottleneck from "bottleneck";
-import llamaTokenizer from "llama-tokenizer-js";
+import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs';
 import { breakContentIntoChunks } from "../helpers.js";
-import OpenAI from "openai";
-import dotenv from "dotenv";
+import Bottleneck from "bottleneck";
 
-// Load environment variables
-dotenv.config();
+const DEBUG = process.env.DEBUG === "true";
+function log(...args) {
+  if (DEBUG) console.log(...args);
+}
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Fetch latest tags from ejfox.com/tags.json
-const tagData = await axios
-  .get("https://ejfox.com/tags.json")
-  .then((res) => res.data);
-const tags = tagData.filter((d) => {
-  // filter out tags that start with !
-  return !d.startsWith("!");
-});
-
-// Configure rate limiter
+// Rate limiting
 const limiter = new Bottleneck({
   maxConcurrent: 1,
-  // minTime: 1000,
+  minTime: 1000
 });
 
-// Helper function to choose LLM service based on flag or env variable
-function chooseLLMService() {
-  return process.env.USE_OPENAI === "true" ? "openai" : "local";
-}
+// Summarization-specific prompts
+const SUMMARY_PROMPTS = {
+  SUMMARIZE: `When analyzing content, your goal is to:
+- Extract key information into standalone bullet points
+- Preserve technical details, URLs, and specific references
+- Focus on unique or significant points
+- Keep each point self-contained
+- Be concise but precise
+- Include verbatim quotes when relevant
+
+Format as a list of clear, independent facts.`,
+
+  TAGS: async (content) => {
+    const coreTags = await loadCoreTags();
+    return `You are tagging content. Choose 2-3 most relevant tags from this list:
+${coreTags.join('\n')}
+
+Content to tag:
+${content}
+
+Return only valid tags from the list above, one per line, no explanations.`;
+  }
+};
 
 export async function summarizeContent(content, options = {}) {
-  // const chunkSizeTokens = 6144;
-  // turn it ALL the way to 120k!!!
-  const chunkSizeTokens = 120000;
+  if (!content) {
+    log("❌ No content to summarize");
+    return null;
+  }
 
-  const flatChunks = breakContentIntoChunks(content, chunkSizeTokens);
+  try {
+    // Configure chunk size based on model
+    const chunkSizeTokens = options.chunkSize || 120000;
+    log(`🔄 Processing ${content.length} characters...`);
 
-  const avgTokensPerChunk = flatChunks.reduce(
-    (acc, chunk) => acc + llamaTokenizer.encode(chunk).length,
-    0
-  );
-  const avgTokensPerChunkAvg = avgTokensPerChunk / flatChunks.length;
-  // console.log(`🤖 Avg tokens per chunk: ${avgTokensPerChunkAvg}`);
-  // console.log("\n");
-  // console.log(flatChunks[0].substring(0, 80) + "...");
-  console.log(
-    `Broke ${content.length} characters into ${flatChunks.length} chunks for summary with avg tokens per chunk: ${avgTokensPerChunkAvg}`
-  );
-  // then log the actual chunk token lengths
-  flatChunks.forEach((chunk, i) => {
-    console.log(
-      `Chunk ${i + 1} tokens: ${llamaTokenizer.encode(chunk).length} from ${
-        chunk.length
-      } chars`
+    // Break content into chunks
+    const chunks = breakContentIntoChunks(content, chunkSizeTokens);
+    log(`📑 Split into ${chunks.length} chunks`);
+    
+    chunks.forEach((chunk, i) => {
+      log(`  Chunk ${i + 1}: ${chunk.length} chars`);
+    });
+
+    // Process chunks
+    log("🤖 Generating summaries...");
+    const summaries = await Promise.all(
+      chunks.map(chunk => 
+        limiter.schedule(() => summarizeChunk(chunk, options))
+      )
     );
+
+    // Combine summaries
+    const summary = summaries.join("\n");
+    log(`✅ Summarized to ${summary.length} characters`);
+    log(`First line: ${summary.split("\n")[0]}`);
+
+    // Generate meta summary if requested
+    if (options.metaSummary) {
+      log("📊 Generating meta summary...");
+      return await summarizeChunk(summary, { ...options, meta: true });
+    }
+
+    return summary;
+
+  } catch (error) {
+    console.error("❌ Error in summarization:", error);
+    return null;
+  }
+}
+
+async function summarizeChunk(content, options = {}) {
+  const messages = [
+    { 
+      role: "system", 
+      content: options.prompt || SUMMARY_PROMPTS.SUMMARIZE 
+    },
+    { 
+      role: "user", 
+      content: `${content}\nProvide a clear summary focusing on key information and technical details.`
+    }
+  ];
+
+  return await completion({
+    messages,
+    model: MODELS.SUMMARIZE,
+    temperature: options.temperature || 0.3,
+    max_tokens: options.meta ? 500 : 2000
   });
-
-  const summaries = await Promise.all(
-    flatChunks.map((chunk) => limiter.schedule(() => summarizeString(chunk)))
-  );
-
-  let summary = summaries.join("\n");
-  console.log(`${content.length} characters summarized to ${summary.length}`);
-  // log the first line of the summary
-  console.log(`First line of summary: ${summary.split("\n")[0]}`);
-
-  if (options.metaSummary) {
-    console.log("Generating meta summary...");
-    const metaSummary = await summarizeString(summary);
-    return metaSummary;
-  }
-
-  return summary;
 }
 
-export async function summarizeString(content) {
-  const messages = [
-    {
-      role: "system",
-      content: `When analyzing this portion of a webpage, your goal is to distill its content into concise, standalone bullet points. Each point should encapsulate a key piece of information, complete in itself, and easily understandable without needing further context. Pay special attention to precise details, especially if they involve code or search queries - accuracy in phrasing is crucial here. It's important to include relevant URLs or specific search queries that are associated with these facts, as they can serve as gateways for deeper exploration later on. Strive for clarity and brevity in each bullet point, ensuring that the most crucial information is presented first. The bullet points should not depend on each other for context, and each should be as self-contained as possible. Remember, less is more in this task; prioritize quality and relevance over quantity.`,
-    },
-    {
-      role: "user",
-      content: `${content}\nCan you summarize this into a list of facts? Start with fact 1, no introduction or confirmation. Do not say "Here is the summary:". Just start with the first fact. Try to keep the total list of facts under 10 items. Keep the most important / unique facts. Include URLs or search queries, specific keywords, names, etc. if they are important to the fact. Be sure every single fact stands alone and is not dependent on any other fact. Your role is to weave together the individual bullet points provided by the chunk analysis into a coherent, concise summary of the entire webpage that helps the user with their goal. Approach this task as if you're creating a map from individual landmarks. Each bullet point is a point of interest, and your job is to connect these in a way that tells the complete story of the webpage. Focus on overarching themes, key concepts, and the most significant information. Look for connections between bullet points to build a narrative that accurately represents the webpage’s content. While doing so, maintain the precision and context from the individual bullet points, ensuring that the final summary is a true reflection of the webpage’s entirety. Additionally, it's vital to surface verbatim any technical elements like keywords, code snippets, variable names, etc. These technical details should be precisely preserved in their original form within your summary. Remember, your summary should be comprehensive, detailed, and easy to understand, providing a bird's-eye view of the webpage that highlights its most important aspects to help the user. Remember; less is more. Do not include any other text, parantheticals, or introduction. Respond ONLY with the summary.`,
-    },
-  ];
-
-  const llmService = chooseLLMService();
+export async function metaSummaryToTags(summary) {
+  if (!summary) {
+    log("❌ No summary to tag");
+    return [];
+  }
 
   try {
-    if (llmService === "openai") {
-      const response = await openai.chat.completions.create({
-        // gpt-4o-mini,
-        model: "gpt-4o-mini",
-        messages,
-        temperature: 0.7,
-        max_tokens: 1024,
-      });
-      return response.choices[0].message.content;
-    } else {
-      const payload = {
-        model: "Meta-Llama-3-8B-Instruct-imatrix",
-        messages,
-        temperature: 0.7,
-        max_tokens: -1,
-        stream: false,
-      };
-      const response = await axios.post(
-        "http://localhost:1234/v1/chat/completions",
-        payload
-      );
-      return response.data.choices[0].message.content;
-    }
+    log("🏷️ Generating tags...");
+    const messages = [
+      { 
+        role: "system", 
+        content: await SUMMARY_PROMPTS.TAGS(summary)
+      },
+      { role: "user", content: summary }
+    ];
+
+    const response = await completion({
+      messages,
+      model: MODELS.GENERATE_TAGS,
+      temperature: 0.2,
+      max_tokens: 100
+    });
+
+    const tags = response
+      .split('\n')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+
+    log(`✅ Generated ${tags.length} tags:`, tags);
+    return tags;
+
   } catch (error) {
-    return `Error: ${error.message}`;
+    console.error("❌ Error generating tags:", error);
+    return [];
   }
 }
 
-export async function metaSummaryToTags(metaSummaryContent) {
-  const messages = [
-    {
-      role: "system",
-      content: `You are an expert at applying the correct tags to page summaries. Please provide one tag per line. Respond with ONLY the tags, no other chatter, introduction, or conclusion.`,
-    },
-    {
-      role: "user",
-      content: `Can you apply tags to this summary? (summary trimmed)`,
-    },
-    {
-      role: "assistant",
-      content: `tag1
-tag2
-tag3`,
-    },
-    {
-      role: "user",
-      content: `Perfect! Now let's apply tags most relevant to this summary content. Apply the tags very sparingly, usually only 2-3 tags per summary. Choose the most relevant tags. Only special tags have exclamation points. These are the default tags, use them exactly as they are written:
-${tags.join("\n")}
-What tags best apply to this summary?
-${metaSummaryContent}`,
-    },
-  ];
+// CLI testing
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const testContent = `
+    This is a test article about Vue.js composition API and performance optimization.
+    It includes code examples and best practices for using ref() and computed().
+    The article discusses various technical aspects of Vue 3 development.
+  `;
 
-  const llmService = chooseLLMService();
-
-  try {
-    if (llmService === "openai") {
-      const response = await openai.chat.completions.create({
-        // gpt-4o-mini,
-        model: "gpt-4o-mini",
-        messages,
-        temperature: 0.2,
-        max_tokens: 32,
-      });
-      return response.choices[0].message.content;
-    } else {
-      const payload = {
-        model: "Meta-Llama-3-8B-Instruct-imatrix",
-        messages,
-        temperature: 0.2,
-        max_tokens: 32,
-        stream: false,
-      };
-      const response = await axios.post(
-        "http://localhost:1234/v1/chat/completions",
-        payload
-      );
-      return response.data.choices[0].message.content;
-    }
-  } catch (error) {
-    return `Error: ${error.message}`;
-  }
+  console.log("🧪 Testing summarization...");
+  summarizeContent(testContent, { metaSummary: true })
+    .then(async summary => {
+      console.log("\n📝 Summary:");
+      console.log(summary);
+      
+      console.log("\n🏷️ Generating tags...");
+      const tags = await metaSummaryToTags(summary);
+      console.log("Tags:", tags);
+    })
+    .catch(console.error);
 }

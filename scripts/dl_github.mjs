@@ -49,6 +49,22 @@ export async function processGithubItem(item, type) {
       }
     })();
 
+    // Combine all possible tags
+    const tags = [
+      // Repository topics (if available)
+      ...(item.topics || []),
+      // Language as a tag
+      item.language?.toLowerCase(),
+      // Item type
+      type,
+      // Status tags for PRs/Issues
+      ...(type === 'pr' || type === 'issue' ? [item.state] : []),
+      // Visibility
+      ...(type === 'repo' || type === 'gist' ? [item.private ? 'private' : 'public'] : []),
+      // Fork status
+      ...(type === 'repo' && item.fork ? ['fork'] : [])
+    ].filter(Boolean);
+
     return {
       id: generateScrapId('github', item.id),
       source: "github",
@@ -61,15 +77,13 @@ export async function processGithubItem(item, type) {
       created_at: item.created_at,
       updated_at: item.updated_at,
       shared: false,  // Default to false
-      tags: [
-        ...(item.topics || []),
-        type,
-        item.language?.toLowerCase()
-      ].filter(Boolean),
+      tags: [...new Set(tags)], // Deduplicate tags
       metadata: {
+        // Store original topics separately
+        topics: item.topics || [],
+        language: item.language,
         // Type-specific metadata
         ...(type === 'repo' && {
-          language: item.language,
           stargazers_count: item.stargazers_count,
           forks_count: item.forks_count,
           is_fork: item.fork,
@@ -77,7 +91,6 @@ export async function processGithubItem(item, type) {
           homepage: item.homepage
         }),
         ...(type === 'pr' && {
-          state: item.state,
           comments: item.comments,
           labels: item.labels?.map(l => l.name),
           changed_files: item.changedFiles,
@@ -87,7 +100,6 @@ export async function processGithubItem(item, type) {
           }
         }),
         ...(type === 'issue' && {
-          state: item.state,
           comments: item.comments,
           labels: item.labels?.map(l => l.name),
           repo: {
