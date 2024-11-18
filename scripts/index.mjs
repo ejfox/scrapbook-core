@@ -372,18 +372,6 @@ async function main() {
     newOnly: options.newOnly || false
   });
   
-  // Check if any options were selected
-  if (!options.all && !options.pinboard && !options.mastodon && !options.arena && !options.github) {
-    logger.info("\nNo sources specified. Use --all or specify individual sources:");
-    logger.info("  --pinboard   Fetch from Pinboard");
-    logger.info("  --mastodon   Fetch from Mastodon");
-    logger.info("  --arena      Fetch from Are.na");
-    logger.info("  --github     Fetch from GitHub");
-    logger.info("\nExample: node scripts/index.mjs --all");
-    logger.info("         node scripts/index.mjs --pinboard --github");
-    process.exit(0);
-  }
-  
   try {
     // Fetch from Pinboard if specified
     if (options.all || options.pinboard) {
