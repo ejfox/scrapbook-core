@@ -370,16 +370,24 @@ export async function processBookmark(bookmark) {
     // Generate consistent scrap_id
     const scrap_id = `pinboard:${bookmark.hash}`;
 
-    // Check for existing bookmark - use maybeSingle() instead of single()
-    const { data: existingData, error: queryError } = await supabase
+    // Check for existing bookmark - get all matches and handle explicitly
+    const { data, error } = await supabase
       .from("scraps")
       .select("*")
-      .eq("scrap_id", scrap_id)
-      .maybeSingle(); // This handles both no results and multiple results cases
+      .eq("scrap_id", scrap_id);
 
-    if (queryError) {
-      logger.error(`Failed to check for existing bookmark: ${queryError.message}`);
-      throw queryError;
+    if (error) {
+      logger.error(`Failed to check for existing bookmark: ${error.message}`);
+      throw error;
+    }
+
+    // Take the most recently updated record if multiple exist
+    const existingData = data && data.length > 0 
+      ? data.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0]
+      : null;
+
+    if (data && data.length > 1) {
+      logger.warn(`Found ${data.length} records for scrap_id ${scrap_id}, using most recent`);
     }
 
     // Generate screenshot if needed
@@ -400,6 +408,7 @@ export async function processBookmark(bookmark) {
     logger.info(`✅ Processed bookmark: ${bookmark.href.substring(0, 50)}...`);
     
     const scrap = {
+      id: existingData?.id || undefined, // Use existing ID if available
       scrap_id,
       source: "pinboard",
       type: "bookmark",
