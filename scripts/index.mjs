@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import OpenAI from "openai";
 import { program } from "commander";
 import { fetchAllBlocks } from "./dl_arena.mjs";
-import { fetchStatuses, fetchUserId } from "./dl_mastodon.mjs";
+import { fetchStatuses, fetchUserId, processStatus } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache, processBookmark } from "./dl_pinboard.mjs";
-import { fetchGithubData, getRepoReadme } from "./dl_github.mjs";
+import { fetchGithubData } from "./dl_github.mjs";
 import * as helpers from "../helpers.js";
 import { createClient } from "@supabase/supabase-js";
 import puppeteer from "puppeteer";
@@ -15,7 +14,7 @@ import {
   gitHubSummaryToTags,
 } from "./aiGithubSummarization.mjs";
 import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
-import extractLocation from "./aiGeolocation.mjs";
+import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
@@ -23,19 +22,26 @@ import { generateScreenshot } from './generateScreenshot.mjs';
 
 dotenv.config();
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Environment variables and flags
 let DEBUG = process.env.DEBUG === "true";
 let isShuttingDown = false;
 
-// Initialize Supabase client
+// Initialize Supabase client with better error handling
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    db: {
+      schema: 'public',
+    },
+    global: {
+      headers: { 'x-my-custom-header': 'scrapbook-core' },
+    }
+  }
 );
 
 // Bottleneck limiters for rate-limiting async tasks
@@ -60,45 +66,49 @@ function log(...args) {
   if (DEBUG) logger.debug(args.join(' '));
 }
 
-// Graceful shutdown logic
+// Improve shutdown handling
 async function gracefulShutdown() {
-  log("Initiating graceful shutdown...");
+  if (isShuttingDown) {
+    console.log('Shutdown already in progress...');
+    return;
+  }
+  
   isShuttingDown = true;
-  await limiter.stop({ dropWaitingJobs: true });
-  await upsertLimiter.stop({ dropWaitingJobs: true });
-  await browserLimiter.stop({ dropWaitingJobs: true });
-  setTimeout(() => process.exit(0), 5000);
-}
+  logger.info("Initiating graceful shutdown...");
 
-// Handle uncaught errors and shutdown signals
-process.on("uncaughtException", (error) => {
-  logger.error("Uncaught Exception:", error);
-  gracefulShutdown();
-});
-
-process.on("unhandledRejection", (error) => {
-  logger.error("Unhandled Rejection:", error);
-  gracefulShutdown();
-});
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
-
-// Generate embeddings using OpenAI
-async function generateEmbedding(text) {
-  if (!process.env.USE_OPENAI) return null;
   try {
-    const response = await limiter.schedule(() =>
-      openai.embeddings.create({
-        model: "text-embedding-ada-002",
-        input: text,
-      })
-    );
-    return response.data[0].embedding;
+    // Stop all limiters
+    await Promise.all([
+      limiter.stop({ dropWaitingJobs: true }),
+      upsertLimiter.stop({ dropWaitingJobs: true }),
+      browserLimiter.stop({ dropWaitingJobs: true })
+    ]);
+
+    logger.info("Shutdown complete");
+    process.exit(0);
   } catch (error) {
-    log("Embedding generation failed:", error.message);
-    return null;
+    logger.error("Error during shutdown:", error);
+    process.exit(1);
   }
 }
+
+// Handle shutdown signals
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
+process.on('uncaughtException', error => {
+  logger.error('Uncaught Exception:', error);
+  gracefulShutdown();
+});
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown();
+});
+
+// Remove OpenAI-specific code
+const generateEmbedding = async (text) => {
+  // For now, just return null if embeddings are requested
+  return null;
+};
 
 // Check if scrap already exists in the database
 async function getExistingScrap(shortId) {
@@ -114,31 +124,32 @@ async function getExistingScrap(shortId) {
   return data;
 }
 
-// Upsert a scrap into the database
-async function upsertScrap(scrap) {
-  const { error } = await supabase
-    .from("scraps")
-    .upsert({
-      id: scrap.id,
-      source: scrap.source,
-      type: scrap.type,
-      url: scrap.url,
-      title: scrap.title,
-      content: scrap.content,
-      screenshot_url: scrap.screenshot_url,
-      location: scrap.location,
-      latitude: scrap.latitude,
-      longitude: scrap.longitude,
-      published_at: scrap.published_at,
-      created_at: scrap.created_at,
-      updated_at: scrap.updated_at,
-      shared: scrap.shared,
-      tags: scrap.tags,
-      metadata: scrap.metadata
-    });
-
-  if (error) {
-    log(`Failed to upsert scrap: ${scrap.id}, error: ${error.message}`);
+// Add retry logic for database operations
+async function upsertWithRetry(scrap, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const { error } = await supabase
+        .from("scraps")
+        .upsert(scrap, { 
+          onConflict: "id",
+          ignoreDuplicates: false,
+          count: 'exact'
+        });
+      
+      if (error) {
+        if (error.message.includes('timeout') && i < retries - 1) {
+          logger.warn(`Timeout on attempt ${i + 1}, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+          continue;
+        }
+        throw error;
+      }
+      return;
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      logger.warn(`Error on attempt ${i + 1}, retrying:`, error.message);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
   }
 }
 
@@ -162,31 +173,26 @@ async function extractAndAddRelationships(scrapObj) {
   return scrapObj;
 }
 
-// Fetch and process Pinboard bookmarks
+// Add progress reporting to fetch functions
 async function fetchAndUpsertPinboardBookmarks() {
-  const rawBookmarks = await fetchBookmarksWithCache();
-  log(`Fetched ${rawBookmarks.length} Pinboard bookmarks`);
+  try {
+    const bookmarks = await fetchBookmarksWithCache();
+    logger.info(`Found ${bookmarks.length} bookmarks`);
 
-  for (const bookmark of rawBookmarks) {
-    if (isShuttingDown) break;
-    
-    try {
-      // Process bookmark with new structure
-      const processedBookmark = await processBookmark(bookmark);
+    for (const bookmark of bookmarks) {
+      if (isShuttingDown) break;
       
-      // Generate embeddings if enabled
-      if (processedBookmark.content && process.env.USE_OPENAI) {
-        processedBookmark.embedding = await generateEmbedding(processedBookmark.content);
+      try {
+        const processedBookmark = await processBookmark(bookmark);
+        if (processedBookmark) {
+          await upsertWithRetry(processedBookmark);
+        }
+      } catch (error) {
+        logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
       }
-
-      // Extract relationships
-      await extractAndAddRelationships(processedBookmark);
-      
-      // Upsert to database
-      await upsertScrap(processedBookmark);
-    } catch (error) {
-      log(`Failed to process bookmark: ${bookmark.href}`, error);
     }
+  } catch (error) {
+    logger.error("Error in Pinboard fetch:", error);
   }
 }
 
@@ -212,7 +218,7 @@ async function fetchAndUpsertMastodonStatuses() {
       await extractAndAddRelationships(processedStatus);
       
       // Upsert to database
-      await upsertScrap(processedStatus);
+      await upsertWithRetry(processedStatus);
     } catch (error) {
       log(`Failed to process status: ${status.id}`, error);
     }
@@ -240,7 +246,7 @@ async function fetchAndUpsertArenaBlocks() {
       await extractAndAddRelationships(processedBlock);
       
       // Upsert to database
-      await upsertScrap(processedBlock);
+      await upsertWithRetry(processedBlock);
     } catch (error) {
       log(`Failed to process block: ${block.id}`, error);
     }
@@ -275,60 +281,86 @@ async function fetchAndUpsertGithubData() {
       await extractAndAddRelationships(scrap);
       
       // Upsert to database
-      await upsertScrap(scrap);
+      await upsertWithRetry(scrap);
     } catch (error) {
       log(`Failed to process GitHub item: ${scrap.id}`, error);
     }
   }
 }
 
-// Main function orchestrating the whole process
-async function main(options = {}) {
-  options = { newOnly: true, ...options };
-  logger.info("Starting processing with options:", JSON.stringify(options));
-
-  try {
-    // Test Supabase connection
-    const { data, error } = await supabase.from("scraps").select("count");
-    if (error) throw error;
-    logger.info(`Successfully connected to Supabase. Found ${data[0].count} scraps`);
-
-    if (options.pinboard) {
-      logger.info("Starting Pinboard fetch...");
-      await fetchAndUpsertPinboardBookmarks(options.newOnly);
-    }
-    if (options.mastodon) {
-      logger.info("Starting Mastodon fetch...");
-      await fetchAndUpsertMastodonStatuses(options.newOnly);
-    }
-    if (options.arena) {
-      logger.info("Starting Arena fetch...");
-      await fetchAndUpsertArenaBlocks(options.newOnly);
-    }
-    if (options.github) {
-      logger.info("Starting GitHub fetch...");
-      await fetchAndUpsertGithubData(options.newOnly);
-    }
-
-    logger.info("Processing completed successfully.");
-  } catch (error) {
-    logger.error("Error in main process:", error);
-    throw error; // Re-throw to trigger non-zero exit code
-  }
-}
-
-// Command-line interface setup
+// Add program options
 program
-  .option("--pinboard", "Fetch and upsert Pinboard bookmarks")
-  .option("--mastodon", "Fetch and upsert Mastodon statuses")
-  .option("--arena", "Fetch and upsert Are.na blocks")
-  .option("--github", "Fetch and upsert GitHub data")
-  .option("--all", "Fetch and upsert all data sources")
-  .option("--new-only", "Only upload new entries")
-  .option("--debug", "Enable debug mode")
+  .option("--all", "Fetch from all sources")
+  .option("--pinboard", "Fetch from Pinboard")
+  .option("--mastodon", "Fetch from Mastodon")
+  .option("--arena", "Fetch from Are.na")
+  .option("--github", "Fetch from GitHub")
+  .option("--new-only", "Only fetch new items")
   .parse(process.argv);
 
 const options = program.opts();
-DEBUG = options.debug;
 
-main(options).catch(gracefulShutdown);
+// Main execution function
+async function main() {
+  // Log options in a more readable way
+  logger.info("Starting processing with options:", {
+    all: options.all || false,
+    pinboard: options.pinboard || false,
+    mastodon: options.mastodon || false,
+    arena: options.arena || false,
+    github: options.github || false,
+    newOnly: options.newOnly || false
+  });
+  
+  // Check if any options were selected
+  if (!options.all && !options.pinboard && !options.mastodon && !options.arena && !options.github) {
+    logger.info("\nNo sources specified. Use --all or specify individual sources:");
+    logger.info("  --pinboard   Fetch from Pinboard");
+    logger.info("  --mastodon   Fetch from Mastodon");
+    logger.info("  --arena      Fetch from Are.na");
+    logger.info("  --github     Fetch from GitHub");
+    logger.info("\nExample: node scripts/index.mjs --all");
+    logger.info("         node scripts/index.mjs --pinboard --github");
+    process.exit(0);
+  }
+  
+  try {
+    // Fetch from Pinboard if specified
+    if (options.all || options.pinboard) {
+      logger.info("\nFetching from Pinboard...");
+      await fetchAndUpsertPinboardBookmarks();
+    }
+
+    // Fetch from Mastodon if specified
+    if (options.all || options.mastodon) {
+      logger.info("\nFetching from Mastodon...");
+      await fetchAndUpsertMastodonStatuses();
+    }
+
+    // Fetch from Are.na if specified
+    if (options.all || options.arena) {
+      logger.info("\nFetching from Are.na...");
+      await fetchAndUpsertArenaBlocks();
+    }
+
+    // Fetch from GitHub if specified
+    if (options.all || options.github) {
+      logger.info("\nFetching from GitHub...");
+      await fetchAndUpsertGithubData();
+    }
+
+    logger.info("\nProcessing completed successfully");
+    process.exit(0);
+  } catch (error) {
+    logger.error("Error in main process:", error.message);
+    process.exit(1);
+  }
+}
+
+// Run main function
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(error => {
+    logger.error("Unhandled error:", error);
+    process.exit(1);
+  });
+}
