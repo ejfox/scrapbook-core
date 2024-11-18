@@ -370,16 +370,16 @@ export async function processBookmark(bookmark) {
     // Generate consistent scrap_id
     const scrap_id = `pinboard:${bookmark.hash}`;
 
-    // Check for existing bookmark
-    const { data: existing, error } = await supabase
+    // Check for existing bookmark - use maybeSingle() instead of single()
+    const { data: existingData, error: queryError } = await supabase
       .from("scraps")
       .select("*")
       .eq("scrap_id", scrap_id)
-      .single();
+      .maybeSingle(); // This handles both no results and multiple results cases
 
-    if (error && !error.message.includes('No rows found')) {
-      logger.error(`Failed to check for existing bookmark: ${error.message}`);
-      throw error;
+    if (queryError) {
+      logger.error(`Failed to check for existing bookmark: ${queryError.message}`);
+      throw queryError;
     }
 
     // Generate screenshot if needed
@@ -411,19 +411,19 @@ export async function processBookmark(bookmark) {
       latitude,
       longitude,
       published_at: bookmark.time,
-      created_at: existing?.created_at || bookmark.time,
+      created_at: existingData?.created_at || bookmark.time,
       updated_at: bookmark.time,
       shared: bookmark.shared === "yes",
       tags: bookmark.tags.split(' ').filter(Boolean),
       metadata: {
-        ...(existing?.metadata || {}),
+        ...(existingData?.metadata || {}),
         hash: bookmark.hash,
         meta: bookmark.meta,
         toread: bookmark.toread === "yes",
         shared: bookmark.shared === "yes",
         locations: otherLocations,
         last_checked: new Date().toISOString(),
-        update_count: (existing?.metadata?.update_count || 0) + 1
+        update_count: (existingData?.metadata?.update_count || 0) + 1
       }
     };
 
