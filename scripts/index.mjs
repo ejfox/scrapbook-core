@@ -118,30 +118,59 @@ const generateEmbedding = async (text) => {
   return null;
 };
 
-// Check if scrap already exists in the database
-async function getExistingScrap(shortId) {
+// Improve the existing scrap check function
+async function getExistingScrap(scrapData) {
   const { data, error } = await supabase
     .from("scraps")
     .select("*")
-    .or(`id.eq.${shortId},metadata->>'shortId'.eq.${shortId}`)
-    .single();
+    .or(`id.eq.${scrapData.id},source_id.eq.${scrapData.source_id},url.eq.${scrapData.url}`)
+    .limit(1);
     
   if (error) {
-    log(`Failed to retrieve scrap with ID: ${shortId}, error: ${error.message}`);
+    logger.error(`Failed to check for existing scrap: ${error.message}`);
+    return null;
   }
-  return data;
+  
+  return data?.[0];
 }
 
-// Add retry logic for database operations
-async function upsertWithRetry(scrap, retries = 3) {
+// Add a new function to merge scrap data
+function mergeScrapData(existing, updated) {
+  if (!existing) return updated;
+  
+  return {
+    ...existing,
+    ...updated,
+    // Merge arrays without duplicates
+    tags: [...new Set([...(existing.tags || []), ...(updated.tags || [])])],
+    relationships: [...new Set([...(existing.relationships || []), ...(updated.relationships || [])])],
+    // Keep track of updates
+    metadata: {
+      ...(existing.metadata || {}),
+      ...(updated.metadata || {}),
+      last_updated: new Date().toISOString(),
+      update_count: (existing.metadata?.update_count || 0) + 1
+    }
+  };
+}
+
+// Improve the upsert function
+async function upsertWithRetry(scrapData, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
+      // Check for existing scrap
+      const existing = await getExistingScrap(scrapData);
+      
+      // Merge data if exists
+      const mergedData = mergeScrapData(existing, scrapData);
+      
+      // Perform upsert with conflict handling
       const { error } = await supabase
         .from("scraps")
-        .upsert(scrap, { 
-          onConflict: "id",
+        .upsert(mergedData, {
+          onConflict: 'id',
           ignoreDuplicates: false,
-          count: 'exact'
+          returning: 'minimal'
         });
       
       if (error) {
@@ -152,10 +181,11 @@ async function upsertWithRetry(scrap, retries = 3) {
         }
         throw error;
       }
+      
       return;
     } catch (error) {
       if (i === retries - 1) throw error;
-      logger.warn(`Error on attempt ${i + 1}, retrying:`, error.message);
+      logger.warn(`Error on attempt ${i + 1}, retrying: ${error.message}`);
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
   }

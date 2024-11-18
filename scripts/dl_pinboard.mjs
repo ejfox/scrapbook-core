@@ -9,6 +9,8 @@ import { generateScrapId } from '../helpers.js';
 import { extractLocation } from './aiGeolocation.mjs';
 import { generateScreenshot } from './generateScreenshot.mjs';
 import winston from "winston";
+import { createClient } from "@supabase/supabase-js";
+import { extractRelationships } from './aiRelationshipExtraction.mjs';
 
 dotenv.config();
 
@@ -169,6 +171,58 @@ async function fetchWithRateLimitLogging(url, params) {
   }
 }
 
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY,
+  {
+    auth: { persistSession: false },
+    db: { schema: 'public' }
+  }
+);
+
+// Add function to check for existing bookmark
+async function checkExistingBookmark(bookmark) {
+  const sourceId = `pinboard:${bookmark.hash}`;
+  
+  const { data, error } = await supabase
+    .from("scraps")
+    .select("id, updated_at, metadata")
+    .or(`source_id.eq.${sourceId},url.eq.${bookmark.href}`)
+    .limit(1);
+    
+  if (error) {
+    logger.error(`Failed to check for existing bookmark: ${error.message}`);
+    return null;
+  }
+  
+  return data?.[0];
+}
+
+// Add function to determine if bookmark needs update
+function needsUpdate(existing, bookmark) {
+  if (!existing) return true;
+  
+  // Convert times to timestamps for comparison
+  const existingTime = new Date(existing.updated_at).getTime();
+  const bookmarkTime = new Date(bookmark.time).getTime();
+  
+  // Check if bookmark is newer
+  if (bookmarkTime > existingTime) return true;
+  
+  // Check if metadata has changed
+  const existingMeta = existing.metadata || {};
+  if (
+    existingMeta.toread !== (bookmark.toread === "yes") ||
+    existingMeta.shared !== (bookmark.shared === "yes") ||
+    existingMeta.hash !== bookmark.hash
+  ) {
+    return true;
+  }
+  
+  return false;
+}
+
 // Main fetch function with smart caching
 export async function fetchBookmarksWithCache(testMode = false) {
   logger.info("🔄 Checking for Pinboard updates...");
@@ -178,8 +232,8 @@ export async function fetchBookmarksWithCache(testMode = false) {
     const lastPinboardUpdate = await checkForUpdates();
     const cacheMeta = await readCacheMeta();
     
-    // If nothing's changed, use cache
-    if (cacheMeta.lastUpdate && lastPinboardUpdate === cacheMeta.lastUpdate) {
+    // If nothing's changed and not in test mode, use cache
+    if (!testMode && cacheMeta.lastUpdate && lastPinboardUpdate === cacheMeta.lastUpdate) {
       logger.info("✨ No new updates since last fetch, using cache");
       const cached = await readCache();
       logger.info(`📚 Loaded ${cached.length} bookmarks from cache`);
@@ -303,15 +357,33 @@ async function getTotalBookmarkCount() {
   }
 }
 
+// Add a limiter for AI operations
+const aiLimiter = new Bottleneck({
+  minTime: 1000,
+  maxConcurrent: 1
+});
+
 export async function processBookmark(bookmark) {
   try {
     logger.info(`🔄 Processing bookmark: ${bookmark.href.substring(0, 50)}...`);
+
+    // Check for existing bookmark
+    const existing = await checkExistingBookmark(bookmark);
+    
+    // Skip if no update needed
+    if (!needsUpdate(existing, bookmark)) {
+      logger.info(`⏭️ Skipping unchanged bookmark: ${bookmark.href.substring(0, 50)}...`);
+      return null;
+    }
+
+    // Generate source_id consistently
+    const source_id = `pinboard:${bookmark.hash}`;
 
     // Generate screenshot if needed
     logger.debug("📸 Generating screenshot...");
     const screenshot_url = await generateScreenshot({
       source: 'pinboard',
-      shortId: generateScrapId('pinboard', bookmark.hash),
+      shortId: source_id,
       url: bookmark.href
     });
 
@@ -322,9 +394,31 @@ export async function processBookmark(bookmark) {
       { url: bookmark.href }
     );
 
+    // Extract relationships if we have content and API key
+    logger.debug("🤝 Extracting relationships...");
+    let relationships = [];
+    if (process.env.OPENROUTER_API_KEY) {
+      try {
+        relationships = await aiLimiter.schedule(() => 
+          extractRelationships(
+            bookmark.extended || bookmark.description,
+            { url: bookmark.href, isRawText: true }
+          )
+        );
+        logger.debug(`Found ${relationships.length} relationships`);
+      } catch (error) {
+        logger.error(`Failed to extract relationships: ${error.message}`);
+      }
+    } else {
+      logger.debug('Skipping relationship extraction - OpenRouter API key not configured');
+    }
+
     logger.info(`✅ Processed bookmark: ${bookmark.href.substring(0, 50)}...`);
-    return {
-      id: generateScrapId('pinboard', bookmark.hash),
+    
+    // Prepare the scrap object
+    const scrap = {
+      id: source_id,
+      source_id,
       source: "pinboard",
       type: "bookmark",
       url: bookmark.href,
@@ -335,18 +429,26 @@ export async function processBookmark(bookmark) {
       latitude,
       longitude,
       published_at: bookmark.time,
-      created_at: bookmark.time,
+      created_at: existing?.created_at || bookmark.time,
       updated_at: bookmark.time,
-      shared: false,
+      shared: bookmark.shared === "yes",
       tags: bookmark.tags.split(' ').filter(Boolean),
+      relationships: relationships || [], // Add relationships field
       metadata: {
+        ...(existing?.metadata || {}),
         hash: bookmark.hash,
         meta: bookmark.meta,
         toread: bookmark.toread === "yes",
         shared: bookmark.shared === "yes",
         locations: otherLocations,
+        last_checked: new Date().toISOString(),
+        update_count: (existing?.metadata?.update_count || 0) + 1,
+        relationship_extraction_attempted: true, // Track extraction attempt
+        relationship_count: relationships?.length || 0
       }
     };
+
+    return scrap;
   } catch (error) {
     logger.error(`❌ Error processing bookmark ${bookmark.href}:`, error);
     throw error;
