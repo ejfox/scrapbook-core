@@ -8,7 +8,7 @@ app = "scrapbook-core"
   DEBUG = "false"
 
 [mounts]
-  source = "scrapbook_data"
+  source = "data"
   destination = "/usr/src/app/data"
 
 [[vm]]
