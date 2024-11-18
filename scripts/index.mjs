@@ -253,60 +253,91 @@ async function generateSummaryAndTags(scrapObj) {
   return scrapObj;
 }
 
+// Add this helper function
+async function shouldProcessScrap(scrapData) {
+  if (!scrapData.url && !scrapData.scrap_id) return true;
+
+  const { data, error } = await supabase
+    .from("scraps")
+    .select("updated_at, metadata")
+    .or(
+      'url.eq.' + scrapData.url,
+      'scrap_id.eq.' + scrapData.scrap_id
+    )
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    logger.error(`Error checking existing scrap: ${error.message}`);
+    return true;
+  }
+
+  if (!data || data.length === 0) return true;
+
+  const existing = data[0];
+  const lastChecked = existing.metadata?.last_checked;
+  
+  if (!lastChecked) return true;
+
+  // Only reprocess if it's been more than 24 hours
+  const hoursSinceLastCheck = (Date.now() - new Date(lastChecked).getTime()) / (1000 * 60 * 60);
+  return hoursSinceLastCheck > 24;
+}
+
 // Then define the functions
 async function fetchAndUpsertPinboardBookmarks() {
-  try {
-    const bookmarks = await fetchBookmarksWithCache();
-    logger.info(`Found ${bookmarks.length} bookmarks`);
+  const bookmarks = await fetchBookmarksWithCache();
+  logger.info(`Found ${bookmarks.length} bookmarks`);
 
-    for (const bookmark of bookmarks) {
-      if (isShuttingDown) break;
-      
-      try {
-        let processedBookmark = await processBookmark(bookmark);
-        if (processedBookmark) {
-          // Add summary generation
-          processedBookmark = await generateSummaryAndTags(processedBookmark);
-          // Extract relationships
-          processedBookmark = await extractAndAddRelationships(processedBookmark);
-          await upsertWithRetry(processedBookmark);
-        }
-      } catch (error) {
-        logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
+  for (const bookmark of bookmarks) {
+    if (isShuttingDown) break;
+    
+    try {
+      // Check if we need to process this bookmark
+      const shouldProcess = await shouldProcessScrap({
+        url: bookmark.href,
+        scrap_id: `pinboard-${bookmark.hash}`
+      });
+
+      if (!shouldProcess) {
+        logger.info(`Skipping recently processed bookmark: ${bookmark.href}`);
+        continue;
       }
+
+      const processedBookmark = await processBookmark(bookmark);
+      if (processedBookmark) {
+        await upsertWithRetry(processedBookmark);
+      }
+    } catch (error) {
+      logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
     }
-  } catch (error) {
-    logger.error("Error in Pinboard fetch:", error);
   }
 }
 
 async function fetchAndUpsertMastodonStatuses() {
   const userId = await fetchUserId();
   const statuses = await fetchStatuses(userId);
-  log(`Fetched ${statuses.length} Mastodon statuses`);
-
+  
   for (const status of statuses) {
     if (isShuttingDown) break;
 
     try {
-      // Process status with new structure
+      const shouldProcess = await shouldProcessScrap({
+        scrap_id: `mastodon-${status.id}`
+      });
+
+      if (!shouldProcess) {
+        logger.info(`Skipping recently processed status: ${status.id}`);
+        continue;
+      }
+
       let processedStatus = await processStatus(status);
-      
-      // Generate summary and tags
       processedStatus = await generateSummaryAndTags(processedStatus);
-      
-      // Extract relationships
       processedStatus = await extractAndAddRelationships(processedStatus);
       
-      // Generate embeddings if enabled
-      if (processedStatus.content && process.env.USE_OPENAI) {
-        processedStatus.embedding = await generateEmbedding(processedStatus.content);
-      }
-      
-      // Upsert to database
       await upsertWithRetry(processedStatus);
     } catch (error) {
-      log(`Failed to process status: ${status.id}`, error);
+      logger.error(`Failed to process status: ${status.id}`, error);
     }
   }
 }

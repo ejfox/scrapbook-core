@@ -4,9 +4,10 @@ import path from 'path';
 
 dotenv.config();
 
+// Initialize with anon key for public operations
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY  // Using anon key
 );
 
 /**
@@ -17,14 +18,25 @@ const supabase = createClient(
  */
 export async function uploadToCDN(buffer, cdnPath) {
   try {
-    // Upload to existing scrap_screenshots bucket
-    const { data, error } = await supabase.storage
+    // Create a new client with service role key for this operation
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY, // Need to add this to .env
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      }
+    );
+
+    console.log(`Uploading to: scrap_screenshots/${cdnPath}`);
+
+    const { data, error } = await adminSupabase.storage
       .from('scrap_screenshots')
       .upload(cdnPath, buffer, {
         contentType: 'image/png',
-        upsert: true,
-        cacheControl: '3600',
-        duplex: 'half'
+        upsert: true
       });
 
     if (error) {
@@ -32,7 +44,7 @@ export async function uploadToCDN(buffer, cdnPath) {
       return null;
     }
 
-    // Get public URL from existing bucket
+    // Use public client for getting URL
     const { data: { publicUrl } } = supabase.storage
       .from('scrap_screenshots')
       .getPublicUrl(cdnPath);
