@@ -21,6 +21,14 @@ import winston from "winston";
 import { generateScreenshot } from './generateScreenshot.mjs';
 import { v2 as cloudinary } from "cloudinary";
 
+// Export these functions first
+export {
+  fetchAndUpsertPinboardBookmarks,
+  fetchAndUpsertMastodonStatuses,
+  fetchAndUpsertArenaBlocks,
+  fetchAndUpsertGithubData
+};
+
 dotenv.config();
 
 // Environment variables and flags
@@ -181,7 +189,7 @@ async function extractAndAddRelationships(scrapObj) {
   return scrapObj;
 }
 
-// Add progress reporting to fetch functions
+// Then define the functions
 async function fetchAndUpsertPinboardBookmarks() {
   try {
     const bookmarks = await fetchBookmarksWithCache();
@@ -204,7 +212,6 @@ async function fetchAndUpsertPinboardBookmarks() {
   }
 }
 
-// Fetch and process Mastodon statuses
 async function fetchAndUpsertMastodonStatuses() {
   const userId = await fetchUserId();
   const statuses = await fetchStatuses(userId);
@@ -233,7 +240,6 @@ async function fetchAndUpsertMastodonStatuses() {
   }
 }
 
-// Fetch and process Are.na blocks
 async function fetchAndUpsertArenaBlocks() {
   const blocks = await fetchAllBlocks();
   log(`Fetched ${blocks.length} Are.na blocks`);
@@ -289,7 +295,6 @@ async function fetchAndUpsertArenaBlocks() {
   }
 }
 
-// Fetch and process GitHub data
 async function fetchAndUpsertGithubData() {
   const githubData = await fetchGithubData();
   log(`Fetched GitHub data`);
@@ -323,14 +328,6 @@ async function fetchAndUpsertGithubData() {
     }
   }
 }
-
-// Export functions before any execution code
-export {
-  fetchAndUpsertPinboardBookmarks,
-  fetchAndUpsertMastodonStatuses,
-  fetchAndUpsertArenaBlocks,
-  fetchAndUpsertGithubData
-};
 
 // Then add program options
 program
