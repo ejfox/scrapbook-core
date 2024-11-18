@@ -13,30 +13,6 @@ const limiter = new Bottleneck({
   minTime: 1000
 });
 
-// Summarization-specific prompts
-const SUMMARY_PROMPTS = {
-  SUMMARIZE: `When analyzing content, your goal is to:
-- Extract key information into standalone bullet points
-- Preserve technical details, URLs, and specific references
-- Focus on unique or significant points
-- Keep each point self-contained
-- Be concise but precise
-- Include verbatim quotes when relevant
-
-Format as a list of clear, independent facts.`,
-
-  TAGS: async (content) => {
-    const coreTags = await loadCoreTags();
-    return `You are tagging content. Choose 2-3 most relevant tags from this list:
-${coreTags.join('\n')}
-
-Content to tag:
-${content}
-
-Return only valid tags from the list above, one per line, no explanations.`;
-  }
-};
-
 export async function summarizeContent(content, options = {}) {
   if (!content) {
     log("❌ No content to summarize");
@@ -84,23 +60,14 @@ export async function summarizeContent(content, options = {}) {
 }
 
 async function summarizeChunk(content, options = {}) {
-  const messages = [
-    { 
-      role: "system", 
-      content: options.prompt || SUMMARY_PROMPTS.SUMMARIZE 
-    },
-    { 
-      role: "user", 
-      content: `${content}\nProvide a clear summary focusing on key information and technical details.`
+  return await completion(
+    `${options.prompt || PROMPTS.SUMMARIZATION.CONTENT}\n\n${content}\nProvide a clear summary focusing on key information and technical details.`,
+    {
+      temperature: options.temperature || 0.3,
+      maxTokens: options.meta ? 500 : 2000,
+      model: MODELS.CLAUDE_3_SONNET
     }
-  ];
-
-  return await completion({
-    messages,
-    model: MODELS.SUMMARIZE,
-    temperature: options.temperature || 0.3,
-    max_tokens: options.meta ? 500 : 2000
-  });
+  );
 }
 
 export async function metaSummaryToTags(summary) {
@@ -111,19 +78,21 @@ export async function metaSummaryToTags(summary) {
 
   try {
     log("🏷️ Generating tags...");
-    const messages = [
-      { 
-        role: "system", 
-        content: await SUMMARY_PROMPTS.TAGS(summary)
-      },
-      { role: "user", content: summary }
-    ];
+    const coreTags = await loadCoreTags();
+    
+    // Create the prompt string directly
+    const prompt = `You are tagging content. Choose 2-3 most relevant tags from this list:
+${coreTags.join('\n')}
 
-    const response = await completion({
-      messages,
-      model: MODELS.GENERATE_TAGS,
+Content to tag:
+${summary}
+
+Return only valid tags from the list above, one per line, no explanations.`;
+
+    const response = await completion(prompt, {
       temperature: 0.2,
-      max_tokens: 100
+      maxTokens: 100,
+      model: MODELS.CLAUDE_3_SONNET
     });
 
     const tags = response

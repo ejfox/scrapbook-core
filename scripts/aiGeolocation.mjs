@@ -15,23 +15,6 @@ const limiter = new Bottleneck({
   minTime: 1000,
 });
 
-const LOCATION_PROMPTS = {
-  EXTRACT: `Analyze the text and extract locations in this format:
-Primary: [Most significant/central location in City, State/Region, Country format]
-Others: [List other mentioned locations in same format]
-
-Choose the primary location based on:
-1. Main focus of the content
-2. First significant location mentioned
-3. Location with most context/detail
-
-Example output:
-Primary: San Francisco, California, USA
-Others:
-- New York City, New York, USA
-- London, England, UK`,
-};
-
 export async function extractLocation(content, options = {}) {
   const { url, rawHtml } = options;
 
@@ -57,54 +40,42 @@ export async function extractLocation(content, options = {}) {
 
     log("Cleaned content length:", cleanContent.length);
 
-    // Gather additional context if available
-    let contextualInfo = "";
-    if (url) {
-      log("📍 URL context:", url);
-      const domainInfo = extractDomainInfo(url);
-      contextualInfo += `URL: ${url}\nDomain: ${domainInfo.domain}\nTLD: ${domainInfo.tld}\n`;
-    }
-    if (rawHtml) {
-      log("🔍 Extracting meta info from HTML...");
-      const metaInfo = extractMetaInfo(rawHtml);
-      if (metaInfo) {
-        contextualInfo += `\nMeta Information:\n${metaInfo}\n`;
-        log("Found meta info:", metaInfo);
-      }
-    }
-
-    // Combine content with context
-    const enhancedContent = contextualInfo ? 
-      `${contextualInfo}\n\n${cleanContent}` : 
+    // Combine content with any URL context
+    const enhancedContent = url ? 
+      `URL: ${url}\n\n${cleanContent}` : 
       cleanContent;
 
     log("🤖 Sending to LLM for location extraction...");
     const locations = await extractLocationsFromString(enhancedContent);
     
-    if (!locations.primary) {
-      log("❌ No primary location found");
-      return { location: null, latitude: null, longitude: null, otherLocations: [] };
+    // If no locations found, return early
+    if (!locations.primary && (!locations.others || locations.others.length === 0)) {
+      log("ℹ️ No locations found in content");
+      return { 
+        location: null, 
+        latitude: null, 
+        longitude: null, 
+        otherLocations: [] 
+      };
     }
 
-    log("✅ Primary Location:", locations.primary);
-    if (locations.others.length > 0) {
-      log("📍 Other Locations:", locations.others);
+    // Get coordinates only if we have locations
+    let primaryCoords = { latitude: null, longitude: null };
+    let otherLocationsWithCoords = [];
+
+    if (locations.primary && process.env.OPENCAGE_API_KEY) {
+      log("🌍 Getting coordinates for primary location...");
+      primaryCoords = await limiter.schedule(() => reverseGeocode(locations.primary));
     }
 
-    // Get coordinates for primary location
-    log("🌍 Getting coordinates for primary location...");
-    const primaryCoords = await limiter.schedule(() => reverseGeocode(locations.primary));
-    
-    // Get coordinates for other locations
-    const otherLocationsWithCoords = await Promise.all(
-      locations.others.map(async loc => {
-        const coords = await limiter.schedule(() => reverseGeocode(loc));
-        return {
+    if (locations.others?.length > 0 && process.env.OPENCAGE_API_KEY) {
+      otherLocationsWithCoords = await Promise.all(
+        locations.others.map(async loc => ({
           location: loc,
-          ...coords
-        };
-      })
-    );
+          ...(await limiter.schedule(() => reverseGeocode(loc)))
+        }))
+      );
+    }
 
     return { 
       location: locations.primary,
@@ -120,6 +91,57 @@ export async function extractLocation(content, options = {}) {
       latitude: null, 
       longitude: null,
       otherLocations: []
+    };
+  }
+}
+
+async function extractLocationsFromString(content) {
+  try {
+    const prompt = `${PROMPTS.LOCATION.EXTRACT}
+
+If no locations are found, respond with:
+Primary: null
+Others:
+
+Text to analyze:
+${content}`;
+
+    const response = await completion(prompt, {
+      temperature: 0.1, // Lower temperature for more consistent extraction
+      maxTokens: 500,
+      model: MODELS.CLAUDE_3_SONNET
+    });
+
+    // Parse the response
+    const lines = response.trim().split('\n');
+    
+    // Get primary location
+    const primaryLine = lines.find(l => l.toLowerCase().startsWith('primary:'));
+    const primary = primaryLine
+      ? primaryLine.replace(/^primary:\s*/i, '').trim()
+      : null;
+
+    // Get other locations
+    const othersStartIndex = lines.findIndex(l => l.toLowerCase().startsWith('others:'));
+    const others = othersStartIndex >= 0
+      ? lines
+          .slice(othersStartIndex + 1)
+          .filter(l => l.trim().startsWith('-'))
+          .map(l => l.replace(/^-\s*/, '').trim())
+          .filter(Boolean)
+      : [];
+
+    log(`Found locations - Primary: ${primary || 'none'}, Others: ${others.length}`);
+    
+    return {
+      primary: primary === 'null' ? null : primary,
+      others
+    };
+  } catch (error) {
+    console.error('Error extracting locations:', error);
+    return {
+      primary: null,
+      others: []
     };
   }
 }
@@ -166,43 +188,6 @@ function extractMetaInfo(rawHtml) {
   } catch (error) {
     console.error("Error parsing HTML:", error);
     return "";
-  }
-}
-
-async function extractLocationsFromString(content) {
-  try {
-    const messages = [
-      { role: "system", content: LOCATION_PROMPTS.EXTRACT },
-      { role: "user", content }
-    ];
-
-    const response = await completion({
-      messages,
-      model: MODELS.EXTRACT_LOCATION,
-      temperature: 0.3,
-      max_tokens: 200
-    });
-
-    // Parse the response
-    const lines = response.split('\n');
-    const primary = lines
-      .find(l => l.startsWith('Primary:'))
-      ?.replace('Primary:', '')
-      .trim();
-      
-    const others = lines
-      .slice(lines.findIndex(l => l.startsWith('Others:')) + 1)
-      .filter(l => l.startsWith('-'))
-      .map(l => l.replace('-', '').trim())
-      .filter(Boolean);
-
-    return {
-      primary: primary === 'null' ? null : primary,
-      others: others || []
-    };
-  } catch (error) {
-    console.error("Error in location extraction:", error);
-    return { primary: null, others: [] };
   }
 }
 
