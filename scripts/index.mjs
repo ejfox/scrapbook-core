@@ -338,7 +338,6 @@ const options = program.opts();
 
 // Main execution function
 async function main() {
-  // Log options in a more readable way
   logger.info("Starting processing with options:", {
     all: options.all || false,
     pinboard: options.pinboard || false,
@@ -352,7 +351,21 @@ async function main() {
     // Fetch from Pinboard if specified
     if (options.all || options.pinboard) {
       logger.info("\nFetching from Pinboard...");
-      await fetchAndUpsertPinboardBookmarks();
+      const bookmarks = await fetchBookmarksWithCache();
+      logger.info(`Found ${bookmarks.length} bookmarks`);
+
+      for (const bookmark of bookmarks) {
+        if (isShuttingDown) break;
+        
+        try {
+          const processedBookmark = await processBookmark(bookmark);
+          if (processedBookmark) {
+            await upsertWithRetry(processedBookmark);
+          }
+        } catch (error) {
+          logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
+        }
+      }
     }
 
     // Fetch from Mastodon if specified

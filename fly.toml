@@ -5,9 +5,10 @@ app = "scrapbook-core"
 
 [env]
   NODE_ENV = "production"
+  DEBUG = "false"
 
 [mounts]
-  source = "data"
+  source = "scrapbook_data"
   destination = "/usr/src/app/data"
 
 [[vm]]
