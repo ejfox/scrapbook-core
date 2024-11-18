@@ -1,5 +1,22 @@
 #!/usr/bin/env node
 import { program } from "commander";
+
+// Set up command line options FIRST
+program
+  .option('--all', 'Fetch from all sources')
+  .option('--pinboard', 'Fetch from Pinboard')
+  .option('--mastodon', 'Fetch from Mastodon')
+  .option('--arena', 'Fetch from Are.na')
+  .option('--github', 'Fetch from GitHub')
+  .option('--debug', 'Enable debug logging')
+  .option('--test', 'Run in test mode (process fewer items)')
+  .parse();
+
+// Get options
+const options = program.opts();
+const DEBUG = options.debug || process.env.DEBUG === "true";
+
+// Now do the rest of the imports
 import { fetchAllBlocks } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId, processStatus } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache, processBookmark } from "./dl_pinboard.mjs";
@@ -401,20 +418,6 @@ async function fetchAndUpsertGithubData() {
     }
   }
 }
-
-// Set up command line options
-program
-  .option('--all', 'Fetch from all sources')
-  .option('--pinboard', 'Fetch from Pinboard')
-  .option('--mastodon', 'Fetch from Mastodon')
-  .option('--arena', 'Fetch from Are.na')
-  .option('--github', 'Fetch from GitHub')
-  .option('--debug', 'Enable debug logging')
-  .option('--test', 'Run in test mode (process fewer items)')
-  .parse(process.argv);
-
-const options = program.opts();
-const DEBUG = options.debug || false;
 
 // Main execution function
 async function main() {
