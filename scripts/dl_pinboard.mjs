@@ -367,23 +367,26 @@ export async function processBookmark(bookmark) {
   try {
     logger.info(`🔄 Processing bookmark: ${bookmark.href.substring(0, 50)}...`);
 
-    // Check for existing bookmark
-    const existing = await checkExistingBookmark(bookmark);
-    
-    // Skip if no update needed
-    if (!needsUpdate(existing, bookmark)) {
-      logger.info(`⏭️ Skipping unchanged bookmark: ${bookmark.href.substring(0, 50)}...`);
-      return null;
-    }
+    // Generate consistent scrap_id
+    const scrap_id = `pinboard:${bookmark.hash}`;
 
-    // Generate source_id consistently
-    const source_id = `pinboard:${bookmark.hash}`;
+    // Check for existing bookmark
+    const { data: existing, error } = await supabase
+      .from("scraps")
+      .select("*")
+      .eq("scrap_id", scrap_id)
+      .single();
+
+    if (error && !error.message.includes('No rows found')) {
+      logger.error(`Failed to check for existing bookmark: ${error.message}`);
+      throw error;
+    }
 
     // Generate screenshot if needed
     logger.debug("📸 Generating screenshot...");
     const screenshot_url = await generateScreenshot({
       source: 'pinboard',
-      shortId: source_id,
+      scrap_id,
       url: bookmark.href
     });
 
@@ -394,31 +397,10 @@ export async function processBookmark(bookmark) {
       { url: bookmark.href }
     );
 
-    // Extract relationships if we have content and API key
-    logger.debug("🤝 Extracting relationships...");
-    let relationships = [];
-    if (process.env.OPENROUTER_API_KEY) {
-      try {
-        relationships = await aiLimiter.schedule(() => 
-          extractRelationships(
-            bookmark.extended || bookmark.description,
-            { url: bookmark.href, isRawText: true }
-          )
-        );
-        logger.debug(`Found ${relationships.length} relationships`);
-      } catch (error) {
-        logger.error(`Failed to extract relationships: ${error.message}`);
-      }
-    } else {
-      logger.debug('Skipping relationship extraction - OpenRouter API key not configured');
-    }
-
     logger.info(`✅ Processed bookmark: ${bookmark.href.substring(0, 50)}...`);
     
-    // Prepare the scrap object
     const scrap = {
-      id: source_id,
-      source_id,
+      scrap_id,
       source: "pinboard",
       type: "bookmark",
       url: bookmark.href,
@@ -433,7 +415,6 @@ export async function processBookmark(bookmark) {
       updated_at: bookmark.time,
       shared: bookmark.shared === "yes",
       tags: bookmark.tags.split(' ').filter(Boolean),
-      relationships: relationships || [], // Add relationships field
       metadata: {
         ...(existing?.metadata || {}),
         hash: bookmark.hash,
@@ -442,9 +423,7 @@ export async function processBookmark(bookmark) {
         shared: bookmark.shared === "yes",
         locations: otherLocations,
         last_checked: new Date().toISOString(),
-        update_count: (existing?.metadata?.update_count || 0) + 1,
-        relationship_extraction_attempted: true, // Track extraction attempt
-        relationship_count: relationships?.length || 0
+        update_count: (existing?.metadata?.update_count || 0) + 1
       }
     };
 
