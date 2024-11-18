@@ -24,7 +24,6 @@ import { v2 as cloudinary } from "cloudinary";
 dotenv.config();
 
 // Environment variables and flags
-let DEBUG = process.env.DEBUG === "true";
 let isShuttingDown = false;
 
 // Initialize Supabase client with better error handling
