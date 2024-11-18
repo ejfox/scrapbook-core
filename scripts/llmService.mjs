@@ -1,11 +1,24 @@
 import dotenv from 'dotenv';
 import axios from 'axios';
+import { PROMPTS } from './prompts.mjs';
 
 dotenv.config();
 
 // API configurations
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';
 const NOMIC_API_URL = 'https://api-atlas.nomic.ai/v1';
+
+// Add loadCoreTags function that fetches from ejfox.com
+export async function loadCoreTags() {
+  try {
+    const response = await axios.get('https://ejfox.com/tags.json');
+    return response.data;
+  } catch (error) {
+    console.warn('Failed to load core tags:', error.message);
+    // Return empty array if fetch fails
+    return [];
+  }
+}
 
 // Model configurations
 export const MODELS = {
@@ -33,17 +46,20 @@ const DEFAULT_IMAGE_EMBEDDING_MODEL = MODELS.NOMIC_EMBED_IMAGE;
 const service = {
   enabled: !!process.env.OPENROUTER_API_KEY,
   
-  async completion({ prompt, temperature = 0.7, maxTokens = 1000, model = DEFAULT_COMPLETION_MODEL }) {
+  async completion({ prompt, messages, temperature = 0.7, maxTokens = 1000, model = DEFAULT_COMPLETION_MODEL }) {
     if (!this.enabled) {
       throw new Error('OpenRouter API key not configured - please set OPENROUTER_API_KEY');
     }
 
     try {
+      // Handle both prompt string and messages array
+      const finalMessages = messages || [{ role: 'user', content: prompt }];
+
       const response = await axios.post(
         `${OPENROUTER_API_URL}/chat/completions`,
         {
           model: model,
-          messages: [{ role: 'user', content: prompt }],
+          messages: finalMessages,
           temperature,
           max_tokens: maxTokens,
         },
@@ -55,6 +71,11 @@ const service = {
           }
         }
       );
+
+      if (!response.data?.choices?.[0]?.message?.content) {
+        throw new Error('Invalid response format from OpenRouter API');
+      }
+
       return response.data.choices[0].message.content;
     } catch (error) {
       console.error('OpenRouter API error:', error.response?.data || error.message);
@@ -101,8 +122,13 @@ const service = {
   }
 };
 
-export async function completion(prompt, options = {}) {
-  return service.completion({ prompt, ...options });
+export async function completion(promptOrMessages, options = {}) {
+  // Handle both string prompts and message arrays
+  const payload = typeof promptOrMessages === 'string' 
+    ? { prompt: promptOrMessages, ...options }
+    : { messages: promptOrMessages, ...options };
+    
+  return service.completion(payload);
 }
 
 export async function generateEmbedding(input, options = {}) {
@@ -112,4 +138,7 @@ export async function generateEmbedding(input, options = {}) {
 // Helper function to generate image embedding
 export async function generateImageEmbedding(imageBase64) {
   return service.embedding(imageBase64, { type: 'image' });
-} 
+}
+
+// Add PROMPTS to exports
+export { PROMPTS }; 
