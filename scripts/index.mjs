@@ -21,14 +21,6 @@ import winston from "winston";
 import { generateScreenshot } from './generateScreenshot.mjs';
 import { v2 as cloudinary } from "cloudinary";
 
-// Export these functions first
-export {
-  fetchAndUpsertPinboardBookmarks,
-  fetchAndUpsertMastodonStatuses,
-  fetchAndUpsertArenaBlocks,
-  fetchAndUpsertGithubData
-};
-
 dotenv.config();
 
 // Environment variables and flags
@@ -407,6 +399,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { fetchAndUpsertPinboardBookmarks, fetchAndUpsertMastodonStatuses, fetchAndUpsertArenaBlocks, fetchAndUpsertGithubData };
+export { 
+  fetchAndUpsertPinboardBookmarks, 
+  fetchAndUpsertMastodonStatuses, 
+  fetchAndUpsertArenaBlocks, 
+  fetchAndUpsertGithubData 
+};
 
 
