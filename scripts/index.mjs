@@ -324,7 +324,15 @@ async function fetchAndUpsertGithubData() {
   }
 }
 
-// Add program options
+// Export functions before any execution code
+export {
+  fetchAndUpsertPinboardBookmarks,
+  fetchAndUpsertMastodonStatuses,
+  fetchAndUpsertArenaBlocks,
+  fetchAndUpsertGithubData
+};
+
+// Then add program options
 program
   .option("--all", "Fetch from all sources")
   .option("--pinboard", "Fetch from Pinboard")
@@ -394,17 +402,10 @@ async function main() {
   }
 }
 
-// Run main function
+// Run main function at the end
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
     logger.error("Unhandled error:", error);
     process.exit(1);
   });
 }
-
-export {
-  fetchAndUpsertPinboardBookmarks,
-  fetchAndUpsertMastodonStatuses,
-  fetchAndUpsertArenaBlocks,
-  fetchAndUpsertGithubData
-};
