@@ -52,7 +52,7 @@ export async function generateScreenshot({ source, shortId, url }) {
   
   try {
     const launchOptions = await getBrowserLauncher();
-    console.log('Launch options:', launchOptions);
+    // console.log('Launch options:', launchOptions);
 
     browser = await puppeteer.launch({
       ...launchOptions,
