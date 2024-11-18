@@ -217,6 +217,38 @@ async function extractAndAddRelationships(scrapObj) {
   return scrapObj;
 }
 
+// Add this helper function near the top with other helper functions
+async function generateSummaryAndTags(scrapObj) {
+  if (!scrapObj.content) return scrapObj;
+
+  try {
+    if (process.env.OPENROUTER_API_KEY) {
+      // Generate summary
+      scrapObj.summary = await limiter.schedule(() =>
+        summarizeContent(scrapObj.content, { metaSummary: true })
+      );
+
+      // Generate tags from summary if we have one
+      if (scrapObj.summary) {
+        const summaryTags = await limiter.schedule(() =>
+          metaSummaryToTags(scrapObj.summary)
+        );
+        scrapObj.tags = [...new Set([...(scrapObj.tags || []), ...summaryTags])];
+      }
+    } else {
+      logger.info('Skipping summary generation - OpenRouter API key not configured');
+      logger.info('Please set OPENROUTER_API_KEY to enable AI features');
+    }
+  } catch (error) {
+    logger.error(
+      `Failed to generate summary for ${scrapObj.id}:`,
+      error.message
+    );
+  }
+
+  return scrapObj;
+}
+
 // Then define the functions
 async function fetchAndUpsertPinboardBookmarks() {
   try {
@@ -227,8 +259,12 @@ async function fetchAndUpsertPinboardBookmarks() {
       if (isShuttingDown) break;
       
       try {
-        const processedBookmark = await processBookmark(bookmark);
+        let processedBookmark = await processBookmark(bookmark);
         if (processedBookmark) {
+          // Add summary generation
+          processedBookmark = await generateSummaryAndTags(processedBookmark);
+          // Extract relationships
+          processedBookmark = await extractAndAddRelationships(processedBookmark);
           await upsertWithRetry(processedBookmark);
         }
       } catch (error) {
@@ -250,15 +286,18 @@ async function fetchAndUpsertMastodonStatuses() {
 
     try {
       // Process status with new structure
-      const processedStatus = await processStatus(status);
+      let processedStatus = await processStatus(status);
+      
+      // Generate summary and tags
+      processedStatus = await generateSummaryAndTags(processedStatus);
+      
+      // Extract relationships
+      processedStatus = await extractAndAddRelationships(processedStatus);
       
       // Generate embeddings if enabled
       if (processedStatus.content && process.env.USE_OPENAI) {
         processedStatus.embedding = await generateEmbedding(processedStatus.content);
       }
-
-      // Extract relationships
-      await extractAndAddRelationships(processedStatus);
       
       // Upsert to database
       await upsertWithRetry(processedStatus);
