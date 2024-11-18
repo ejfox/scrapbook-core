@@ -167,9 +167,15 @@ async function extractAndAddRelationships(scrapObj) {
   if (!content) return scrapObj;
 
   try {
-    scrapObj.relationships = await limiter.schedule(() =>
-      extractRelationships(content, { isRawText: !scrapObj.summary })
-    );
+    if (process.env.OPENROUTER_API_KEY) {
+      scrapObj.relationships = await limiter.schedule(() =>
+        extractRelationships(content, { isRawText: !scrapObj.summary })
+      );
+    } else {
+      logger.info('Skipping relationship extraction - OpenRouter API key not configured');
+      logger.info('Please set OPENROUTER_API_KEY to enable AI features');
+      scrapObj.relationships = [];
+    }
   } catch (error) {
     logger.error(
       `Failed to extract relationships for ${scrapObj.id}:`,
