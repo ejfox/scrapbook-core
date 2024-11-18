@@ -403,17 +403,19 @@ async function fetchAndUpsertGithubData() {
   }
 }
 
-// Then add program options
+// Set up command line options
 program
-  .option("--all", "Fetch from all sources")
-  .option("--pinboard", "Fetch from Pinboard")
-  .option("--mastodon", "Fetch from Mastodon")
-  .option("--arena", "Fetch from Are.na")
-  .option("--github", "Fetch from GitHub")
-  .option("--new-only", "Only fetch new items")
+  .option('--all', 'Fetch from all sources')
+  .option('--pinboard', 'Fetch from Pinboard')
+  .option('--mastodon', 'Fetch from Mastodon')
+  .option('--arena', 'Fetch from Are.na')
+  .option('--github', 'Fetch from GitHub')
+  .option('--debug', 'Enable debug logging')
+  .option('--test', 'Run in test mode (process fewer items)')
   .parse(process.argv);
 
 const options = program.opts();
+const DEBUG = options.debug || false;
 
 // Main execution function
 async function main() {
@@ -423,43 +425,26 @@ async function main() {
     mastodon: options.mastodon || false,
     arena: options.arena || false,
     github: options.github || false,
-    newOnly: options.newOnly || false
+    debug: DEBUG,
+    test: options.test || false
   });
   
   try {
-    // Fetch from Pinboard if specified
     if (options.all || options.pinboard) {
       logger.info("\nFetching from Pinboard...");
-      const bookmarks = await fetchBookmarksWithCache();
-      logger.info(`Found ${bookmarks.length} bookmarks`);
-
-      for (const bookmark of bookmarks) {
-        if (isShuttingDown) break;
-        
-        try {
-          const processedBookmark = await processBookmark(bookmark);
-          if (processedBookmark) {
-            await upsertWithRetry(processedBookmark);
-          }
-        } catch (error) {
-          logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
-        }
-      }
+      await fetchAndUpsertPinboardBookmarks();
     }
 
-    // Fetch from Mastodon if specified
     if (options.all || options.mastodon) {
       logger.info("\nFetching from Mastodon...");
       await fetchAndUpsertMastodonStatuses();
     }
 
-    // Fetch from Are.na if specified
     if (options.all || options.arena) {
       logger.info("\nFetching from Are.na...");
       await fetchAndUpsertArenaBlocks();
     }
 
-    // Fetch from GitHub if specified
     if (options.all || options.github) {
       logger.info("\nFetching from GitHub...");
       await fetchAndUpsertGithubData();
@@ -468,7 +453,7 @@ async function main() {
     logger.info("\nProcessing completed successfully");
     process.exit(0);
   } catch (error) {
-    logger.error("Error in main process:", error.message);
+    logger.error("Error in main process:", error);
     process.exit(1);
   }
 }
