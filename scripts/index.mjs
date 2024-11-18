@@ -321,30 +321,6 @@ async function fetchAndUpsertGithubData() {
     } catch (error) {
       log(`Failed to process GitHub item: ${scrap.id}`, error);
     }
-
-    const scrapObj = {
-      scrap_id: scrapId,
-      source: "github",
-      content,
-      summary,
-      tags: [...new Set([...(scrap.topics || []), ...aiGeneratedTags])],
-      metadata: {
-        type: scrap.type,
-        name: scrap.name || scrap.title,
-        full_name:
-          scrap.full_name || (scrap.repo && scrap.repo.full_name) || null,
-        href: scrap.html_url,
-        language: scrap.language,
-        stargazers_count: scrap.stargazers_count,
-        forks_count: scrap.forks_count,
-        images: scrap.images || [],
-        screenshotUrl: await browserLimiter.schedule(() =>
-          generateWebpageScreenshot(scrap.html_url)
-        ),
-      },
-    };
-
-    await upsertLimiter.schedule(() => upsertScrap(scrapObj, newOnly));
   }
 }
 
