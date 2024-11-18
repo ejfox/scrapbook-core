@@ -255,34 +255,6 @@ async function fetchAndUpsertArenaBlocks() {
       await upsertWithRetry(processedBlock);
     } catch (error) {
       log(`Failed to process block: ${block.id}`, error);
-    const scrapId = helpers.scrapToUUID("arena" + block.id);
-    if (newOnly && (await getExistingScrap(scrapId))) continue;
-
-    const blockObj = {
-      scrap_id: scrapId,
-      source: "arena",
-      content: block.content,
-      tags: block.tags,
-      metadata: {
-        title: block.title,
-        description: block.description,
-        source: block.source,
-        image: block.image,
-        screenshotUrl: await browserLimiter.schedule(() =>
-          generateWebpageScreenshot(block.source.url)
-        ),
-      },
-    };
-
-    if (block.connected_to_channels?.length > 0) {
-      blockObj.relationships = block.connected_to_channels.map((channel) => ({
-        source: {
-          type: "Block",
-          name: block.title || `Block ${block.id}`,
-        },
-        target: { type: "Channel", name: channel.title },
-        type: "BELONGS_TO",
-      }));
     }
   }
 }
