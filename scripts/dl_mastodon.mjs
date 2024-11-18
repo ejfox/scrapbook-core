@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { generateScrapId } from '../helpers.js';
+import { processImagesForScrap } from './imageEmbedding.mjs';
 
 dotenv.config();
 
@@ -71,7 +72,8 @@ export async function processStatus(status) {
     // Get best available screenshot
     const screenshot_url = images[0]?.url || null;
 
-    return {
+    // Add image processing
+    const processedStatus = await processImagesForScrap({
       id: generateScrapId('mastodon', status.id),
       source: "mastodon",
       type: "status",
@@ -102,7 +104,9 @@ export async function processStatus(status) {
           url: status.account.url
         }
       }
-    };
+    });
+
+    return processedStatus;
   } catch (error) {
     console.error(`Error processing status ${status?.id}:`, error);
     return null;

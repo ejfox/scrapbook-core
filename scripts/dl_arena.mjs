@@ -4,145 +4,123 @@ import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 import { generateScrapId } from '../helpers.js';
 import { generateScreenshot } from './generateScreenshot.mjs';
+import { processImagesForScrap } from './imageEmbedding.mjs';
+import winston from "winston";
+import { createClient } from '@supabase/supabase-js'
+import { program } from 'commander';
 
 dotenv.config();
 
-const DEBUG = process.env.DEBUG === "true";
+// Set up command line options
+program
+  .option('--debug', 'Enable debug logging')
+  .option('--test', 'Run in test mode (process fewer items)')
+  .parse(process.argv);
 
-function log(...args) {
-  if (DEBUG) {
-    console.log(...args);
-  }
-}
+const options = program.opts();
+const DEBUG = options.debug || false;
 
-log("Debug mode is on");
+// Improve logging
+const logger = winston.createLogger({
+  level: DEBUG ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [new winston.transports.Console()]
+});
 
-const limiter = new Bottleneck({ minTime: 333 });
+// Rate limiters
+const arenaLimiter = new Bottleneck({ minTime: 333 });
+const processLimiter = new Bottleneck({ maxConcurrent: 3 });
+
+// Environment checks
 const USER_SLUG = process.env.USER_SLUG || "ej-fox";
 const ARENA_ACCESS_TOKEN = process.env.ARENA_ACCESS_TOKEN;
 
 if (!ARENA_ACCESS_TOKEN) {
-  console.error("ARENA_ACCESS_TOKEN is not set in the environment variables.");
+  logger.error("ARENA_ACCESS_TOKEN is not set in the environment variables.");
   process.exit(1);
 }
 
-log("Initializing Arena client");
+logger.info("Initializing Arena client");
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
 
-export const fetchAllBlocks = async (testMode = false) => {
-  let allBlocks = [];
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY  // Need admin rights for vector operations
+);
 
+// Add this helper function for merging scraps
+async function mergeExistingScrap(newScrap) {
   try {
-    log("Fetching user channels");
-    const userChannels = await arena.user(USER_SLUG).channels();
-    log(`Found ${userChannels.length} channels`);
+    // Check for existing scrap
+    const { data, error } = await supabase
+      .from("scraps")
+      .select("*")
+      .eq("scrap_id", newScrap.scrap_id)
+      .limit(1);
 
-    const channelsToProcess = testMode ? [userChannels[0]] : userChannels;
-
-    for (const channel of channelsToProcess) {
-      log(`Processing channel: ${channel.title}`);
-      
-      const response = await limiter.schedule(() =>
-        arena.channel(channel.id).contents({
-          page: 1,
-          per: testMode ? 5 : 100,
-          sort: "updated_at",
-          direction: "desc",
-        })
-      );
-      
-      const blocks = response || [];
-      const processedBlocks = await Promise.all(blocks.map(block => {
-        const enrichedBlock = {
-          ...block,
-          channel: channel.title,
-          connected_to_channels: [
-            {
-              id: channel.id,
-              title: channel.title,
-            },
-            ...(block.connected_to_channels || []),
-          ],
-        };
-        return processBlock(enrichedBlock);
-      }));
-
-      allBlocks = allBlocks.concat(processedBlocks.filter(Boolean));
-
-      if (testMode && allBlocks.length >= 5) break;
-
-      if (!testMode) {
-        let page = 2;
-        let fetching = true;
-
-        while (fetching) {
-          try {
-            log(`Fetching page ${page} of channel ${channel.title}`);
-            const response = await limiter.schedule(() =>
-              arena.channel(channel.id).contents({
-                page,
-                per: 100,
-                sort: "updated_at",
-                direction: "desc",
-              })
-            );
-            
-            const blocks = response || [];
-            if (!blocks.length) break;
-            
-            const processedBlocks = await Promise.all(blocks.map(block => {
-              const enrichedBlock = {
-                ...block,
-                channel: channel.title,
-                connected_to_channels: [
-                  {
-                    id: channel.id,
-                    title: channel.title,
-                  },
-                  ...(block.connected_to_channels || []),
-                ],
-              };
-              return processBlock(enrichedBlock);
-            }));
-
-            allBlocks = allBlocks.concat(processedBlocks.filter(Boolean));
-            page += 1;
-          } catch (error) {
-            console.error(
-              `Error fetching page ${page} of channel ${channel.title}:`,
-              error.message
-            );
-            fetching = false;
-          }
-        }
-      }
+    if (error) {
+      logger.error(`Failed to check for existing scrap: ${error.message}`);
+      throw error;
     }
 
-    log(`Fetched ${allBlocks.length} blocks`);
-    return allBlocks;
-  } catch (error) {
-    console.error("An error occurred while fetching blocks:", error);
-    throw error;
-  }
-};
+    const existing = data?.[0];
+    if (!existing) return newScrap;
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  log("Starting main execution");
-  fetchAllBlocks()
-    .then((blocks) => {
-      console.log(`Total blocks fetched: ${blocks.length}`);
-    })
-    .catch((error) => {
-      console.error("Unhandled error in main:", error);
-      process.exit(1);
-    });
+    logger.info(`Found existing scrap for ${newScrap.scrap_id}`);
+
+    // Smart merging
+    const merged = {
+      ...existing,
+      ...newScrap,
+      // Keep existing embeddings if they exist
+      image_embedding: existing.image_embedding || newScrap.image_embedding,
+      // Merge arrays without duplicates
+      tags: [...new Set([...(existing.tags || []), ...(newScrap.tags || [])])],
+      relationships: [...new Set([...(existing.relationships || []), ...(newScrap.relationships || [])])],
+      // Merge metadata, keeping track of updates
+      metadata: {
+        ...(existing.metadata || {}),
+        ...(newScrap.metadata || {}),
+        last_checked: new Date().toISOString(),
+        update_count: (existing.metadata?.update_count || 0) + 1,
+        previous_image_urls: [
+          ...(existing.metadata?.image_urls || []),
+          ...(existing.metadata?.previous_image_urls || [])
+        ].filter(Boolean)
+      }
+    };
+
+    logger.debug(`Merged scrap details:
+      • ID: ${merged.scrap_id}
+      • Title: ${merged.title}
+      • Has image embedding: ${Boolean(merged.image_embedding)}
+      • Tags: ${merged.tags.join(', ')}
+      • Update count: ${merged.metadata.update_count}
+    `);
+
+    return merged;
+  } catch (error) {
+    logger.error(`Error merging scrap: ${error.message}`);
+    return newScrap;
+  }
 }
 
+// Update processBlock to use merging and better logging
 export async function processBlock(block) {
   if (!block || !block.id) {
-    console.error('Invalid block:', block);
+    logger.error('Invalid block:', block);
     return null;
   }
+
+  const blockId = block.id;
+  logger.info(`\n📦 Processing Arena block: ${blockId}`);
+  logger.info(`Type: ${block.class} | Channel: ${block.channel}`);
 
   try {
     // Handle different block classes (Image, Text, Media, Link, etc)
@@ -235,19 +213,195 @@ export async function processBlock(block) {
       }
     };
 
-    // Validate required fields before returning
-    const required = ['id', 'source', 'type', 'url', 'title', 'content', 'published_at', 'created_at', 'updated_at', 'shared', 'tags', 'metadata'];
-    const missing = required.filter(field => scrap[field] === undefined);
+    logger.debug('Image data available:', {
+      'metadata.image_data': scrap.metadata.image_data,
+      screenshot_url: scrap.screenshot_url,
+      class: scrap.metadata.class
+    });
+
+    // Process images and get embeddings
+    logger.info(`🖼️ Processing images for block ${blockId}`);
+    const scrapWithImages = await processImagesForScrap(scrap);
     
-    if (missing.length > 0) {
-      console.error(`Block ${block.id} missing required fields:`, missing);
-      return null;
+    if (scrapWithImages.image_embedding) {
+      logger.info(`✅ Generated image embedding for ${blockId} (${scrapWithImages.image_embedding.length} dimensions)`);
+    } else {
+      logger.info(`ℹ️ No image embedding generated for ${blockId}. Available image data:`, {
+        'metadata.image_urls': scrapWithImages.metadata?.image_urls,
+        'metadata.primary_image_url': scrapWithImages.metadata?.primary_image_url
+      });
     }
 
-    return scrap;
+    // Merge with existing data
+    logger.info(`🔄 Checking for existing data for ${blockId}`);
+    const mergedScrap = await mergeExistingScrap(scrapWithImages);
+
+    // Log the final state
+    logger.info(`📊 Final scrap state for ${blockId}:
+      • Title: ${mergedScrap.title.substring(0, 50)}...
+      • Channel: ${mergedScrap.metadata.channel}
+      • Has image embedding: ${Boolean(mergedScrap.image_embedding)}
+      • Tags: ${mergedScrap.tags.join(', ')}
+      • Update count: ${mergedScrap.metadata.update_count || 1}
+    `);
+
+    return mergedScrap;
 
   } catch (error) {
-    console.error(`Error processing block ${block?.id}:`, error);
+    logger.error(`❌ Error processing block ${blockId}:`, error);
     return null;
   }
+}
+
+// Update fetchAllBlocks to include progress tracking
+export const fetchAllBlocks = async (testMode = false) => {
+  let allBlocks = [];
+  let processedCount = 0;
+  let totalChannels = 0;
+  let currentChannel = 0;
+
+  try {
+    logger.info("\n🔍 Fetching Are.na channels...");
+    const userChannels = await arena.user(USER_SLUG).channels();
+    totalChannels = userChannels.length;
+    logger.info(`📚 Found ${totalChannels} channels`);
+
+    const channelsToProcess = testMode ? [userChannels[0]] : userChannels;
+
+    for (const channel of channelsToProcess) {
+      currentChannel++;
+      logger.info(`\n📂 Processing channel ${currentChannel}/${totalChannels}: ${channel.title}`);
+      
+      const response = await arenaLimiter.schedule(() =>
+        arena.channel(channel.id).contents({
+          page: 1,
+          per: testMode ? 5 : 100,
+          sort: "updated_at",
+          direction: "desc",
+        })
+      );
+      
+      const blocks = response || [];
+      const processedBlocks = await Promise.all(
+        blocks.map(block => {
+          const enrichedBlock = {
+            ...block,
+            channel: channel.title,
+            connected_to_channels: [
+              {
+                id: channel.id,
+                title: channel.title,
+              },
+              ...(block.connected_to_channels || []),
+            ],
+          };
+          return processLimiter.schedule(() => processBlock(enrichedBlock));
+        })
+      );
+
+      allBlocks = allBlocks.concat(processedBlocks.filter(Boolean));
+
+      if (testMode && allBlocks.length >= 5) break;
+
+      if (!testMode) {
+        let page = 2;
+        let fetching = true;
+
+        while (fetching) {
+          try {
+            logger.info(`Fetching page ${page} of channel ${channel.title}`);
+            const response = await arenaLimiter.schedule(() =>
+              arena.channel(channel.id).contents({
+                page,
+                per: 100,
+                sort: "updated_at",
+                direction: "desc",
+              })
+            );
+            
+            const blocks = response || [];
+            if (!blocks.length) break;
+            
+            const processedBlocks = await Promise.all(
+              blocks.map(block => {
+                const enrichedBlock = {
+                  ...block,
+                  channel: channel.title,
+                  connected_to_channels: [
+                    {
+                      id: channel.id,
+                      title: channel.title,
+                    },
+                    ...(block.connected_to_channels || []),
+                  ],
+                };
+                return processLimiter.schedule(() => processBlock(enrichedBlock));
+              })
+            );
+
+            allBlocks = allBlocks.concat(processedBlocks.filter(Boolean));
+            page += 1;
+          } catch (error) {
+            logger.error(
+              `Error fetching page ${page} of channel ${channel.title}:`,
+              error.message
+            );
+            fetching = false;
+          }
+        }
+      }
+
+      // After processing blocks, upsert them to database
+      for (const block of processedBlocks.filter(Boolean)) {
+        try {
+          const { error: upsertError } = await supabase
+            .from('scraps')
+            .upsert(block, { 
+              onConflict: 'scrap_id',
+              ignoreDuplicates: false
+            });
+
+          if (upsertError) {
+            logger.error(`Failed to upsert block ${block.scrap_id}:`, upsertError);
+          } else {
+            logger.info(`✅ Upserted block ${block.scrap_id} to database`);
+          }
+        } catch (error) {
+          logger.error(`Error upserting block ${block.scrap_id}:`, error);
+        }
+      }
+
+      // Update progress
+      processedCount += processedBlocks.length;
+      logger.info(`Progress: ${processedCount} blocks processed`);
+      logger.info(`Channel progress: ${currentChannel}/${totalChannels}`);
+    }
+
+    logger.info(`\n✅ Processing complete!
+      • Total channels processed: ${currentChannel}
+      • Total blocks processed: ${processedCount}
+      • Successful blocks: ${allBlocks.length}
+      • Failed/skipped: ${processedCount - allBlocks.length}
+    `);
+
+    return allBlocks;
+  } catch (error) {
+    logger.error("\n❌ Error fetching blocks:", error);
+    throw error;
+  }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  logger.info("Starting main execution");
+  fetchAllBlocks(options.test)
+    .then((blocks) => {
+      logger.info(`Total blocks fetched: ${blocks.length}`);
+      if (DEBUG && blocks.length > 0) {
+        logger.debug('Sample block:', JSON.stringify(blocks[0], null, 2));
+      }
+    })
+    .catch((error) => {
+      logger.error("Unhandled error in main:", error);
+      process.exit(1);
+    });
 }
