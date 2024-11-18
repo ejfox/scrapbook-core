@@ -20,18 +20,24 @@ export async function summarizeContent(content, options = {}) {
   }
 
   try {
+    // Clean up HTML content if present
+    const cleanContent = content.replace(/<[^>]*>/g, ' ')
+                               .replace(/\s+/g, ' ')
+                               .trim();
+    
+    if (!cleanContent) {
+      log("❌ No content after cleaning");
+      return null;
+    }
+
     // Configure chunk size based on model
     const chunkSizeTokens = options.chunkSize || 120000;
-    log(`🔄 Processing ${content.length} characters...`);
+    log(`🔄 Processing ${cleanContent.length} characters...`);
 
     // Break content into chunks
-    const chunks = breakContentIntoChunks(content, chunkSizeTokens);
+    const chunks = breakContentIntoChunks(cleanContent, chunkSizeTokens);
     log(`📑 Split into ${chunks.length} chunks`);
     
-    chunks.forEach((chunk, i) => {
-      log(`  Chunk ${i + 1}: ${chunk.length} chars`);
-    });
-
     // Process chunks
     log("🤖 Generating summaries...");
     const summaries = await Promise.all(
@@ -41,7 +47,13 @@ export async function summarizeContent(content, options = {}) {
     );
 
     // Combine summaries
-    const summary = summaries.join("\n");
+    const summary = summaries.join("\n").trim();
+    
+    if (!summary) {
+      log("❌ No summary generated");
+      return null;
+    }
+
     log(`✅ Summarized to ${summary.length} characters`);
     log(`First line: ${summary.split("\n")[0]}`);
 
