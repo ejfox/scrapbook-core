@@ -123,7 +123,7 @@ async function getExistingScrap(scrapData) {
   const { data, error } = await supabase
     .from("scraps")
     .select("*")
-    .or(`id.eq.${scrapData.id},source_id.eq.${scrapData.source_id},url.eq.${scrapData.url}`)
+    .or(`id.eq.${scrapData.id},scrap_id.eq.${scrapData.scrap_id},url.eq.${scrapData.url}`)
     .limit(1);
     
   if (error) {

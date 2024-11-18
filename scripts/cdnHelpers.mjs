@@ -22,7 +22,9 @@ export async function uploadToCDN(buffer, cdnPath) {
       .from('scrap_screenshots')
       .upload(cdnPath, buffer, {
         contentType: 'image/png',
-        upsert: true
+        upsert: true,
+        cacheControl: '3600',
+        duplex: 'half'
       });
 
     if (error) {
