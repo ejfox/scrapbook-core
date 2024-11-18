@@ -1,26 +1,7 @@
 #!/usr/bin/env node
+
+// First do all imports
 import { program } from "commander";
-
-// Set up command line options FIRST, before anything else
-program
-  .name('scrapbook')
-  .description('Fetch and process digital scraps from various sources')
-  .option('--all', 'Fetch from all sources')
-  .option('--pinboard', 'Fetch from Pinboard')
-  .option('--mastodon', 'Fetch from Mastodon')
-  .option('--arena', 'Fetch from Are.na')
-  .option('--github', 'Fetch from GitHub')
-  .option('--debug', 'Enable debug logging')
-  .option('--test', 'Run in test mode (process fewer items)');
-
-// Parse AFTER defining all options
-program.parse(process.argv);
-
-// Get options
-const options = program.opts();
-const DEBUG = options.debug || process.env.DEBUG === "true";
-
-// Now do the rest of the imports
 import { fetchAllBlocks } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId, processStatus } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache, processBookmark } from "./dl_pinboard.mjs";
@@ -43,6 +24,39 @@ import { generateScreenshot } from './generateScreenshot.mjs';
 import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
+
+// THEN set up commander
+program
+  .name('scrapbook')
+  .description('Fetch and process digital scraps from various sources')
+  .option('--all', 'Fetch from all sources')
+  .option('--pinboard', 'Fetch from Pinboard')
+  .option('--mastodon', 'Fetch from Mastodon')
+  .option('--arena', 'Fetch from Are.na')
+  .option('--github', 'Fetch from GitHub')
+  .option('--debug', 'Enable debug logging')
+  .option('--test', 'Run in test mode (process fewer items)')
+  .version('1.0.0');
+
+// Parse after all options are defined
+program.parse();
+
+// Get options
+const options = program.opts();
+const DEBUG = options.debug || process.env.DEBUG === "true";
+
+// Validate required environment variables early
+const requiredEnvVars = [
+  'SUPABASE_URL',
+  'SUPABASE_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY'
+];
+
+const missingEnvVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingEnvVars.length > 0) {
+  console.error('Missing required environment variables:', missingEnvVars.join(', '));
+  process.exit(1);
+}
 
 // Environment variables and flags
 let isShuttingDown = false;
@@ -425,7 +439,8 @@ async function fetchAndUpsertGithubData() {
 
 // Main execution function
 async function main() {
-  logger.info("Starting processing with options:", {
+  logger.info("Starting scrapbook processing");
+  logger.info("Options:", {
     all: options.all || false,
     pinboard: options.pinboard || false,
     mastodon: options.mastodon || false,
@@ -434,6 +449,12 @@ async function main() {
     debug: DEBUG,
     test: options.test || false
   });
+
+  // Validate at least one source is selected
+  if (!options.all && !options.pinboard && !options.mastodon && !options.arena && !options.github) {
+    logger.error("No sources selected. Use --all or specify individual sources.");
+    process.exit(1);
+  }
   
   try {
     if (options.all || options.pinboard) {
@@ -459,13 +480,18 @@ async function main() {
     logger.info("\nProcessing completed successfully");
     process.exit(0);
   } catch (error) {
-    logger.error("Error in main process:", error);
+    logger.error("Fatal error in main process:", error);
     process.exit(1);
   }
 }
 
-// Run main function at the end
+// Run main function with better error handling
 if (import.meta.url === `file://${process.argv[1]}`) {
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+  });
+
   main().catch(error => {
     logger.error("Unhandled error:", error);
     process.exit(1);
