@@ -123,7 +123,11 @@ async function getExistingScrap(scrapData) {
   const { data, error } = await supabase
     .from("scraps")
     .select("*")
-    .or(`id.eq.${scrapData.id},scrap_id.eq.${scrapData.scrap_id},url.eq.${scrapData.url}`)
+    .or(
+      `id.eq."${scrapData.id}",` +
+      `scrap_id.eq."${scrapData.scrap_id}",` +
+      `url.eq."${scrapData.url}"`
+    )
     .limit(1);
     
   if (error) {
@@ -164,12 +168,12 @@ async function upsertWithRetry(scrapData, retries = 3) {
       // Merge data if exists
       const mergedData = mergeScrapData(existing, scrapData);
       
-      // Perform upsert with conflict handling
+      // Perform upsert with better conflict handling
       const { error } = await supabase
         .from("scraps")
         .upsert(mergedData, {
-          onConflict: 'id',
-          ignoreDuplicates: false,
+          onConflict: 'scrap_id', // Use scrap_id as the primary conflict resolver
+          ignoreDuplicates: true,  // Changed to true to prevent duplicate errors
           returning: 'minimal'
         });
       
