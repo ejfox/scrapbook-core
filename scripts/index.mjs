@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 import { program } from "commander";
 
-// Set up command line options FIRST
+// Set up command line options FIRST, before anything else
 program
+  .name('scrapbook')
+  .description('Fetch and process digital scraps from various sources')
   .option('--all', 'Fetch from all sources')
   .option('--pinboard', 'Fetch from Pinboard')
   .option('--mastodon', 'Fetch from Mastodon')
   .option('--arena', 'Fetch from Are.na')
   .option('--github', 'Fetch from GitHub')
   .option('--debug', 'Enable debug logging')
-  .option('--test', 'Run in test mode (process fewer items)')
-  .parse();
+  .option('--test', 'Run in test mode (process fewer items)');
+
+// Parse AFTER defining all options
+program.parse(process.argv);
 
 // Get options
 const options = program.opts();
