@@ -19,6 +19,7 @@ import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
 import { generateScreenshot } from './generateScreenshot.mjs';
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
@@ -43,6 +44,13 @@ const supabase = createClient(
     }
   }
 );
+
+// Initialize Cloudinary client
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Bottleneck limiters for rate-limiting async tasks
 const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
@@ -249,6 +257,34 @@ async function fetchAndUpsertArenaBlocks() {
       await upsertWithRetry(processedBlock);
     } catch (error) {
       log(`Failed to process block: ${block.id}`, error);
+    const scrapId = helpers.scrapToUUID("arena" + block.id);
+    if (newOnly && (await getExistingScrap(scrapId))) continue;
+
+    const blockObj = {
+      scrap_id: scrapId,
+      source: "arena",
+      content: block.content,
+      tags: block.tags,
+      metadata: {
+        title: block.title,
+        description: block.description,
+        source: block.source,
+        image: block.image,
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(block.source.url)
+        ),
+      },
+    };
+
+    if (block.connected_to_channels?.length > 0) {
+      blockObj.relationships = block.connected_to_channels.map((channel) => ({
+        source: {
+          type: "Block",
+          name: block.title || `Block ${block.id}`,
+        },
+        target: { type: "Channel", name: channel.title },
+        type: "BELONGS_TO",
+      }));
     }
   }
 }
@@ -285,6 +321,30 @@ async function fetchAndUpsertGithubData() {
     } catch (error) {
       log(`Failed to process GitHub item: ${scrap.id}`, error);
     }
+
+    const scrapObj = {
+      scrap_id: scrapId,
+      source: "github",
+      content,
+      summary,
+      tags: [...new Set([...(scrap.topics || []), ...aiGeneratedTags])],
+      metadata: {
+        type: scrap.type,
+        name: scrap.name || scrap.title,
+        full_name:
+          scrap.full_name || (scrap.repo && scrap.repo.full_name) || null,
+        href: scrap.html_url,
+        language: scrap.language,
+        stargazers_count: scrap.stargazers_count,
+        forks_count: scrap.forks_count,
+        images: scrap.images || [],
+        screenshotUrl: await browserLimiter.schedule(() =>
+          generateWebpageScreenshot(scrap.html_url)
+        ),
+      },
+    };
+
+    await upsertLimiter.schedule(() => upsertScrap(scrapObj, newOnly));
   }
 }
 
