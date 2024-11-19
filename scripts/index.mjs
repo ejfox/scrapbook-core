@@ -25,6 +25,9 @@ import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
+// Near the top after imports
+console.log('Process arguments:', process.argv);
+
 // THEN set up commander
 program
   .name('scrapbook')
