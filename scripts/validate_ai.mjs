@@ -14,46 +14,60 @@ console.log(`
 ╚═══════════════════════════════════════╝
 `);
 
-// Test data
-const TEST_CONTENT = `
-While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API, 
-a new way to organize component logic. It provides better TypeScript support and more flexible code reuse 
-compared to the Options API. The ref() and reactive() functions are core utilities for managing reactive state.
-`;
+// Test data - reduced to 2 examples
+const TEST_CONTENT = [
+  `While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API, 
+  a new way to organize component logic. It provides better TypeScript support and more flexible code reuse 
+  compared to the Options API.`,
+  
+  `The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications.
+  These tools help create more maintainable and scalable frontend architectures.`
+];
 
 async function runTests() {
-  // Test summarization
-  console.log("\n[TESTING SUMMARIZATION]");
-  try {
-    const summary = await summarizeContent(TEST_CONTENT);
-    console.log("Summary:", summary);
+  for (const content of TEST_CONTENT) {
+    console.log("\n" + "=".repeat(50));
+    console.log("Testing content:", content.substring(0, 100) + "...");
     
-    if (summary) {
-      const tags = await metaSummaryToTags(summary);
-      console.log("Tags:", tags);
+    // Test summarization
+    console.log("\n[TESTING SUMMARIZATION]");
+    try {
+      console.time('Summary Generation');
+      const summary = await summarizeContent(content);
+      console.timeEnd('Summary Generation');
+      console.log(chalk.green("✓ Summary:"), summary);
+      
+      if (summary) {
+        console.time('Tag Generation');
+        const tags = await metaSummaryToTags(summary);
+        console.timeEnd('Tag Generation');
+        console.log(chalk.green("✓ Tags:"), tags);
+      }
+    } catch (error) {
+      console.error(chalk.red("❌ Error in summarization:"), error);
     }
-  } catch (error) {
-    console.error("❌ Error in summarization:", error);
-    console.log("Summary: null");
-    console.log("Tags: ");
-  }
 
-  // Test location extraction
-  console.log("\n[TESTING LOCATION]");
-  try {
-    const location = await extractLocation(TEST_CONTENT);
-    console.log("Location:", location);
-  } catch (error) {
-    console.error("❌ Error in location extraction:", error);
-  }
+    // Test location extraction
+    console.log("\n[TESTING LOCATION]");
+    try {
+      console.time('Location Extraction');
+      const location = await extractLocation(content);
+      console.timeEnd('Location Extraction');
+      console.log(chalk.green("✓ Location:"), location);
+    } catch (error) {
+      console.error(chalk.red("❌ Error in location extraction:"), error);
+    }
 
-  // Test relationship extraction
-  console.log("\n[TESTING RELATIONSHIPS]");
-  try {
-    const relationships = await extractRelationships(TEST_CONTENT);
-    console.log("Relationships:", relationships);
-  } catch (error) {
-    console.error("❌ Error in relationship extraction:", error);
+    // Test relationship extraction
+    console.log("\n[TESTING RELATIONSHIPS]");
+    try {
+      console.time('Relationship Extraction');
+      const relationships = await extractRelationships(content);
+      console.timeEnd('Relationship Extraction');
+      console.log(chalk.green("✓ Relationships:"), relationships);
+    } catch (error) {
+      console.error(chalk.red("❌ Error in relationship extraction:"), error);
+    }
   }
 }
 

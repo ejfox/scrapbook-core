@@ -451,32 +451,30 @@ async function main() {
     debug: DEBUG,
     test: options.test || false
   });
-
-  // Validate at least one source is selected
-  if (!options.all && !options.pinboard && !options.mastodon && !options.arena && !options.github) {
-    logger.error("No sources selected. Use --all or specify individual sources.");
-    process.exit(1);
-  }
   
   try {
+    // 1. Pinboard first
     if (options.all || options.pinboard) {
       logger.info("\nFetching from Pinboard...");
       await fetchAndUpsertPinboardBookmarks();
     }
 
+    // 2. GitHub second
+    if (options.all || options.github) {
+      logger.info("\nFetching from GitHub...");
+      await fetchAndUpsertGithubData();
+    }
+
+    // 3. Mastodon third
     if (options.all || options.mastodon) {
       logger.info("\nFetching from Mastodon...");
       await fetchAndUpsertMastodonStatuses();
     }
 
+    // 4. Are.na last
     if (options.all || options.arena) {
       logger.info("\nFetching from Are.na...");
       await fetchAndUpsertArenaBlocks();
-    }
-
-    if (options.all || options.github) {
-      logger.info("\nFetching from GitHub...");
-      await fetchAndUpsertGithubData();
     }
 
     logger.info("\nProcessing completed successfully");
