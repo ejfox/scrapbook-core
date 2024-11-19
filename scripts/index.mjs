@@ -25,10 +25,7 @@ import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
-// Debug logging for command line args
-console.log('Process arguments:', process.argv);
-
-// Set up commander BEFORE anything else uses it
+// IMMEDIATELY set up commander before anything else
 program
   .allowUnknownOption()
   .option('--all', 'Fetch from all sources')
@@ -37,8 +34,14 @@ program
   .option('--arena', 'Fetch from Are.na')
   .option('--github', 'Fetch from GitHub')
   .option('--debug', 'Enable debug logging')
-  .option('--test', 'Run in test mode (process fewer items)')
-  .parse(process.argv);
+  .option('--test', 'Run in test mode (process fewer items)');
+
+// Parse arguments (no sync needed!)
+program.parse(process.argv);
+
+// Debug logging AFTER parsing
+console.log('Process arguments:', process.argv);
+console.log('Parsed options:', program.opts());
 
 // Get options
 const options = program.opts();

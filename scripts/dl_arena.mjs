@@ -7,18 +7,11 @@ import { generateScreenshot } from './generateScreenshot.mjs';
 import { processImagesForScrap } from './imageEmbedding.mjs';
 import winston from "winston";
 import { createClient } from '@supabase/supabase-js'
-import { program } from 'commander';
 
 dotenv.config();
 
-// Set up command line options
-program
-  .option('--debug', 'Enable debug logging')
-  .option('--test', 'Run in test mode (process fewer items)')
-  .parse(process.argv);
-
-const options = program.opts();
-const DEBUG = options.debug || false;
+// Simple debug flag from env
+const DEBUG = process.env.DEBUG === "true";
 
 // Improve logging
 const logger = winston.createLogger({
