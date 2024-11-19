@@ -65,19 +65,17 @@ export async function generateScreenshot({ source, shortId, url }) {
   
   try {
     const launchOptions = await getBrowserLauncher();
-    // console.log('Launch options:', launchOptions);
-
     browser = await puppeteer.launch({
       ...launchOptions,
       headless: "new",
-      defaultViewport: { width: 1200, height: 800 }
+      defaultViewport: { width: 1080, height: 1920 }
     });
 
-    console.log('Browser launched successfully');
+    logger.info('Browser launched successfully');
     const page = await browser.newPage();
     
-    await page.setViewport({ width: 1200, height: 800 });
-    console.log(`Navigating to ${url}`);
+    await page.setViewport({ width: 1080, height: 1920 });
+    logger.info(`Navigating to ${url}`);
     
     await page.goto(url, { 
       waitUntil: "networkidle0", 
