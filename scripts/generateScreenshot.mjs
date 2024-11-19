@@ -3,8 +3,21 @@ import dotenv from "dotenv";
 import path from "path";
 import { uploadToCDN } from "./cdnHelpers.mjs";
 import os from 'os';
+import winston from 'winston';
 
 dotenv.config();
+
+// Add logger
+const logger = winston.createLogger({
+  level: process.env.DEBUG === "true" ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [new winston.transports.Console()]
+});
 
 // Get appropriate browser launcher based on environment
 async function getBrowserLauncher() {

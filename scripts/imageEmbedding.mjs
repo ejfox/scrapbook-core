@@ -186,8 +186,8 @@ async function getImageEmbedding(imageUrl) {
 
       // Verify dimensionality
       const embedding = nomicResponse.data.embeddings[0];
-      if (embedding && embedding.length !== 768) {
-        logger.warn(`Unexpected embedding dimensionality: got ${embedding.length}, expected 768`);
+      if (embedding && embedding.length !== 512) {
+        logger.warn(`Unexpected embedding dimensionality: got ${embedding.length}, expected 512`);
       }
 
       return embedding;

@@ -386,7 +386,7 @@ export const fetchAllBlocks = async (testMode = false) => {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   logger.info("Starting main execution");
-  fetchAllBlocks(options.test)
+  fetchAllBlocks(DEBUG)
     .then((blocks) => {
       logger.info(`Total blocks fetched: ${blocks.length}`);
       if (DEBUG && blocks.length > 0) {
