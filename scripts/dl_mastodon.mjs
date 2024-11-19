@@ -5,6 +5,7 @@ import { processImagesForScrap } from './imageEmbedding.mjs';
 import { createRestAPIClient } from 'masto';
 import sanitizeHtml from 'sanitize-html';
 import winston from 'winston';
+import { supabase } from './supabase.mjs';
 
 dotenv.config();
 
@@ -53,8 +54,32 @@ export async function fetchStatuses(userId, testMode = false) {
   }
 }
 
+// Add this function to check for duplicates
+async function checkExistingStatus(statusId) {
+  const { data, error } = await supabase
+    .from('scraps')
+    .select('*')
+    .eq('scrap_id', `mastodon-${statusId}`)
+    .limit(1);
+
+  if (error) {
+    logger.error('Error checking for existing status:', error);
+    return null;
+  }
+
+  return data?.[0];
+}
+
+// Update processStatus to handle duplicates
 export async function processStatus(status) {
   try {
+    // Check for existing first
+    const existing = await checkExistingStatus(status.id);
+    if (existing && !status.edited_at) {
+      logger.info(`Skipping unchanged status: ${status.id}`);
+      return existing;
+    }
+
     // Clean up HTML content
     const cleanContent = sanitizeHtml(status.content, {
       allowedTags: [], // Remove all HTML tags

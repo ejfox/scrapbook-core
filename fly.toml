@@ -14,6 +14,7 @@ app = "scrapbook-core"
 [[vm]]
   cpu_kind = "shared"
   memory_mb = 1024
+  count = 1
 
 [scheduled_jobs]
   [[scheduled_jobs.jobs]]
