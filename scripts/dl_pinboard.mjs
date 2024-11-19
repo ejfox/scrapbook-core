@@ -206,7 +206,7 @@ export async function processBookmark(bookmark) {
     // Generate screenshot if needed
     const screenshot_url = await generateScreenshot({
       source: 'pinboard',
-      scrap_id,
+      shortId: bookmark.hash,
       url: bookmark.href
     });
 
