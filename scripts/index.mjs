@@ -38,8 +38,8 @@ program
   .option('--test', 'Run in test mode (process fewer items)')
   .version('1.0.0');
 
-// Parse after all options are defined
-program.parse();
+// Parse after all options are defined - EXPLICITLY pass process.argv
+program.parse(process.argv);
 
 // Get options
 const options = program.opts();
