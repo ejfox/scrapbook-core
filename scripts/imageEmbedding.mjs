@@ -154,7 +154,7 @@ async function extractGithubImages(scrap) {
 /**
  * Get embedding for an image URL using Nomic or similar service
  */
-async function getImageEmbedding(imageUrl) {
+export async function getImageEmbedding(imageUrl) {
   return nomicLimiter.schedule(async () => {
     try {
       logger.info(`Fetching image from: ${imageUrl}`);
@@ -163,11 +163,10 @@ async function getImageEmbedding(imageUrl) {
       const params = new URLSearchParams();
       params.append('model', 'nomic-embed-vision-v1.5');
       params.append('urls', imageUrl);
-      params.append('dimensionality', '512');  // Explicitly request 512 dimensions
 
       logger.debug('Request details:', {
         url: 'https://api-atlas.nomic.ai/v1/embedding/image',
-        dimensionality: 512,
+        dimensionality: 768,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': `Bearer ${process.env.NOMIC_API_KEY?.substring(0, 8)}...`
@@ -190,8 +189,8 @@ async function getImageEmbedding(imageUrl) {
 
       // Verify dimensionality
       const embedding = nomicResponse.data.embeddings[0];
-      if (embedding && embedding.length !== 512) {
-        logger.warn(`Unexpected embedding dimensionality: got ${embedding.length}, expected 512`);
+      if (embedding && embedding.length !== 768) {
+        logger.warn(`Unexpected embedding dimensionality: got ${embedding.length}, expected 768`);
       }
 
       return embedding;
