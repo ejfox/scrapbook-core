@@ -2,6 +2,9 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { generateScrapId } from '../helpers.js';
 import { processImagesForScrap } from './imageEmbedding.mjs';
+import { createRestAPIClient } from 'masto';
+import sanitizeHtml from 'sanitize-html';
+import winston from 'winston';
 
 dotenv.config();
 
@@ -51,65 +54,67 @@ export async function fetchStatuses(userId, testMode = false) {
 }
 
 export async function processStatus(status) {
-  if (!status || !status.id) {
-    console.error('Invalid status:', status);
-    return null;
-  }
-
   try {
-    // Extract media attachments
-    const images = status.media_attachments
-      .filter(a => a.type === "image")
-      .map(a => ({
-        url: a.url,
-        preview_url: a.preview_url,
-        description: a.description
-      }));
-
-    // Get best available URL
-    const url = status.url || `${MASTODON_API_URL}/@${status.account.username}/${status.id}`;
-
-    // Get best available screenshot
-    const screenshot_url = images[0]?.url || null;
-
-    // Add image processing
-    const processedStatus = await processImagesForScrap({
-      id: generateScrapId('mastodon', status.id),
-      source: "mastodon",
-      type: "status",
-      url,
-      title: status.spoiler_text || status.content.substring(0, 100),
-      content: status.content,
-      screenshot_url,
-      published_at: status.created_at,
-      created_at: status.created_at,
-      updated_at: status.edited_at || status.created_at,
-      shared: false,  // Default to false
-      tags: [
-        ...status.tags.map(t => t.name),
-        status.visibility,
-        status.language
-      ].filter(Boolean),
-      metadata: {
-        visibility: status.visibility,
-        language: status.language,
-        replies_count: status.replies_count,
-        reblogs_count: status.reblogs_count,
-        favourites_count: status.favourites_count,
-        media_attachments: status.media_attachments,
-        mentions: status.mentions,
-        account: {
-          username: status.account.username,
-          display_name: status.account.display_name,
-          url: status.account.url
-        }
+    // Clean up HTML content
+    const cleanContent = sanitizeHtml(status.content, {
+      allowedTags: [], // Remove all HTML tags
+      allowedAttributes: {}, // Remove all attributes
+      textFilter: function(text) {
+        return text
+          .replace(/\s+/g, ' ') // Collapse multiple spaces
+          .replace(/\n+/g, '\n') // Collapse multiple newlines
+          .trim();
       }
     });
 
-    return processedStatus;
+    // Create scrap object with clean content
+    const scrap = {
+      id: generateScrapId('mastodon', status.id),
+      source: 'mastodon',
+      type: 'status',
+      url: status.url,
+      title: cleanContent.substring(0, 100) + (cleanContent.length > 100 ? '...' : ''),
+      content: cleanContent,
+      published_at: status.createdAt,
+      created_at: status.createdAt,
+      updated_at: status.editedAt || status.createdAt,
+      shared: true,
+      tags: [
+        ...status.tags.map(tag => tag.name.toLowerCase()),
+        status.visibility
+      ],
+      metadata: {
+        id: status.id,
+        visibility: status.visibility,
+        sensitive: status.sensitive,
+        language: status.language,
+        replies_count: status.repliesCount,
+        reblogs_count: status.reblogsCount,
+        favourites_count: status.favouritesCount,
+        media_attachments: status.mediaAttachments.map(media => ({
+          type: media.type,
+          url: media.url,
+          preview_url: media.previewUrl,
+          description: media.description
+        })),
+        mentions: status.mentions.map(mention => ({
+          id: mention.id,
+          username: mention.username,
+          url: mention.url
+        })),
+        raw_content: status.content // Keep original HTML content if needed
+      }
+    };
+
+    // Process images if present
+    if (status.mediaAttachments.length > 0) {
+      return await processImagesForScrap(scrap);
+    }
+
+    return scrap;
   } catch (error) {
-    console.error(`Error processing status ${status?.id}:`, error);
-    return null;
+    logger.error('Error processing status:', error);
+    throw error;
   }
 }
 

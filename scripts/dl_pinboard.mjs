@@ -255,6 +255,52 @@ export async function processBookmark(bookmark) {
   }
 }
 
+// Add these functions before fetchBookmarksWithCache
+async function handleIncrementalUpdate(lastPinboardUpdate) {
+  logger.info("🔄 Performing incremental update");
+  
+  // Get recent bookmarks first
+  const recentBookmarks = await fetchRecentBookmarks(100);
+  
+  // Load existing cache
+  const cachedBookmarks = await cache.read();
+  
+  // Merge recent with cached, avoiding duplicates
+  const merged = [...recentBookmarks];
+  for (const bookmark of cachedBookmarks) {
+    if (!merged.find(b => b.hash === bookmark.hash)) {
+      merged.push(bookmark);
+    }
+  }
+  
+  // Update cache
+  await cache.write(merged);
+  await cache.writeMeta({ lastUpdate: lastPinboardUpdate });
+  
+  logger.info(`📚 Updated cache with ${recentBookmarks.length} new bookmarks`);
+  return merged;
+}
+
+async function handleInitialFetch(lastPinboardUpdate) {
+  logger.info("🔄 Performing initial full fetch");
+  
+  // Get all bookmarks
+  const response = await limiters.allPosts.schedule(() =>
+    axios.get("https://api.pinboard.in/v1/posts/all", {
+      params: { auth_token: apiToken, format: "json" }
+    })
+  );
+  
+  const bookmarks = response.data;
+  
+  // Update cache
+  await cache.write(bookmarks);
+  await cache.writeMeta({ lastUpdate: lastPinboardUpdate });
+  
+  logger.info(`📚 Cached ${bookmarks.length} bookmarks`);
+  return bookmarks;
+}
+
 // Main fetch function
 export async function fetchBookmarksWithCache(testMode = false) {
   logger.info("🔄 Checking for Pinboard updates...");
