@@ -91,9 +91,13 @@ export async function processImagesForScrap(scrap) {
 // Source-specific image extractors
 function extractMastodonImages(scrap) {
   const mediaAttachments = scrap.metadata?.media_attachments || [];
-  return mediaAttachments
+  const imageUrls = mediaAttachments
     .filter(media => media.type === 'image')
     .map(media => media.url);
+  
+  // Log what we found
+  logger.info(`Found ${imageUrls.length} images in Mastodon status`);
+  return imageUrls;
 }
 
 function extractArenaImages(scrap) {

@@ -181,26 +181,19 @@ export async function processBookmark(bookmark) {
     const scrap_id = `pinboard:${bookmark.hash}`;
     
     // Check for existing bookmark
-    const { data, error } = await supabase
+    const { data: existing } = await supabase
       .from("scraps")
       .select("*")
-      .eq("scrap_id", scrap_id);
+      .eq("scrap_id", scrap_id)
+      .single();
 
-    if (error) {
-      logger.error(`Failed to check for existing bookmark: ${error.message}`);
-      throw error;
-    }
-
-    // Take the most recently updated record if multiple exist
-    const existingData = data && data.length > 0 
-      ? data.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0]
-      : null;
-
-    // Check if we should process this bookmark
-    const shouldProcess = await shouldProcessBookmark(bookmark, existingData);
-    if (!shouldProcess) {
-      logger.info(`Skipping bookmark: ${bookmark.href}`);
-      return existingData;
+    // If exists and content hasn't changed, skip
+    if (existing && 
+        existing.title === bookmark.description &&
+        existing.content === bookmark.extended &&
+        existing.shared === (bookmark.shared === "yes")) {
+      logger.info(`Skipping unchanged bookmark: ${bookmark.href}`);
+      return existing;
     }
 
     // Generate screenshot if needed
@@ -218,7 +211,7 @@ export async function processBookmark(bookmark) {
 
     // Prepare scrap object
     const scrap = {
-      id: existingData?.id || undefined,
+      id: existing?.id || undefined,
       scrap_id,
       source: "pinboard",
       type: "bookmark",
@@ -230,19 +223,19 @@ export async function processBookmark(bookmark) {
       latitude,
       longitude,
       published_at: bookmark.time,
-      created_at: existingData?.created_at || bookmark.time,
+      created_at: existing?.created_at || bookmark.time,
       updated_at: bookmark.time,
       shared: bookmark.shared === "yes",
       tags: bookmark.tags.split(' ').filter(Boolean),
       metadata: {
-        ...(existingData?.metadata || {}),
+        ...(existing?.metadata || {}),
         hash: bookmark.hash,
         meta: bookmark.meta,
         toread: bookmark.toread === "yes",
         shared: bookmark.shared === "yes",
         locations: otherLocations,
         last_checked: new Date().toISOString(),
-        update_count: (existingData?.metadata?.update_count || 0) + 1
+        update_count: (existing?.metadata?.update_count || 0) + 1
       }
     };
 

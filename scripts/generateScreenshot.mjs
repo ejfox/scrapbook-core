@@ -90,22 +90,24 @@ export async function generateScreenshot({ source, shortId, url }) {
 
     await browser.close();
 
-    const filename = `${shortId}.png`;
-    const cdnPath = path.join('screenshots', source, filename);
+    const filename = `${source}_${shortId}.png`;
+    const cdnPath = `screenshots/${source}/${filename}`;
     
-    console.log('Uploading to CDN');
+    logger.info('Uploading to CDN');
+    logger.info(`Uploading to: ${cdnPath}`);
+    
     const cdnUrl = await uploadToCDN(screenshotBuffer, cdnPath);
     return cdnUrl;
 
   } catch (error) {
-    console.error(`Screenshot failed for ${url}:`, error);
+    logger.error('Error generating screenshot:', error);
     return null;
   } finally {
     if (browser) {
       try {
         await browser.close();
       } catch (err) {
-        console.error('Error closing browser:', err);
+        logger.error('Error closing browser:', err);
       }
     }
   }
