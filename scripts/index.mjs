@@ -25,13 +25,12 @@ import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
-// Near the top after imports
+// Debug logging for command line args
 console.log('Process arguments:', process.argv);
 
-// THEN set up commander
+// Set up commander BEFORE anything else uses it
 program
-  .name('scrapbook')
-  .description('Fetch and process digital scraps from various sources')
+  .allowUnknownOption()
   .option('--all', 'Fetch from all sources')
   .option('--pinboard', 'Fetch from Pinboard')
   .option('--mastodon', 'Fetch from Mastodon')
@@ -39,10 +38,7 @@ program
   .option('--github', 'Fetch from GitHub')
   .option('--debug', 'Enable debug logging')
   .option('--test', 'Run in test mode (process fewer items)')
-  .version('1.0.0');
-
-// Parse after all options are defined - EXPLICITLY pass process.argv
-program.parse(process.argv);
+  .parse(process.argv);
 
 // Get options
 const options = program.opts();
