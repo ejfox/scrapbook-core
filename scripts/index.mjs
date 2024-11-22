@@ -333,7 +333,7 @@ const INSTANCE_NAME = process.env.INSTANCE_NAME || `${process.env.NODE_ENV || 'd
 const STUCK_THRESHOLD_MINS = 5;
 
 // Add this helper function
-async function claimScrap(scrapId) {
+async function claimScrap(scrapId, source) {
   try {
     // First check if scrap exists
     const { data: existing } = await supabase
@@ -343,13 +343,16 @@ async function claimScrap(scrapId) {
       .maybeSingle();
 
     if (!existing) {
-      // If scrap doesn't exist, create it with our claim
+      // If scrap doesn't exist, create it with our claim AND source
       const { data, error } = await supabase
         .from('scraps')
         .insert({
           scrap_id: scrapId,
+          source: source,
           processing_instance_id: INSTANCE_NAME,
-          processing_started_at: new Date().toISOString()
+          processing_started_at: new Date().toISOString(),
+          content: '',
+          created_at: new Date().toISOString()
         })
         .select()
         .single();
