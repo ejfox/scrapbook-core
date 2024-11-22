@@ -25,7 +25,8 @@ const VALID_COMBINATIONS = {
   pinboard: ['bookmark'],
   mastodon: ['status'],
   arena: ['block'],
-  github: ['repo', 'gist', 'issue', 'pull_request']
+  github: ['repo', 'gist', 'issue', 'pull_request'],
+  lock: ['init']
 };
 
 async function checkStuckProcessing() {

@@ -423,159 +423,210 @@ try {
 ### Overview
 The system uses a database-level claiming mechanism to prevent duplicate processing when running multiple instances (e.g., on fly.io). This ensures that even with multiple instances running simultaneously, each scrap is only processed once.
 
-### How It Works
+### Schema & Types
 
-1. **Instance Identification**
-   ```js
-   const INSTANCE_NAME = process.env.INSTANCE_NAME || 
-     `${process.env.NODE_ENV || 'dev'}-${os.hostname()}-${Date.now()}`;
-   ```
-   Each instance gets a unique identifier combining:
-   - Environment (dev/prod)
-   - Hostname
-   - Timestamp
-   
-2. **Claiming Process**
+1. **Source Types**
    ```sql
-   -- Example claim attempt
-   UPDATE scraps
-   SET 
-     processing_instance_id = 'instance-123',
-     processing_started_at = NOW()
-   WHERE 
-     scrap_id = 'source-456'
-     AND processing_instance_id IS NULL
-   RETURNING *;
+   CREATE TYPE public.scrap_source AS ENUM (
+       'pinboard',
+       'mastodon',
+       'arena',
+       'github',
+       'lock',
+       'test'
+   );
    ```
-   - Atomic database operation
-   - Only succeeds if scrap isn't claimed
-   - Includes timestamp for stuck detection
 
-3. **Stuck Protection**
+2. **Default Types by Source**
    ```js
-   const STUCK_THRESHOLD_MINS = 5;
+   const defaultTypes = {
+     pinboard: 'bookmark',
+     mastodon: 'status',
+     arena: 'block',
+     github: 'repo'
+   };
    ```
-   - Claims expire after 5 minutes
-   - Automatic cleanup of orphaned claims
-   - Periodic check for stuck processing
 
-4. **Source-specific IDs**
-   Each source uses a consistent prefix:
+### Instance Identification
+
+Each instance gets a unique identifier combining:
+```js
+const INSTANCE_NAME = process.env.INSTANCE_NAME || 
+  `${process.env.NODE_ENV || 'dev'}-${os.hostname()}-${Date.now()}`;
+```
+
+For fly.io deployments, this is automatically set to:
+```toml
+[env]
+INSTANCE_NAME = "fly-{{.Region}}-scrapbook-{{.ID}}"
+```
+
+### Claiming Process
+
+1. **Check & Create**
+   ```js
+   async function claimScrap(scrapId, source) {
+     // First check if exists
+     const { data: existing } = await supabase
+       .from('scraps')
+       .select('id')
+       .eq('scrap_id', scrapId)
+       .maybeSingle();
+
+     if (!existing) {
+       // Create with minimal fields
+       return await supabase
+         .from('scraps')
+         .insert({
+           scrap_id: scrapId,
+           source: source,
+           content: 'Processing...',
+           type: getTypeFromSource(source),
+           processing_instance_id: INSTANCE_NAME,
+           processing_started_at: new Date().toISOString()
+         })
+         .select()
+         .single();
+     }
+
+     // Try to claim existing
+     return await supabase
+       .from('scraps')
+       .update({
+         processing_instance_id: INSTANCE_NAME,
+         processing_started_at: new Date().toISOString()
+       })
+       .eq('scrap_id', scrapId)
+       .is('processing_instance_id', null)
+       .select()
+       .single();
+   }
+   ```
+
+2. **Release Pattern**
+   ```js
+   try {
+     if (await claimScrap(scrapId, source)) {
+       try {
+         // Process scrap
+         await processScrap(scrap);
+       } finally {
+         // Always release
+         await releaseScrap(scrapId);
+       }
+     }
+   } catch (error) {
+     logger.error(`Error processing: ${error}`);
+     await releaseScrap(scrapId);
+   }
+   ```
+
+### Automatic Cleanup
+
+1. **Periodic Cleanup**
+   ```js
+   // In main()
+   if (options.all) {
+     const cleanupInterval = setInterval(clearStuckProcessing, 60 * 1000);
+     process.on('exit', () => clearInterval(cleanupInterval));
+   }
+   ```
+
+2. **Fly.io Scheduled Jobs**
+   ```toml
+   [scheduled_jobs]
+     [[scheduled_jobs.jobs]]
+       name = "cleanup-stuck"
+       schedule = "@hourly"
+       command = "node scripts/validate_db_integrity.mjs"
+   ```
+
+### Monitoring & Validation
+
+1. **Check Stuck Claims**
+   ```sql
+   SELECT scrap_id, processing_instance_id, processing_started_at,
+          EXTRACT(EPOCH FROM (NOW() - processing_started_at))/60 as mins_stuck
+   FROM scraps 
+   WHERE processing_instance_id IS NOT NULL
+   ORDER BY processing_started_at ASC;
+   ```
+
+2. **Monitor Instance Activity**
+   ```sql
+   SELECT processing_instance_id, 
+          COUNT(*) as active_claims,
+          MAX(processing_started_at) as latest_claim
+   FROM scraps 
+   WHERE processing_instance_id IS NOT NULL
+   GROUP BY processing_instance_id;
+   ```
+
+3. **Run Validation**
+   ```bash
+   node scripts/validate_db_integrity.mjs
+   ```
+
+### Deployment Configuration
+
+1. **Multi-Region Setup**
+   ```toml
+   [[vm]]
+     cpu_kind = "shared"
+     memory_mb = 1024
+     count = 3
+     regions = ["sjc", "lax", "sea"]
+   ```
+
+2. **Health Checks**
+   ```toml
+   [[http_service.checks]]
+     interval = "30s"
+     timeout = "5s"
+     grace_period = "10s"
+     method = "GET"
+     path = "/health"
+     protocol = "http"
+   ```
+
+### Best Practices
+
+1. **Always Use Source-Specific IDs**
    - `pinboard-{hash}`
    - `mastodon-{id}`
    - `arena-{id}`
    - `github-{id}`
 
-### Database Schema
-```sql
--- Claiming system columns
-processing_instance_id text null,
-processing_started_at timestamp without time zone null,
+2. **Handle Errors Properly**
+   - Always release claims in finally blocks
+   - Log all claim/release operations
+   - Include source and ID in error messages
 
--- Index for efficient claiming queries
-create index if not exists processing_status_idx on public.scraps 
-using btree (processing_instance_id, processing_started_at);
-```
+3. **Monitor Processing Times**
+   - Set appropriate STUCK_THRESHOLD_MINS (default: 5)
+   - Watch for patterns in stuck claims
+   - Track processing duration by source
 
-### Running on Fly.io
-
-1. **Set Instance Name**
-   ```bash
-   # In fly.toml
-   [env]
-   INSTANCE_NAME = "fly-{{.Region}}-{{.AppName}}-{{.ID}}"
-   ```
-
-2. **Scale Instances**
-   ```bash
-   # Scale to multiple regions
-   flyctl scale count 3
-   ```
-
-3. **Monitor Processing**
-   ```bash
-   # Check processing status
-   flyctl logs --include-app 'processing_instance_id|processing_started_at'
-   ```
-
-4. **Clear Stuck Claims**
-   ```bash
-   # Manual cleanup if needed
-   flyctl ssh console -C "node scripts/validate_db_integrity.mjs"
-   ```
-
-### Best Practices
-
-1. **Always Use Try/Finally**
-   ```js
-   try {
-     // Attempt to claim
-     if (await claimScrap(scrapId)) {
-       try {
-         // Process scrap
-       } finally {
-         // Always release claim
-         await releaseScrap(scrapId);
-       }
-     }
-   } catch (error) {
-     // Handle error & ensure claim is released
-     await releaseScrap(scrapId);
-   }
-   ```
-
-2. **Regular Cleanup**
-   - Run `clearStuckProcessing()` on startup
-   - Set up periodic cleanup for long-running instances
-   - Use `validate_db_integrity.mjs` for manual checks
-
-3. **Monitoring**
-   - Watch for stuck claims in logs
-   - Monitor processing durations
-   - Set up alerts for repeated claim failures
-
-4. **Error Handling**
-   - Always release claims in error cases
-   - Log claim/release failures
-   - Implement retry logic for transient failures
+4. **Database Maintenance**
+   - Run validate_db_integrity.mjs regularly
+   - Monitor claim patterns
+   - Clean up orphaned claims
 
 ### Troubleshooting
 
-1. **Stuck Claims**
-   ```bash
-   # Find stuck claims
-   SELECT scrap_id, processing_instance_id, processing_started_at 
-   FROM scraps 
-   WHERE processing_instance_id IS NOT NULL
-   AND processing_started_at < NOW() - INTERVAL '5 minutes';
-   ```
-
-2. **Clear All Claims**
-   ```bash
-   # Emergency reset
+1. **Reset All Claims**
+   ```sql
    UPDATE scraps 
    SET processing_instance_id = NULL, 
        processing_started_at = NULL;
    ```
 
-3. **Monitor Instance Activity**
+2. **Check Instance Logs**
    ```bash
-   # Check active instances
-   SELECT DISTINCT processing_instance_id 
-   FROM scraps 
-   WHERE processing_started_at > NOW() - INTERVAL '5 minutes';
+   flyctl logs --include-app 'processing_instance_id|processing_started_at'
    ```
 
-### Validation
-
-The `validate_db_integrity.mjs` script includes checks for:
-- Stuck processing detection
-- Invalid claim states
-- Processing duration anomalies
-- Instance name validation
-- Claim release verification
-
-Run it regularly to ensure system health:
-```bash
-node scripts/validate_db_integrity.mjs
-```
+3. **Manual Cleanup**
+   ```bash
+   flyctl ssh console -C "node scripts/validate_db_integrity.mjs"
+   ```
