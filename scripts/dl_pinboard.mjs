@@ -309,172 +309,39 @@ async function shouldProcessBookmark(bookmark, existingData) {
 
 // Main processing function
 export async function processBookmark(bookmark) {
-  const scrapId = `pinboard-${bookmark.hash}`;
-
   try {
-    // Try to claim the bookmark
-    const { data: claim } = await supabase
-      .from('scraps')
-      .update({
-        processing_instance_id: INSTANCE_NAME,
-        processing_started_at: new Date().toISOString()
-      })
-      .eq('scrap_id', scrapId)
-      .is('processing_instance_id', null)
-      .select()
-      .single();
+    // Process all data first
+    const processedData = {
+      title: bookmark.description,
+      content: bookmark.extended || bookmark.description,
+      url: bookmark.href,
+      type: 'bookmark',
+      tags: bookmark.tags.split(' ').filter(Boolean),
+      published_at: bookmark.time,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {
+        hash: bookmark.hash,
+        toread: bookmark.toread === "yes",
+        shared: bookmark.shared === "yes"
+      }
+    };
 
-    if (!claim) {
-      logger.info(`Skipping bookmark ${bookmark.href} - already being processed`);
-      return null;
+    // Generate screenshot if needed
+    const screenshot_url = await generateScreenshot({
+      source: 'pinboard',
+      shortId: bookmark.hash,
+      url: bookmark.href
+    });
+
+    if (screenshot_url) {
+      processedData.screenshot_url = screenshot_url;
     }
 
-    try {
-      logger.info(`🔄 Processing bookmark: ${bookmark.href.substring(0, 50)}...`);
-
-      // Generate all the data we need first
-      const content = bookmark.extended || bookmark.description;
-      
-      const [screenshot_url, locationData] = await Promise.all([
-        // Generate screenshot if we don't have one or if it's explicitly needed
-        (!existing?.screenshot_url || reason === 'new_bookmark' || reason === 'missing_screenshot') 
-          ? generateScreenshot({
-              source: 'pinboard',
-              shortId: bookmark.hash,
-              url: bookmark.href
-            })
-          : Promise.resolve(existing?.screenshot_url),
-        
-        // Extract location
-        extractLocation(content, { url: bookmark.href })
-      ]);
-
-      // And update the logging to be more verbose about screenshot generation
-      if (!existing?.screenshot_url) {
-        logger.info('No existing screenshot, will generate one');
-      } else if (reason === 'new_bookmark' || reason === 'missing_screenshot') {
-        logger.info('Regenerating screenshot due to reason:', reason);
-      } else {
-        logger.info('Using existing screenshot:', existing.screenshot_url);
-      }
-
-      // Generate embeddings if needed
-      let embedding = existing?.embedding;
-      let image_embedding = existing?.image_embedding;
-
-      if (!embedding) {
-        logger.info('Generating OpenAI embedding...');
-        embedding = await generateEmbedding(content);
-      }
-
-      // Only generate image embedding if we have a screenshot
-      if (screenshot_url && !image_embedding) {
-        logger.info('Generating image embedding...');
-        image_embedding = await getImageEmbedding(screenshot_url);
-      }
-
-      // Prepare complete scrap object with all data
-      const scrap = {
-        id: existing?.id || undefined,
-        scrap_id,
-        source: "pinboard",
-        type: "bookmark",
-        url: bookmark.href,
-        title: bookmark.description,
-        content,
-        screenshot_url,
-        location: locationData.location,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        published_at: bookmark.time,
-        created_at: existing?.created_at || bookmark.time,
-        updated_at: bookmark.time,
-        shared: bookmark.shared === "yes",
-        tags: bookmark.tags.split(' ').filter(Boolean),
-        embedding,
-        image_embedding,
-        metadata: {
-          ...(existing?.metadata || {}),
-          hash: bookmark.hash,
-          meta: bookmark.meta,
-          toread: bookmark.toread === "yes",
-          shared: bookmark.shared === "yes",
-          locations: locationData.otherLocations,
-          last_checked: new Date().toISOString(),
-          update_count: (existing?.metadata?.update_count || 0) + 1
-        }
-      };
-
-      // Save complete scrap with all data
-      const { data: savedScrap, error: saveError } = await supabase
-        .from("scraps")
-        .upsert(scrap)
-        .select()
-        .single();
-
-      if (saveError) {
-        throw new Error(`Failed to save scrap: ${saveError.message}`);
-      }
-
-      // Add detailed success logging
-      logger.info(`✅ Processed bookmark: ${bookmark.href.substring(0, 50)}...`);
-      logger.info('Fields processed:');
-      const fieldStatus = {
-        '📝 Content': Boolean(scrap.content),
-        '🔤 Title': Boolean(scrap.title),
-        '🔗 URL': Boolean(scrap.url),
-        '📸 Screenshot': Boolean(scrap.screenshot_url),
-        '📍 Location': Boolean(scrap.location),
-        '🌐 Coordinates': Boolean(scrap.latitude && scrap.longitude),
-        '🏷️ Tags': scrap.tags?.length || 0,
-        '📅 Published': Boolean(scrap.published_at),
-        '🔄 Updated': Boolean(scrap.updated_at),
-        '🤝 Shared': scrap.shared,
-        '🧮 Embeddings': {
-          'OpenAI': Boolean(scrap.embedding),
-          'Image': Boolean(scrap.image_embedding)
-        }
-      };
-
-      // Log each field status with appropriate emoji
-      Object.entries(fieldStatus).forEach(([field, value]) => {
-        if (typeof value === 'object') {
-          // Handle embeddings object
-          logger.info(`${field}:`);
-          Object.entries(value).forEach(([type, exists]) => {
-            logger.info(`  ${exists ? '✅' : '❌'} ${type}`);
-          });
-        } else {
-          const status = value === true ? '✅' : 
-                        value === false ? '❌' : 
-                        typeof value === 'number' ? `✅ (${value})` : '❓';
-          logger.info(`${status} ${field}`);
-        }
-      });
-
-      return savedScrap;
-
-    } finally {
-      // Release claim
-      await supabase
-        .from('scraps')
-        .update({
-          processing_instance_id: null,
-          processing_started_at: null
-        })
-        .eq('scrap_id', scrapId);
-    }
+    return processedData;
   } catch (error) {
     logger.error(`Error processing bookmark ${bookmark.href}:`, error);
-    // Release claim on error
-    await supabase
-      .from('scraps')
-      .update({
-        processing_instance_id: null,
-        processing_started_at: null
-      })
-      .eq('scrap_id', scrapId);
-    throw error;
+    return null;
   }
 }
 
@@ -601,5 +468,18 @@ async function generateEmbedding(text) {
   } catch (error) {
     logger.error('Error generating OpenAI embedding:', error);
     return null;
+  }
+}
+
+// Update main processing loop
+async function fetchAndUpsertPinboardBookmarks() {
+  const bookmarks = await fetchBookmarksWithCache();
+  logger.info(`Found ${bookmarks.length} bookmarks`);
+
+  for (const bookmark of bookmarks) {
+    if (isShuttingDown) break;
+    
+    const scrapId = `pinboard-${bookmark.hash}`;
+    await claimAndProcess(scrapId, 'pinboard', bookmark, processBookmark);
   }
 }
