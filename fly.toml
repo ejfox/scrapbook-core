@@ -12,34 +12,27 @@ app = "scrapbook-core"
   source = "data"
   destination = "/usr/src/app/data"
 
-[[vm]]
-  cpu_kind = "shared"
-  memory_mb = 1024
-  count = 3
-  regions = ["sjc", "lax", "sea"]
+# Define the main process
+[processes]
+  scraper = "node scripts/index.mjs --all"
+  cleanup = "node scripts/validate_db_integrity.mjs"
 
 [scheduled_jobs]
   [[scheduled_jobs.jobs]]
     name = "run-scraper"
     schedule = "@daily"
     command = "node scripts/index.mjs --all"
+    timeout = "30m"
+    environment = { DEBUG = "true" }
+
   [[scheduled_jobs.jobs]]
     name = "cleanup-stuck"
     schedule = "@hourly"
     command = "node scripts/validate_db_integrity.mjs"
+    timeout = "5m"
+    environment = { DEBUG = "true" }
 
-[http_service]
-  internal_port = 3000
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ["app"]
-
-  [[http_service.checks]]
-    interval = "30s"
-    timeout = "5s"
-    grace_period = "10s"
-    method = "GET"
-    path = "/health"
-    protocol = "http"
+# Add metrics for monitoring
+[metrics]
+  port = 9091
+  path = "/metrics"
