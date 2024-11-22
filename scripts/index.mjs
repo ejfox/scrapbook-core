@@ -343,16 +343,20 @@ async function claimScrap(scrapId, source) {
       .maybeSingle();
 
     if (!existing) {
-      // If scrap doesn't exist, create it with our claim AND source
+      logger.info(`Creating new scrap ${scrapId} for source ${source}`);
+      
+      // If scrap doesn't exist, create it with minimal required fields
       const { data, error } = await supabase
         .from('scraps')
         .insert({
           scrap_id: scrapId,
           source: source,
+          content: 'Processing...', // Required field
+          type: getTypeFromSource(source), // Helper function to get default type
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
           processing_instance_id: INSTANCE_NAME,
-          processing_started_at: new Date().toISOString(),
-          content: '',
-          created_at: new Date().toISOString()
+          processing_started_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -395,6 +399,17 @@ async function claimScrap(scrapId, source) {
     logger.error(`Error claiming scrap ${scrapId}:`, error);
     return false;
   }
+}
+
+// Add helper function to get default type
+function getTypeFromSource(source) {
+  const defaultTypes = {
+    pinboard: 'bookmark',
+    mastodon: 'status',
+    arena: 'block',
+    github: 'repo'
+  };
+  return defaultTypes[source] || 'unknown';
 }
 
 async function releaseScrap(scrapId) {
@@ -589,11 +604,44 @@ async function fetchAndUpsertGithubData() {
   }
 }
 
+// Add near the top of main()
+async function initializeDatabaseIfNeeded() {
+  const { count } = await supabase
+    .from('scraps')
+    .select('*', { count: 'exact', head: true });
+
+  if (count === 0) {
+    logger.info('Database is empty, initializing...');
+    
+    // Create a test scrap to verify everything works
+    const { error } = await supabase
+      .from('scraps')
+      .insert({
+        scrap_id: 'test-init',
+        source: 'system',
+        type: 'test',
+        content: 'Database initialization test',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      logger.error('Failed to initialize database:', error);
+      process.exit(1);
+    }
+
+    logger.info('Database initialized successfully');
+  }
+}
+
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
   
   try {
+    // Initialize database if needed
+    await initializeDatabaseIfNeeded();
+
     // Clear any stuck processing before starting
     await clearStuckProcessing();
 
