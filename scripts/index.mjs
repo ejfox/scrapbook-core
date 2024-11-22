@@ -338,25 +338,23 @@ async function claimScrap(scrapId, source) {
     // First check if scrap exists
     const { data: existing } = await supabase
       .from('scraps')
-      .select('id')
+      .select('id, content')
       .eq('scrap_id', scrapId)
       .maybeSingle();
 
     if (!existing) {
       logger.info(`Creating new scrap ${scrapId} for source ${source}`);
       
-      // If scrap doesn't exist, create it with minimal required fields
+      // Create with placeholder but don't claim yet
       const { data, error } = await supabase
         .from('scraps')
         .insert({
           scrap_id: scrapId,
           source: source,
-          content: 'Processing...', // Required field
-          type: getTypeFromSource(source), // Helper function to get default type
+          content: 'Processing...',
+          type: getTypeFromSource(source),
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          processing_instance_id: INSTANCE_NAME,
-          processing_started_at: new Date().toISOString()
+          updated_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -370,35 +368,53 @@ async function claimScrap(scrapId, source) {
         return false;
       }
 
-      return Boolean(data);
+      // Now try to claim the newly created scrap
+      return await claimExistingScrap(scrapId);
     }
 
-    // If scrap exists, try to claim it
-    const { data, error } = await supabase
-      .from('scraps')
-      .update({
-        processing_instance_id: INSTANCE_NAME,
-        processing_started_at: new Date().toISOString()
-      })
-      .eq('scrap_id', scrapId)
-      .is('processing_instance_id', null)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') { // No rows returned
-        logger.debug(`Scrap ${scrapId} is already being processed`);
-        return false;
-      }
-      logger.error(`Failed to claim scrap ${scrapId}:`, error);
-      return false;
+    // If it exists but is orphaned, clean it up
+    if (existing.content === 'Processing...') {
+      logger.info(`Found orphaned scrap ${scrapId}, cleaning up`);
+      await supabase
+        .from('scraps')
+        .delete()
+        .eq('id', existing.id);
+      
+      // Try creating again
+      return await claimScrap(scrapId, source);
     }
 
-    return Boolean(data);
+    // Try to claim existing
+    return await claimExistingScrap(scrapId);
   } catch (error) {
     logger.error(`Error claiming scrap ${scrapId}:`, error);
     return false;
   }
+}
+
+// Helper function to claim existing scrap
+async function claimExistingScrap(scrapId) {
+  const { data, error } = await supabase
+    .from('scraps')
+    .update({
+      processing_instance_id: INSTANCE_NAME,
+      processing_started_at: new Date().toISOString()
+    })
+    .eq('scrap_id', scrapId)
+    .is('processing_instance_id', null)
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows returned
+      logger.debug(`Scrap ${scrapId} is already being processed`);
+      return false;
+    }
+    logger.error(`Failed to claim scrap ${scrapId}:`, error);
+    return false;
+  }
+
+  return Boolean(data);
 }
 
 // Add helper function to get default type
