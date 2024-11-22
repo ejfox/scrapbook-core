@@ -335,6 +335,38 @@ const STUCK_THRESHOLD_MINS = 5;
 // Add this helper function
 async function claimScrap(scrapId) {
   try {
+    // First check if scrap exists
+    const { data: existing } = await supabase
+      .from('scraps')
+      .select('id')
+      .eq('scrap_id', scrapId)
+      .maybeSingle();
+
+    if (!existing) {
+      // If scrap doesn't exist, create it with our claim
+      const { data, error } = await supabase
+        .from('scraps')
+        .insert({
+          scrap_id: scrapId,
+          processing_instance_id: INSTANCE_NAME,
+          processing_started_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') { // Unique violation
+          logger.debug(`Scrap ${scrapId} was created by another process`);
+          return false;
+        }
+        logger.error(`Failed to create scrap ${scrapId}:`, error);
+        return false;
+      }
+
+      return Boolean(data);
+    }
+
+    // If scrap exists, try to claim it
     const { data, error } = await supabase
       .from('scraps')
       .update({
@@ -347,6 +379,10 @@ async function claimScrap(scrapId) {
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') { // No rows returned
+        logger.debug(`Scrap ${scrapId} is already being processed`);
+        return false;
+      }
       logger.error(`Failed to claim scrap ${scrapId}:`, error);
       return false;
     }

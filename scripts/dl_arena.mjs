@@ -246,8 +246,19 @@ export async function processBlock(block) {
   }
 }
 
-// Update fetchAllBlocks function
-export const fetchAllBlocks = async (testMode = false) => {
+// Add at top level
+let isShuttingDown = false;
+
+// Export function to set shutdown state
+export function setShuttingDown(value) {
+  isShuttingDown = value;
+}
+
+// Update fetchAllBlocks to accept options
+export const fetchAllBlocks = async (testMode = false, options = {}) => {
+  if (options.isShuttingDown) {
+    isShuttingDown = options.isShuttingDown;
+  }
   let allBlocks = [];
   let processedCount = 0;
   let totalChannels = 0;

@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/rest";
 import dotenv from "dotenv";
 import { subDays } from "date-fns";
 import { generateScrapId } from '../helpers.js';
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
@@ -18,6 +19,18 @@ const octokit = new Octokit({
   userAgent: `${username}-scrapbook`,
   previews: ["mercy-preview"],
 });
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY,
+  {
+    auth: { persistSession: false },
+    db: { schema: 'public' }
+  }
+);
+
+const INSTANCE_NAME = process.env.INSTANCE_NAME || 
+  `${process.env.NODE_ENV || 'dev'}-github-${Date.now()}`;
 
 // Process different GitHub item types
 export async function processGithubItem(item, type) {
