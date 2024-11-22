@@ -22,6 +22,7 @@ import dotenv from "dotenv";
 import winston from "winston";
 import { generateScreenshot } from './generateScreenshot.mjs';
 import { v2 as cloudinary } from "cloudinary";
+import os from "os";
 
 dotenv.config();
 
@@ -204,12 +205,19 @@ async function upsertWithRetry(scrapData, retries = 3) {
       // Merge data if exists
       const mergedData = mergeScrapData(existing, scrapData);
       
-      // Perform upsert with better conflict handling
+      // Add processing metadata
+      mergedData.metadata = {
+        ...mergedData.metadata,
+        last_processed_by: INSTANCE_NAME,
+        last_processed_at: new Date().toISOString()
+      };
+      
+      // Perform upsert
       const { error } = await supabase
         .from("scraps")
         .upsert(mergedData, {
-          onConflict: 'scrap_id', // Use scrap_id as the primary conflict resolver
-          ignoreDuplicates: true,  // Changed to true to prevent duplicate errors
+          onConflict: 'scrap_id',
+          ignoreDuplicates: true,
           returning: 'minimal'
         });
       
@@ -320,6 +328,84 @@ async function shouldProcessScrap(scrapData) {
   return hoursSinceLastCheck > 24;
 }
 
+// Add near the top with other constants
+const INSTANCE_NAME = process.env.INSTANCE_NAME || `${process.env.NODE_ENV || 'dev'}-${os.hostname()}-${Date.now()}`;
+const STUCK_THRESHOLD_MINS = 5;
+
+// Add this helper function
+async function claimScrap(scrapId) {
+  try {
+    const { data, error } = await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: INSTANCE_NAME,
+        processing_started_at: new Date().toISOString()
+      })
+      .eq('scrap_id', scrapId)
+      .is('processing_instance_id', null)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error(`Failed to claim scrap ${scrapId}:`, error);
+      return false;
+    }
+
+    return Boolean(data);
+  } catch (error) {
+    logger.error(`Error claiming scrap ${scrapId}:`, error);
+    return false;
+  }
+}
+
+async function releaseScrap(scrapId) {
+  try {
+    const { error } = await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: null,
+        processing_started_at: null
+      })
+      .eq('scrap_id', scrapId);
+
+    if (error) {
+      logger.error(`Failed to release scrap ${scrapId}:`, error);
+    }
+  } catch (error) {
+    logger.error(`Error releasing scrap ${scrapId}:`, error);
+  }
+}
+
+// Add this function to check and clear stuck processing
+async function clearStuckProcessing() {
+  try {
+    const { data: stuckScraps } = await supabase
+      .from('scraps')
+      .select('scrap_id')
+      .not('processing_instance_id', 'is', null)
+      .lt('processing_started_at', 
+        new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+      );
+
+    if (stuckScraps?.length) {
+      logger.info(`Found ${stuckScraps.length} stuck scraps, clearing...`);
+      const { error } = await supabase
+        .from('scraps')
+        .update({
+          processing_instance_id: null,
+          processing_started_at: null
+        })
+        .in('scrap_id', stuckScraps.map(s => s.scrap_id));
+
+      if (error) {
+        logger.error('Failed to clear stuck processing:', error);
+      }
+    }
+  } catch (error) {
+    logger.error('Error clearing stuck processing:', error);
+  }
+}
+
 // Then define the functions
 async function fetchAndUpsertPinboardBookmarks() {
   const bookmarks = await fetchBookmarksWithCache();
@@ -328,24 +414,27 @@ async function fetchAndUpsertPinboardBookmarks() {
   for (const bookmark of bookmarks) {
     if (isShuttingDown) break;
     
+    const scrapId = `pinboard-${bookmark.hash}`;
+    
     try {
-      // Check if we need to process this bookmark
-      const shouldProcess = await shouldProcessScrap({
-        url: bookmark.href,
-        scrap_id: `pinboard-${bookmark.hash}`
-      });
-
-      if (!shouldProcess) {
-        logger.info(`Skipping recently processed bookmark: ${bookmark.href}`);
+      // Try to claim the scrap
+      if (!await claimScrap(scrapId)) {
+        logger.info(`Skipping bookmark ${bookmark.href} - already being processed`);
         continue;
       }
 
-      const processedBookmark = await processBookmark(bookmark);
-      if (processedBookmark) {
-        await upsertWithRetry(processedBookmark);
+      try {
+        const processedBookmark = await processBookmark(bookmark);
+        if (processedBookmark) {
+          await upsertWithRetry(processedBookmark);
+        }
+      } finally {
+        // Always release the claim
+        await releaseScrap(scrapId);
       }
     } catch (error) {
       logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
+      await releaseScrap(scrapId);
     }
   }
 }
@@ -353,63 +442,76 @@ async function fetchAndUpsertPinboardBookmarks() {
 async function fetchAndUpsertMastodonStatuses() {
   const userId = await fetchUserId();
   const statuses = await fetchStatuses(userId);
-  
+  logger.info(`Found ${statuses.length} Mastodon statuses`);
+
   for (const status of statuses) {
     if (isShuttingDown) break;
-
+    
+    const scrapId = `mastodon-${status.id}`;
+    
     try {
-      const shouldProcess = await shouldProcessScrap({
-        scrap_id: `mastodon-${status.id}`
-      });
-
-      if (!shouldProcess) {
-        logger.info(`Skipping recently processed status: ${status.id}`);
+      // Try to claim the scrap
+      if (!await claimScrap(scrapId)) {
+        logger.info(`Skipping status ${status.id} - already being processed`);
         continue;
       }
 
-      let processedStatus = await processStatus(status);
-      processedStatus = await generateSummaryAndTags(processedStatus);
-      processedStatus = await extractAndAddRelationships(processedStatus);
-      
-      await upsertWithRetry(processedStatus);
+      try {
+        let processedStatus = await processStatus(status);
+        processedStatus = await generateSummaryAndTags(processedStatus);
+        processedStatus = await extractAndAddRelationships(processedStatus);
+        
+        await upsertWithRetry(processedStatus);
+      } finally {
+        // Always release the claim
+        await releaseScrap(scrapId);
+      }
     } catch (error) {
       logger.error(`Failed to process status: ${status.id}`, error);
+      await releaseScrap(scrapId);
     }
   }
 }
 
 async function fetchAndUpsertArenaBlocks() {
   const blocks = await fetchAllBlocks();
-  log(`Fetched ${blocks.length} Are.na blocks`);
+  logger.info(`Fetched ${blocks.length} Are.na blocks`);
 
   for (const block of blocks) {
     if (isShuttingDown) break;
 
+    const scrapId = `arena-${block.id}`;
+    
     try {
-      // Process block with new structure
-      const processedBlock = await processBlock(block);
-      
-      // Generate embeddings if enabled
-      if (processedBlock.content && process.env.USE_OPENAI) {
-        processedBlock.embedding = await generateEmbedding(processedBlock.content);
+      // Try to claim the scrap
+      if (!await claimScrap(scrapId)) {
+        logger.info(`Skipping block ${block.id} - already being processed`);
+        continue;
       }
 
-      // Extract relationships
-      await extractAndAddRelationships(processedBlock);
-      
-      // Upsert to database
-      await upsertWithRetry(processedBlock);
+      try {
+        const processedBlock = await processBlock(block);
+        
+        if (processedBlock.content && process.env.USE_OPENAI) {
+          processedBlock.embedding = await generateEmbedding(processedBlock.content);
+        }
+
+        await extractAndAddRelationships(processedBlock);
+        await upsertWithRetry(processedBlock);
+      } finally {
+        await releaseScrap(scrapId);
+      }
     } catch (error) {
-      log(`Failed to process block: ${block.id}`, error);
+      logger.error(`Failed to process block: ${block.id}`, error);
+      await releaseScrap(scrapId);
     }
   }
 }
 
 async function fetchAndUpsertGithubData() {
   const githubData = await fetchGithubData();
-  log(`Fetched GitHub data`);
+  logger.info(`Fetched GitHub data`);
 
-  // Process all GitHub item types
   const allScraps = [
     ...githubData.userRepos,
     ...githubData.userPRs,
@@ -422,37 +524,40 @@ async function fetchAndUpsertGithubData() {
   for (const scrap of allScraps) {
     if (isShuttingDown) break;
 
+    const scrapId = `github-${scrap.id}`;
+    
     try {
-      // Generate embeddings if enabled
-      if (scrap.content && process.env.USE_OPENAI) {
-        scrap.embedding = await generateEmbedding(scrap.content);
+      // Try to claim the scrap
+      if (!await claimScrap(scrapId)) {
+        logger.info(`Skipping GitHub item ${scrap.id} - already being processed`);
+        continue;
       }
 
-      // Extract relationships
-      await extractAndAddRelationships(scrap);
-      
-      // Upsert to database
-      await upsertWithRetry(scrap);
+      try {
+        if (scrap.content && process.env.USE_OPENAI) {
+          scrap.embedding = await generateEmbedding(scrap.content);
+        }
+
+        await extractAndAddRelationships(scrap);
+        await upsertWithRetry(scrap);
+      } finally {
+        await releaseScrap(scrapId);
+      }
     } catch (error) {
-      log(`Failed to process GitHub item: ${scrap.id}`, error);
+      logger.error(`Failed to process GitHub item: ${scrap.id}`, error);
+      await releaseScrap(scrapId);
     }
   }
 }
 
 // Main execution function
 async function main() {
-  logger.info("Starting scrapbook processing");
-  logger.info("Options:", {
-    all: options.all || false,
-    pinboard: options.pinboard || false,
-    mastodon: options.mastodon || false,
-    arena: options.arena || false,
-    github: options.github || false,
-    debug: DEBUG,
-    test: options.test || false
-  });
+  logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
   
   try {
+    // Clear any stuck processing before starting
+    await clearStuckProcessing();
+
     // 1. Pinboard first
     if (options.all || options.pinboard) {
       logger.info("\nFetching from Pinboard...");
@@ -482,6 +587,12 @@ async function main() {
   } catch (error) {
     logger.error("Fatal error in main process:", error);
     process.exit(1);
+  }
+
+  if (options.all) {
+    // Run claim cleanup every minute when doing full processing
+    const cleanupInterval = setInterval(clearStuckProcessing, 60 * 1000);
+    process.on('exit', () => clearInterval(cleanupInterval));
   }
 }
 

@@ -28,6 +28,50 @@ const VALID_COMBINATIONS = {
   github: ['repo', 'gist', 'issue', 'pull_request']
 };
 
+async function checkStuckProcessing() {
+  console.log(chalk.yellow('\n🔄 Checking for stuck processing...'));
+  
+  const STUCK_THRESHOLD_MINS = 5;
+  
+  const { data: stuckScraps } = await supabase
+    .from('scraps')
+    .select('id, scrap_id, processing_instance_id, processing_started_at')
+    .not('processing_instance_id', 'is', null)
+    .lt('processing_started_at', 
+      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+    );
+
+  if (stuckScraps?.length) {
+    console.log(chalk.red(`Found ${stuckScraps.length} scraps stuck in processing`));
+    stuckScraps.slice(0, 5).forEach(scrap => {
+      console.log(chalk.gray(`  ${scrap.scrap_id} - Instance: ${scrap.processing_instance_id}`));
+      console.log(chalk.gray(`    Started: ${new Date(scrap.processing_started_at).toLocaleString()}`));
+    });
+
+    // Clear stuck processing
+    const { error } = await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: null,
+        processing_started_at: null
+      })
+      .in('id', stuckScraps.map(s => s.id));
+
+    if (error) {
+      console.error('Failed to clear stuck processing:', error);
+    } else {
+      console.log(chalk.green('Cleared stuck processing states'));
+    }
+  } else {
+    console.log(chalk.green('No stuck processing found'));
+  }
+
+  return {
+    stuck_count: stuckScraps?.length || 0,
+    cleared: Boolean(stuckScraps?.length)
+  };
+}
+
 async function checkFieldIntegrity() {
   console.log(chalk.yellow('\n🔍 Starting field integrity check...'));
   
@@ -46,6 +90,16 @@ async function checkFieldIntegrity() {
     .select('*', { count: 'exact', head: true });
   
   console.log(chalk.blue(`📊 Total records in database: ${totalRecords}`));
+  
+  // Exit early if no records
+  if (!totalRecords) {
+    console.log(chalk.yellow('ℹ️ No records found in database. Skipping field integrity check.'));
+    return {
+      required: {},
+      optional: {},
+      vectors: {}
+    };
+  }
   
   // Check each category
   for (const [category, fieldList] of Object.entries(fields)) {
@@ -387,27 +441,48 @@ async function checkCriticalFields() {
   }
 }
 
-// Add this function for basic duplicate detection
+// Replace checkExactDuplicates with this version
 async function checkExactDuplicates() {
   console.log(chalk.yellow('\n🔍 Checking for exact duplicates...'));
   
-  // Check exact URL duplicates
+  // First check if we have any records
+  const { count: totalRecords } = await supabase
+    .from('scraps')
+    .select('*', { count: 'exact', head: true });
+    
+  if (!totalRecords) {
+    console.log(chalk.yellow('ℹ️ No records found in database. Skipping duplicate check.'));
+    return {
+      duplicate_urls: [],
+      duplicate_titles: []
+    };
+  }
+
+  // Check URL duplicates using a subquery approach instead of group
   const { data: urlDupes } = await supabase
     .from('scraps')
-    .select('url, count(*)')
+    .select('url, count')
     .not('url', 'is', null)
-    .group('url')
-    .having('count(*)', 'gt', 1);
+    .in('url', (qb) => 
+      qb.from('scraps')
+        .select('url')
+        .not('url', 'is', null)
+        .filter('count', 'gt', 1)
+    );
 
-  // Check exact title duplicates
+  // Check title duplicates similarly
   const { data: titleDupes } = await supabase
     .from('scraps')
-    .select('title, count(*)')
+    .select('title, count')
     .not('title', 'is', null)
-    .group('title')
-    .having('count(*)', 'gt', 1);
+    .in('title', (qb) => 
+      qb.from('scraps')
+        .select('title')
+        .not('title', 'is', null)
+        .filter('count', 'gt', 1)
+    );
 
-  // Get some examples of duplicates
+  // Log duplicates if found
   if (urlDupes?.length) {
     console.log(chalk.red(`\nFound ${urlDupes.length} URLs with duplicates:`));
     for (const dupe of urlDupes.slice(0, 3)) {
@@ -415,13 +490,17 @@ async function checkExactDuplicates() {
         .from('scraps')
         .select('id, source, created_at, url')
         .eq('url', dupe.url)
-        .order('created_at', { ascending: true });
+        .order('created_at');
       
-      console.log(`\n  URL: ${dupe.url}`);
-      examples?.forEach(ex => 
-        console.log(`    - ${ex.source} (${new Date(ex.created_at).toLocaleDateString()})`)
-      );
+      if (examples?.length) {
+        console.log(`\n  URL: ${dupe.url}`);
+        examples.forEach(ex => 
+          console.log(`    - ${ex.source} (${new Date(ex.created_at).toLocaleDateString()})`)
+        );
+      }
     }
+  } else {
+    console.log(chalk.green('No duplicate URLs found'));
   }
 
   return {
@@ -430,19 +509,125 @@ async function checkExactDuplicates() {
   };
 }
 
-// Update main function to send email
+// Add these validation functions
+async function validateClaimStates() {
+  console.log(chalk.yellow('\n🔄 Validating claim states...'));
+  
+  const issues = {
+    stuck: [],
+    invalid: [],
+    orphaned: [],
+    suspicious: []
+  };
+
+  // Check for stuck claims
+  const { data: stuckScraps } = await supabase
+    .from('scraps')
+    .select('id, scrap_id, processing_instance_id, processing_started_at')
+    .not('processing_instance_id', 'is', null)
+    .lt('processing_started_at', 
+      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+    );
+
+  if (stuckScraps?.length) {
+    issues.stuck = stuckScraps;
+    console.log(chalk.red(`Found ${stuckScraps.length} scraps stuck in processing`));
+    stuckScraps.slice(0, 5).forEach(scrap => {
+      const duration = Math.round((Date.now() - new Date(scrap.processing_started_at).getTime()) / 1000 / 60);
+      console.log(chalk.gray(`  ${scrap.scrap_id}:`));
+      console.log(chalk.gray(`    Instance: ${scrap.processing_instance_id}`));
+      console.log(chalk.gray(`    Started: ${new Date(scrap.processing_started_at).toLocaleString()}`));
+      console.log(chalk.gray(`    Duration: ${duration} minutes`));
+    });
+  }
+
+  // Check for invalid states (processing_instance_id without processing_started_at or vice versa)
+  const { data: invalidScraps } = await supabase
+    .from('scraps')
+    .select('id, scrap_id, processing_instance_id, processing_started_at')
+    .or(
+      'and(processing_instance_id.is.null,processing_started_at.not.is.null)',
+      'and(processing_instance_id.not.is.null,processing_started_at.is.null)'
+    );
+
+  if (invalidScraps?.length) {
+    issues.invalid = invalidScraps;
+    console.log(chalk.red(`Found ${invalidScraps.length} scraps with invalid claim states`));
+  }
+
+  // Check for suspicious patterns (multiple claims by same instance)
+  const { data: activeClaims } = await supabase
+    .from('scraps')
+    .select('processing_instance_id, count')
+    .not('processing_instance_id', 'is', null)
+    .gt('processing_started_at', 
+      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+    )
+    .group('processing_instance_id')
+    .having('count(*)', '>', 10);
+
+  if (activeClaims?.length) {
+    issues.suspicious = activeClaims;
+    console.log(chalk.yellow(`Found ${activeClaims.length} instances with high claim counts`));
+    activeClaims.forEach(claim => {
+      console.log(chalk.gray(`  ${claim.processing_instance_id}: ${claim.count} active claims`));
+    });
+  }
+
+  return issues;
+}
+
+async function clearProblematicClaims(issues) {
+  console.log(chalk.yellow('\n🧹 Cleaning up problematic claims...'));
+  
+  const claimsToClean = [
+    ...issues.stuck.map(s => s.id),
+    ...issues.invalid.map(s => s.id)
+  ];
+
+  if (claimsToClean.length > 0) {
+    const { error } = await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: null,
+        processing_started_at: null
+      })
+      .in('id', claimsToClean);
+
+    if (error) {
+      console.error('Failed to clear problematic claims:', error);
+    } else {
+      console.log(chalk.green(`Cleared ${claimsToClean.length} problematic claims`));
+    }
+  }
+
+  return claimsToClean.length;
+}
+
+// Update main function to include claim validation
 async function main() {
   console.log(chalk.green('Starting comprehensive database integrity check...'));
   const startTime = Date.now();
   
   try {
+    // Check if database is empty first
+    const { count: totalRecords } = await supabase
+      .from('scraps')
+      .select('*', { count: 'exact', head: true });
+      
+    if (!totalRecords) {
+      console.log(chalk.yellow('\n⚠️ Database is empty. No integrity checks needed.'));
+      return;
+    }
+
     const report = {
       fields: await checkFieldIntegrity(),
       duplicates: await checkExactDuplicates(),
       vectors: await checkVectorDimensions(),
       sourceTypes: await checkSourceTypeValidity(),
       dates: await checkDateConsistency(),
-      geo: await checkGeoData()
+      geo: await checkGeoData(),
+      processing: await checkStuckProcessing()
     };
     
     // Print detailed report
@@ -501,6 +686,46 @@ async function main() {
     if (report.vectors.embedding.invalid_dimensions > 0) {
       await fixVectorDimensions();
     }
+    
+    const claimIssues = await validateClaimStates();
+    const clearedClaimsCount = await clearProblematicClaims(claimIssues);
+
+    // Add to report
+    report.claims = {
+      stuck: claimIssues.stuck.length,
+      invalid: claimIssues.invalid.length,
+      suspicious: claimIssues.suspicious.length,
+      cleared: clearedClaimsCount
+    };
+
+    // Add claims section to report output
+    console.log(chalk.yellow('\n🔒 CLAIM STATUS'));
+    console.log(chalk.red(`  Stuck Claims: ${report.claims.stuck}`));
+    console.log(chalk.red(`  Invalid States: ${report.claims.invalid}`));
+    console.log(chalk.yellow(`  Suspicious Patterns: ${report.claims.suspicious}`));
+    console.log(chalk.green(`  Claims Cleared: ${report.claims.cleared}`));
+
+    // Include in email report
+    const claimSection = `
+      <h2>🔒 Claim Status</h2>
+      <ul>
+        <li style="color: ${report.claims.stuck > 0 ? 'red' : 'green'}">
+          Stuck Claims: ${report.claims.stuck}
+        </li>
+        <li style="color: ${report.claims.invalid > 0 ? 'red' : 'green'}">
+          Invalid States: ${report.claims.invalid}
+        </li>
+        <li style="color: ${report.claims.suspicious > 0 ? 'orange' : 'green'}">
+          Suspicious Patterns: ${report.claims.suspicious}
+        </li>
+        <li style="color: green">
+          Claims Cleared: ${report.claims.cleared}
+        </li>
+      </ul>
+    `;
+
+    // Add to email HTML
+    emailHtml = emailHtml.replace('</body>', `${claimSection}</body>`);
     
     // Send email report
     await sendEmailReport(report);

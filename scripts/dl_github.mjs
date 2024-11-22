@@ -26,101 +26,140 @@ export async function processGithubItem(item, type) {
     return null;
   }
 
+  const scrapId = `github-${item.id}`;
+  
   try {
-    // Get best available URL
-    const url = item.html_url || item.url;
-    
-    // Get best available content
-    const content = (() => {
-      switch(type) {
-        case 'repo':
-          return item.description || 'No description';
-        case 'pr':
-        case 'issue':
-          return item.body || 'No content';
-        case 'gist':
-          return item.description || 'No description';
-        case 'release':
-          return item.body || 'No content';
-        case 'starred':
-          return item.description || 'No description';
-        default:
-          return 'No content';
-      }
-    })();
+    // Try to claim the item first
+    const { data: claim } = await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: INSTANCE_NAME,
+        processing_started_at: new Date().toISOString()
+      })
+      .eq('scrap_id', scrapId)
+      .is('processing_instance_id', null)
+      .select()
+      .single();
 
-    // Combine all possible tags
-    const tags = [
-      // Repository topics (if available)
-      ...(item.topics || []),
-      // Language as a tag
-      item.language?.toLowerCase(),
-      // Item type
-      type,
-      // Status tags for PRs/Issues
-      ...(type === 'pr' || type === 'issue' ? [item.state] : []),
-      // Visibility
-      ...(type === 'repo' || type === 'gist' ? [item.private ? 'private' : 'public'] : []),
-      // Fork status
-      ...(type === 'repo' && item.fork ? ['fork'] : [])
-    ].filter(Boolean);
+    if (!claim) {
+      console.log(`Skipping GitHub item ${item.id} - already being processed`);
+      return null;
+    }
 
-    return {
-      id: generateScrapId('github', item.id),
-      source: "github",
-      type,
-      url,
-      title: item.title || item.name || 'Untitled',
-      content,
-      screenshot_url: null,  // GitHub items don't need screenshots
-      published_at: item.created_at,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      shared: false,  // Default to false
-      tags: [...new Set(tags)], // Deduplicate tags
-      metadata: {
-        // Store original topics separately
-        topics: item.topics || [],
-        language: item.language,
-        // Type-specific metadata
-        ...(type === 'repo' && {
-          stargazers_count: item.stargazers_count,
-          forks_count: item.forks_count,
-          is_fork: item.fork,
-          default_branch: item.default_branch,
-          homepage: item.homepage
-        }),
-        ...(type === 'pr' && {
-          comments: item.comments,
-          labels: item.labels?.map(l => l.name),
-          changed_files: item.changedFiles,
-          repo: {
-            name: item.repo?.name,
-            full_name: item.repo?.full_name
-          }
-        }),
-        ...(type === 'issue' && {
-          comments: item.comments,
-          labels: item.labels?.map(l => l.name),
-          repo: {
-            name: item.repo?.name,
-            full_name: item.repo?.full_name
-          }
-        }),
-        ...(type === 'gist' && {
-          files: Object.keys(item.files || {}),
-          public: item.public
-        }),
-        ...(type === 'starred' && {
-          starred_at: item.starred_at,
+    try {
+      // Get best available URL
+      const url = item.html_url || item.url;
+      
+      // Get best available content
+      const content = (() => {
+        switch(type) {
+          case 'repo':
+            return item.description || 'No description';
+          case 'pr':
+          case 'issue':
+            return item.body || 'No content';
+          case 'gist':
+            return item.description || 'No description';
+          case 'release':
+            return item.body || 'No content';
+          case 'starred':
+            return item.description || 'No description';
+          default:
+            return 'No content';
+        }
+      })();
+
+      // Combine all possible tags
+      const tags = [
+        // Repository topics (if available)
+        ...(item.topics || []),
+        // Language as a tag
+        item.language?.toLowerCase(),
+        // Item type
+        type,
+        // Status tags for PRs/Issues
+        ...(type === 'pr' || type === 'issue' ? [item.state] : []),
+        // Visibility
+        ...(type === 'repo' || type === 'gist' ? [item.private ? 'private' : 'public'] : []),
+        // Fork status
+        ...(type === 'repo' && item.fork ? ['fork'] : [])
+      ].filter(Boolean);
+
+      return {
+        scrap_id: scrapId,
+        id: generateScrapId('github', item.id),
+        source: "github",
+        type,
+        url,
+        title: item.title || item.name || 'Untitled',
+        content,
+        screenshot_url: null,  // GitHub items don't need screenshots
+        published_at: item.created_at,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        shared: false,  // Default to false
+        tags: [...new Set(tags)], // Deduplicate tags
+        metadata: {
+          // Store original topics separately
+          topics: item.topics || [],
           language: item.language,
-          stargazers_count: item.stargazers_count,
-          forks_count: item.forks_count
+          // Type-specific metadata
+          ...(type === 'repo' && {
+            stargazers_count: item.stargazers_count,
+            forks_count: item.forks_count,
+            is_fork: item.fork,
+            default_branch: item.default_branch,
+            homepage: item.homepage
+          }),
+          ...(type === 'pr' && {
+            comments: item.comments,
+            labels: item.labels?.map(l => l.name),
+            changed_files: item.changedFiles,
+            repo: {
+              name: item.repo?.name,
+              full_name: item.repo?.full_name
+            }
+          }),
+          ...(type === 'issue' && {
+            comments: item.comments,
+            labels: item.labels?.map(l => l.name),
+            repo: {
+              name: item.repo?.name,
+              full_name: item.repo?.full_name
+            }
+          }),
+          ...(type === 'gist' && {
+            files: Object.keys(item.files || {}),
+            public: item.public
+          }),
+          ...(type === 'starred' && {
+            starred_at: item.starred_at,
+            language: item.language,
+            stargazers_count: item.stargazers_count,
+            forks_count: item.forks_count
+          })
+        }
+      };
+    } finally {
+      // Release claim
+      await supabase
+        .from('scraps')
+        .update({
+          processing_instance_id: null,
+          processing_started_at: null
         })
-      }
-    };
+        .eq('scrap_id', scrapId);
+    }
   } catch (error) {
     console.error(`Error processing GitHub ${type}:`, error);
+    // Release claim on error
+    await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: null,
+        processing_started_at: null
+      })
+      .eq('scrap_id', scrapId);
     return null;
   }
 }
