@@ -471,8 +471,7 @@ async function fetchAndUpsertPinboardBookmarks() {
     const scrapId = `pinboard-${bookmark.hash}`;
     
     try {
-      // Try to claim the scrap
-      if (!await claimScrap(scrapId)) {
+      if (!await claimScrap(scrapId, 'pinboard')) {
         logger.info(`Skipping bookmark ${bookmark.href} - already being processed`);
         continue;
       }
@@ -483,7 +482,6 @@ async function fetchAndUpsertPinboardBookmarks() {
           await upsertWithRetry(processedBookmark);
         }
       } finally {
-        // Always release the claim
         await releaseScrap(scrapId);
       }
     } catch (error) {
@@ -496,16 +494,14 @@ async function fetchAndUpsertPinboardBookmarks() {
 async function fetchAndUpsertMastodonStatuses() {
   const userId = await fetchUserId();
   const statuses = await fetchStatuses(userId);
-  logger.info(`Found ${statuses.length} Mastodon statuses`);
-
+  
   for (const status of statuses) {
     if (isShuttingDown) break;
-    
+
     const scrapId = `mastodon-${status.id}`;
     
     try {
-      // Try to claim the scrap
-      if (!await claimScrap(scrapId)) {
+      if (!await claimScrap(scrapId, 'mastodon')) {
         logger.info(`Skipping status ${status.id} - already being processed`);
         continue;
       }
@@ -517,7 +513,6 @@ async function fetchAndUpsertMastodonStatuses() {
         
         await upsertWithRetry(processedStatus);
       } finally {
-        // Always release the claim
         await releaseScrap(scrapId);
       }
     } catch (error) {
@@ -537,8 +532,7 @@ async function fetchAndUpsertArenaBlocks() {
     const scrapId = `arena-${block.id}`;
     
     try {
-      // Try to claim the scrap
-      if (!await claimScrap(scrapId)) {
+      if (!await claimScrap(scrapId, 'arena')) {
         logger.info(`Skipping block ${block.id} - already being processed`);
         continue;
       }
@@ -581,8 +575,7 @@ async function fetchAndUpsertGithubData() {
     const scrapId = `github-${scrap.id}`;
     
     try {
-      // Try to claim the scrap
-      if (!await claimScrap(scrapId)) {
+      if (!await claimScrap(scrapId, 'github')) {
         logger.info(`Skipping GitHub item ${scrap.id} - already being processed`);
         continue;
       }
@@ -613,16 +606,22 @@ async function initializeDatabaseIfNeeded() {
   if (count === 0) {
     logger.info('Database is empty, initializing...');
     
-    // Create a test scrap to verify everything works
+    // Create a test scrap using 'lock' as source
     const { error } = await supabase
       .from('scraps')
       .insert({
-        scrap_id: 'test-init',
-        source: 'system',
-        type: 'test',
+        scrap_id: 'init-test',
+        source: 'lock',  // Changed from 'system' to 'lock'
+        type: 'init',    
         content: 'Database initialization test',
+        title: 'Initialization Test',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        metadata: {
+          initialization: true,
+          initialized_at: new Date().toISOString(),
+          instance_name: INSTANCE_NAME
+        }
       });
 
     if (error) {

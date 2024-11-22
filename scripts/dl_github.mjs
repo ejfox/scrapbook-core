@@ -20,6 +20,9 @@ const octokit = new Octokit({
   previews: ["mercy-preview"],
 });
 
+const INSTANCE_NAME = process.env.INSTANCE_NAME || 
+  `${process.env.NODE_ENV || 'dev'}-github-${Date.now()}`;
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY,
@@ -28,9 +31,6 @@ const supabase = createClient(
     db: { schema: 'public' }
   }
 );
-
-const INSTANCE_NAME = process.env.INSTANCE_NAME || 
-  `${process.env.NODE_ENV || 'dev'}-github-${Date.now()}`;
 
 // Process different GitHub item types
 export async function processGithubItem(item, type) {

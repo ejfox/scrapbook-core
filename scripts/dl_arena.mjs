@@ -41,10 +41,18 @@ if (!ARENA_ACCESS_TOKEN) {
 logger.info("Initializing Arena client");
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
 
+// Add near the top after imports
+const INSTANCE_NAME = process.env.INSTANCE_NAME || 
+  `${process.env.NODE_ENV || 'dev'}-arena-${Date.now()}`;
+
 // Initialize Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY  // Need admin rights for vector operations
+  process.env.SUPABASE_KEY,
+  {
+    auth: { persistSession: false },
+    db: { schema: 'public' }
+  }
 );
 
 // Add this helper function for merging scraps
