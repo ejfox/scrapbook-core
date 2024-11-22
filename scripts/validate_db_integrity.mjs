@@ -605,7 +605,41 @@ async function clearProblematicClaims(issues) {
   return claimsToClean.length;
 }
 
-// Update main function to include claim validation
+async function cleanupOrphanedScraps() {
+  console.log(chalk.yellow('\n🧹 Cleaning up orphaned scraps...'));
+
+  // Find scraps that are stuck in initial "Processing..." state
+  const { data: orphanedScraps } = await supabase
+    .from('scraps')
+    .select('*')
+    .eq('content', 'Processing...')
+    .is('processing_instance_id', null);
+
+  if (orphanedScraps?.length) {
+    console.log(chalk.red(`Found ${orphanedScraps.length} orphaned scraps`));
+    
+    // Delete orphaned scraps
+    const { error } = await supabase
+      .from('scraps')
+      .delete()
+      .in('id', orphanedScraps.map(s => s.id));
+
+    if (error) {
+      console.error('Failed to delete orphaned scraps:', error);
+    } else {
+      console.log(chalk.green(`Deleted ${orphanedScraps.length} orphaned scraps`));
+    }
+  } else {
+    console.log(chalk.green('No orphaned scraps found'));
+  }
+
+  return {
+    orphaned_count: orphanedScraps?.length || 0,
+    cleaned: Boolean(orphanedScraps?.length)
+  };
+}
+
+// Update main function to include orphaned cleanup
 async function main() {
   console.log(chalk.green('Starting comprehensive database integrity check...'));
   const startTime = Date.now();
@@ -628,7 +662,8 @@ async function main() {
       sourceTypes: await checkSourceTypeValidity(),
       dates: await checkDateConsistency(),
       geo: await checkGeoData(),
-      processing: await checkStuckProcessing()
+      processing: await checkStuckProcessing(),
+      orphaned: await cleanupOrphanedScraps()
     };
     
     // Print detailed report
