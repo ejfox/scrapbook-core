@@ -59,56 +59,57 @@ async function getBrowserLauncher() {
   throw new Error(`Unsupported environment: ${os.platform()}`);
 }
 
-export async function generateScreenshot({ source, shortId, url }) {
-  if (!url) return null;
-  let browser;
-  
-  try {
-    const launchOptions = await getBrowserLauncher();
-    browser = await puppeteer.launch({
-      ...launchOptions,
-      headless: "new",
-      defaultViewport: { width: 1080, height: 1920 }
-    });
+let browser = null;
 
-    logger.info('Browser launched successfully');
+export async function generateScreenshot({ source, shortId, url, timeout = 15000 }) {
+  try {
+    // Initialize browser if needed
+    if (!browser) {
+      browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: 'new',
+        defaultViewport: { width: 1280, height: 800 }
+      });
+    }
+
+    // Create new page
     const page = await browser.newPage();
     
-    await page.setViewport({ width: 1080, height: 1920 });
-    logger.info(`Navigating to ${url}`);
-    
-    await page.goto(url, { 
-      waitUntil: "networkidle0", 
-      timeout: 30000 
-    });
-    
-    const screenshotBuffer = await page.screenshot({ 
-      type: 'png',
-      fullPage: false,
-      timeout: 30000
-    });
+    try {
+      // Set shorter timeouts
+      await page.setDefaultNavigationTimeout(timeout);
+      await page.setDefaultTimeout(timeout);
 
-    await browser.close();
+      // Navigate and screenshot
+      await page.goto(url, { waitUntil: 'networkidle0' });
+      const screenshot = await page.screenshot();
 
-    const filename = `${source}_${shortId}.png`;
-    const cdnPath = `screenshots/${source}/${filename}`;
-    
-    logger.info('Uploading to CDN');
-    logger.info(`Uploading to: ${cdnPath}`);
-    
-    const cdnUrl = await uploadToCDN(screenshotBuffer, cdnPath);
-    return cdnUrl;
+      // Upload to Cloudinary
+      const result = await cloudinary.uploader.upload(screenshot, {
+        folder: `scrapbook/${source}`,
+        public_id: shortId
+      });
 
-  } catch (error) {
-    logger.error('Error generating screenshot:', error);
-    return null;
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (err) {
-        logger.error('Error closing browser:', err);
-      }
+      return result.secure_url;
+    } finally {
+      // Always close the page
+      await page.close();
     }
+  } catch (error) {
+    logger.error(`Error generating screenshot: ${error.message}`);
+    return null;
   }
-} 
+}
+
+// Add cleanup function
+export async function cleanupScreenshot() {
+  if (browser) {
+    await browser.close();
+    browser = null;
+  }
+}
+
+// Add cleanup on process exit
+process.on('exit', cleanupScreenshot);
+process.on('SIGINT', cleanupScreenshot);
+process.on('SIGTERM', cleanupScreenshot); 

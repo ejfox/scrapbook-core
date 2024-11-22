@@ -307,6 +307,12 @@ async function shouldProcessBookmark(bookmark, existingData) {
   return { shouldProcess: false, reason: 'no_changes' };
 }
 
+// Add rate limiting for screenshots
+const screenshotLimiter = new Bottleneck({
+  maxConcurrent: 1, // Only one screenshot at a time
+  minTime: 1000 // Wait 1s between screenshots
+});
+
 // Main processing function
 export async function processBookmark(bookmark) {
   try {
@@ -327,15 +333,23 @@ export async function processBookmark(bookmark) {
       }
     };
 
-    // Generate screenshot if needed
-    const screenshot_url = await generateScreenshot({
-      source: 'pinboard',
-      shortId: bookmark.hash,
-      url: bookmark.href
-    });
+    // Take screenshot with rate limiting
+    try {
+      const screenshot_url = await screenshotLimiter.schedule(() => 
+        generateScreenshot({
+          source: 'pinboard',
+          shortId: bookmark.hash,
+          url: bookmark.href,
+          timeout: 15000 // Reduce timeout to 15s
+        })
+      );
 
-    if (screenshot_url) {
-      processedData.screenshot_url = screenshot_url;
+      if (screenshot_url) {
+        processedData.screenshot_url = screenshot_url;
+      }
+    } catch (error) {
+      logger.warn(`Screenshot failed for ${bookmark.href}: ${error.message}`);
+      // Continue without screenshot
     }
 
     return processedData;

@@ -17,6 +17,17 @@ app = "scrapbook-core"
   scraper = "node scripts/index.mjs --all"
   cleanup = "node scripts/validate_db_integrity.mjs"
 
+# Increase memory limit
+[processes.scraper.resources]
+  memory_mb = 2048
+  cpu_kind = "shared"
+  cpu_cores = 1
+
+[processes.cleanup.resources]
+  memory_mb = 512
+  cpu_kind = "shared"
+  cpu_cores = 1
+
 [scheduled_jobs]
   [[scheduled_jobs.jobs]]
     name = "run-scraper"
