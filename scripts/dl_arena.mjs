@@ -246,7 +246,7 @@ export async function processBlock(block) {
   }
 }
 
-// Update fetchAllBlocks to include progress tracking
+// Update fetchAllBlocks function
 export const fetchAllBlocks = async (testMode = false) => {
   let allBlocks = [];
   let processedCount = 0;
@@ -275,92 +275,71 @@ export const fetchAllBlocks = async (testMode = false) => {
       );
       
       const blocks = response || [];
-      const processedBlocks = await Promise.all(
-        blocks.map(block => {
-          const enrichedBlock = {
-            ...block,
-            channel: channel.title,
-            connected_to_channels: [
-              {
-                id: channel.id,
-                title: channel.title,
-              },
-              ...(block.connected_to_channels || []),
-            ],
-          };
-          return processLimiter.schedule(() => processBlock(enrichedBlock));
-        })
-      );
 
-      allBlocks = allBlocks.concat(processedBlocks.filter(Boolean));
+      // Process blocks with claiming
+      for (const block of blocks) {
+        if (isShuttingDown) break;
 
-      if (testMode && allBlocks.length >= 5) break;
-
-      if (!testMode) {
-        let page = 2;
-        let fetching = true;
-
-        while (fetching) {
-          try {
-            logger.info(`Fetching page ${page} of channel ${channel.title}`);
-            const response = await arenaLimiter.schedule(() =>
-              arena.channel(channel.id).contents({
-                page,
-                per: 100,
-                sort: "updated_at",
-                direction: "desc",
-              })
-            );
-            
-            const blocks = response || [];
-            if (!blocks.length) break;
-            
-            const processedBlocks = await Promise.all(
-              blocks.map(block => {
-                const enrichedBlock = {
-                  ...block,
-                  channel: channel.title,
-                  connected_to_channels: [
-                    {
-                      id: channel.id,
-                      title: channel.title,
-                    },
-                    ...(block.connected_to_channels || []),
-                  ],
-                };
-                return processLimiter.schedule(() => processBlock(enrichedBlock));
-              })
-            );
-
-            allBlocks = allBlocks.concat(processedBlocks.filter(Boolean));
-            page += 1;
-          } catch (error) {
-            logger.error(
-              `Error fetching page ${page} of channel ${channel.title}:`,
-              error.message
-            );
-            fetching = false;
-          }
-        }
-      }
-
-      // After processing blocks, upsert them to database
-      for (const block of processedBlocks.filter(Boolean)) {
+        const scrapId = `arena-${block.id}`;
+        
         try {
-          const { error: upsertError } = await supabase
+          // Try to claim the block
+          const { data: claim } = await supabase
             .from('scraps')
-            .upsert(block, { 
-              onConflict: 'scrap_id',
-              ignoreDuplicates: false
-            });
+            .update({
+              processing_instance_id: INSTANCE_NAME,
+              processing_started_at: new Date().toISOString()
+            })
+            .eq('scrap_id', scrapId)
+            .is('processing_instance_id', null)
+            .select()
+            .single();
 
-          if (upsertError) {
-            logger.error(`Failed to upsert block ${block.scrap_id}:`, upsertError);
-          } else {
-            logger.info(`✅ Upserted block ${block.scrap_id} to database`);
+          if (!claim) {
+            logger.info(`Skipping block ${block.id} - already being processed`);
+            continue;
+          }
+
+          try {
+            const enrichedBlock = {
+              ...block,
+              channel: channel.title,
+              connected_to_channels: [
+                {
+                  id: channel.id,
+                  title: channel.title,
+                },
+                ...(block.connected_to_channels || []),
+              ],
+            };
+
+            const processedBlock = await processLimiter.schedule(() => 
+              processBlock(enrichedBlock)
+            );
+
+            if (processedBlock) {
+              allBlocks.push(processedBlock);
+            }
+          } finally {
+            // Always release the claim
+            await supabase
+              .from('scraps')
+              .update({
+                processing_instance_id: null,
+                processing_started_at: null
+              })
+              .eq('scrap_id', scrapId);
           }
         } catch (error) {
-          logger.error(`Error upserting block ${block.scrap_id}:`, error);
+          logger.error(`Error processing block ${block.id}:`, error);
+          // Make sure to release claim on error
+          await supabase
+            .from('scraps')
+            .update({
+              processing_instance_id: null,
+              processing_started_at: null
+            })
+            .eq('scrap_id', scrapId);
         }
       }
 
