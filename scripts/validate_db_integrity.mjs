@@ -5,8 +5,12 @@ import sgMail from '@sendgrid/mail';
 
 dotenv.config();
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Initialize SendGrid only if API key is present
+if (process.env.SENDGRID_API_KEY?.startsWith('SG.')) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+} else {
+  console.log(chalk.yellow('⚠️ SendGrid API key not configured - email reports disabled'));
+}
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -459,29 +463,29 @@ async function checkExactDuplicates() {
     };
   }
 
-  // Check URL duplicates using a subquery approach instead of group
-  const { data: urlDupes } = await supabase
+  // Check URL duplicates
+  const { data: urlDupes, error: urlError } = await supabase
     .from('scraps')
-    .select('url, count')
+    .select('url, count(*)')
     .not('url', 'is', null)
-    .in('url', (qb) => 
-      qb.from('scraps')
-        .select('url')
-        .not('url', 'is', null)
-        .filter('count', 'gt', 1)
-    );
+    .group('url')
+    .having('count(*)', 'gt', 1);
 
-  // Check title duplicates similarly
-  const { data: titleDupes } = await supabase
+  if (urlError) {
+    console.error('Error checking URL duplicates:', urlError);
+  }
+
+  // Check title duplicates
+  const { data: titleDupes, error: titleError } = await supabase
     .from('scraps')
-    .select('title, count')
+    .select('title, count(*)')
     .not('title', 'is', null)
-    .in('title', (qb) => 
-      qb.from('scraps')
-        .select('title')
-        .not('title', 'is', null)
-        .filter('count', 'gt', 1)
-    );
+    .group('title')
+    .having('count(*)', 'gt', 1);
+
+  if (titleError) {
+    console.error('Error checking title duplicates:', titleError);
+  }
 
   // Log duplicates if found
   if (urlDupes?.length) {
@@ -639,6 +643,35 @@ async function cleanupOrphanedScraps() {
   };
 }
 
+// Add this function
+async function cleanupProcessingScraps() {
+  console.log(chalk.yellow('\n🧹 Cleaning up Processing... scraps'));
+  
+  // Find all scraps stuck in Processing... state
+  const { data: processingScraps } = await supabase
+    .from('scraps')
+    .select('*')
+    .eq('content', 'Processing...');
+
+  if (processingScraps?.length) {
+    console.log(chalk.red(`Found ${processingScraps.length} scraps stuck in Processing... state`));
+    
+    // Delete them
+    const { error } = await supabase
+      .from('scraps')
+      .delete()
+      .in('id', processingScraps.map(s => s.id));
+
+    if (error) {
+      console.error('Failed to delete Processing... scraps:', error);
+    } else {
+      console.log(chalk.green(`Deleted ${processingScraps.length} Processing... scraps`));
+    }
+  } else {
+    console.log(chalk.green('No Processing... scraps found'));
+  }
+}
+
 // Update main function to include orphaned cleanup
 async function main() {
   console.log(chalk.green('Starting comprehensive database integrity check...'));
@@ -655,6 +688,9 @@ async function main() {
       return;
     }
 
+    // Add this at the start
+    await cleanupProcessingScraps();
+    
     const report = {
       fields: await checkFieldIntegrity(),
       duplicates: await checkExactDuplicates(),

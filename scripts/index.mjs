@@ -333,62 +333,63 @@ const INSTANCE_NAME = process.env.INSTANCE_NAME || `${process.env.NODE_ENV || 'd
 const STUCK_THRESHOLD_MINS = 5;
 
 // Add this helper function
-async function claimScrap(scrapId, source) {
+async function claimAndProcess(scrapId, source, data, processor) {
   try {
-    // First check if scrap exists
-    const { data: existing } = await supabase
+    // First process the data
+    const processedData = await processor(data);
+    if (!processedData) {
+      logger.debug(`No processed data for ${scrapId}`);
+      return false;
+    }
+
+    // Then try to insert in one atomic operation
+    const { data: inserted, error } = await supabase
       .from('scraps')
-      .select('id, content')
-      .eq('scrap_id', scrapId)
-      .maybeSingle();
+      .insert({
+        scrap_id: scrapId,
+        source: source,
+        ...processedData,
+        processing_instance_id: INSTANCE_NAME,
+        processing_started_at: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    if (!existing) {
-      logger.info(`Creating new scrap ${scrapId} for source ${source}`);
-      
-      // Create with placeholder but don't claim yet
-      const { data, error } = await supabase
-        .from('scraps')
-        .insert({
-          scrap_id: scrapId,
-          source: source,
-          content: 'Processing...',
-          type: getTypeFromSource(source),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === '23505') { // Unique violation
-          logger.debug(`Scrap ${scrapId} was created by another process`);
-          return false;
-        }
-        logger.error(`Failed to create scrap ${scrapId}:`, error);
+    if (error) {
+      if (error.code === '23505') { // Already exists
+        logger.debug(`Scrap ${scrapId} already exists`);
         return false;
       }
-
-      // Now try to claim the newly created scrap
-      return await claimExistingScrap(scrapId);
+      throw error;
     }
 
-    // If it exists but is orphaned, clean it up
-    if (existing.content === 'Processing...') {
-      logger.info(`Found orphaned scrap ${scrapId}, cleaning up`);
-      await supabase
-        .from('scraps')
-        .delete()
-        .eq('id', existing.id);
-      
-      // Try creating again
-      return await claimScrap(scrapId, source);
-    }
-
-    // Try to claim existing
-    return await claimExistingScrap(scrapId);
+    return true;
   } catch (error) {
-    logger.error(`Error claiming scrap ${scrapId}:`, error);
+    logger.error(`Error processing ${scrapId}:`, error);
     return false;
+  }
+}
+
+// Add this helper function
+async function processContent(data) {
+  if (!data) return null;
+  
+  try {
+    return {
+      title: data.title || '',
+      content: data.content || data.description || '',
+      url: data.url || data.href || '',
+      type: data.type || 'unknown',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: {
+        original: data,
+        processed_at: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    logger.error('Error processing content:', error);
+    return null;
   }
 }
 
@@ -487,18 +488,9 @@ async function fetchAndUpsertPinboardBookmarks() {
     const scrapId = `pinboard-${bookmark.hash}`;
     
     try {
-      if (!await claimScrap(scrapId, 'pinboard')) {
+      if (!await claimAndProcess(scrapId, 'pinboard', bookmark, processBookmark)) {
         logger.info(`Skipping bookmark ${bookmark.href} - already being processed`);
         continue;
-      }
-
-      try {
-        const processedBookmark = await processBookmark(bookmark);
-        if (processedBookmark) {
-          await upsertWithRetry(processedBookmark);
-        }
-      } finally {
-        await releaseScrap(scrapId);
       }
     } catch (error) {
       logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
@@ -517,19 +509,9 @@ async function fetchAndUpsertMastodonStatuses() {
     const scrapId = `mastodon-${status.id}`;
     
     try {
-      if (!await claimScrap(scrapId, 'mastodon')) {
+      if (!await claimAndProcess(scrapId, 'mastodon', status, processStatus)) {
         logger.info(`Skipping status ${status.id} - already being processed`);
         continue;
-      }
-
-      try {
-        let processedStatus = await processStatus(status);
-        processedStatus = await generateSummaryAndTags(processedStatus);
-        processedStatus = await extractAndAddRelationships(processedStatus);
-        
-        await upsertWithRetry(processedStatus);
-      } finally {
-        await releaseScrap(scrapId);
       }
     } catch (error) {
       logger.error(`Failed to process status: ${status.id}`, error);
@@ -548,22 +530,9 @@ async function fetchAndUpsertArenaBlocks() {
     const scrapId = `arena-${block.id}`;
     
     try {
-      if (!await claimScrap(scrapId, 'arena')) {
+      if (!await claimAndProcess(scrapId, 'arena', block, processBlock)) {
         logger.info(`Skipping block ${block.id} - already being processed`);
         continue;
-      }
-
-      try {
-        const processedBlock = await processBlock(block);
-        
-        if (processedBlock.content && process.env.USE_OPENAI) {
-          processedBlock.embedding = await generateEmbedding(processedBlock.content);
-        }
-
-        await extractAndAddRelationships(processedBlock);
-        await upsertWithRetry(processedBlock);
-      } finally {
-        await releaseScrap(scrapId);
       }
     } catch (error) {
       logger.error(`Failed to process block: ${block.id}`, error);
@@ -591,20 +560,9 @@ async function fetchAndUpsertGithubData() {
     const scrapId = `github-${scrap.id}`;
     
     try {
-      if (!await claimScrap(scrapId, 'github')) {
+      if (!await claimAndProcess(scrapId, 'github', scrap, processGitHubItem)) {
         logger.info(`Skipping GitHub item ${scrap.id} - already being processed`);
         continue;
-      }
-
-      try {
-        if (scrap.content && process.env.USE_OPENAI) {
-          scrap.embedding = await generateEmbedding(scrap.content);
-        }
-
-        await extractAndAddRelationships(scrap);
-        await upsertWithRetry(scrap);
-      } finally {
-        await releaseScrap(scrapId);
       }
     } catch (error) {
       logger.error(`Failed to process GitHub item: ${scrap.id}`, error);
