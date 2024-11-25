@@ -23,10 +23,10 @@ Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfo
 Also visible on [my website's scrapbook](https://ejfox.com/scrapbook/)
 
 I also use it in combination with an Alfred Workflow and a local SQLite database for quick searching:
-- <scripts/setup_sqlite.mjs>
-- <scripts/sync_supabase_to_sqlite.js>
-- <scripts/search_sqlite_scraps.js>
-- <Local\ Scrap\ Search.1.1.alfredworkflow.zip>
+- `<scripts/setup_sqlite.mjs>`
+- `<scripts/sync_supabase_to_sqlite.js>`
+- `<scripts/search_sqlite_scraps.js>`
+- `<Local Scrap Search.1.1.alfredworkflow.zip>`
 
 ## Deploying
 `flyctl deploy`
@@ -41,26 +41,25 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 
 ### Scraps table
 ```sql
-create table
-  public.scraps (
-    id uuid not null default gen_random_uuid (),
-    source public.scrap_source not null,
-    content text not null,
-    summary text null,
-    created_at timestamp without time zone null default current_timestamp,
-    updated_at timestamp without time zone null default current_timestamp,
-    tags text null,
-    relationships jsonb null,
-    metadata jsonb null,
-    scrap_id text null,
-    embedding public.vector null,
-    title text null,
-    graph_imported boolean null default false,
-    constraint scraps_pkey primary key (id),
-    constraint scraps_id_key unique (id),
-    constraint scraps_scrap_id_key unique (scrap_id)
-  ) tablespace pg_default;
-  ```
+CREATE TABLE public.scraps (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    source public.scrap_source NOT NULL,
+    content TEXT NOT NULL,
+    summary TEXT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    tags TEXT NULL,
+    relationships JSONB NULL,
+    metadata JSONB NULL,
+    scrap_id TEXT NULL,
+    embedding public.vector NULL,
+    title TEXT NULL,
+    graph_imported BOOLEAN NULL DEFAULT FALSE,
+    CONSTRAINT scraps_pkey PRIMARY KEY (id),
+    CONSTRAINT scraps_id_key UNIQUE (id),
+    CONSTRAINT scraps_scrap_id_key UNIQUE (scrap_id)
+);
+```
 
 
 ## System Architecture
@@ -112,14 +111,7 @@ graph TD
 
 1. Clone the repository
 2. Install dependencies: `npm install`
-3. Set up environment variables in a `.env` file:
-   ```
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_KEY=your_supabase_key
-   PINBOARD_TOKEN=your_pinboard_token
-   SUPABASE_BUCKET=your_supabase_bucket
-   CLOUDINARY_FOLDER=your_cloudinary_folder
-   ```
+3. Set up environment variables in a `.env` file (see "Setting Up Credentials" below).
 4. Run the main script: `node index.mjs`
 5. Install the Alfred Workflow:
    - Unzip the `Local Scrap Search.1.1.alfredworkflow.zip` file
@@ -170,7 +162,7 @@ The included Alfred Workflow allows for quick searching of the local SQLite data
    - `repo` (for repository access)
    - `read:user` (for profile info)
    - `gist` (for gist access)
-5. Copy the token and add to your .env:
+5. Copy the token and add to your `.env`:
 ```bash
 GITHUB_TOKEN=github_pat_...
 GITHUB_USERNAME=your_username
@@ -178,14 +170,14 @@ GITHUB_USERNAME=your_username
 
 ### Pinboard
 1. Get your API token from [Pinboard Settings](https://pinboard.in/settings/password)
-2. Add to .env:
+2. Add to `.env`:
 ```bash
 PINBOARD_TOKEN=user:hash
 ```
 
 ### Are.na
 1. Create token at [Are.na Developer Settings](https://dev.are.na/oauth/applications)
-2. Add to .env:
+2. Add to `.env`:
 ```bash
 ARENA_ACCESS_TOKEN=your_token
 USER_SLUG=your_username
@@ -194,7 +186,7 @@ USER_SLUG=your_username
 ### Mastodon
 1. Go to your instance's developer settings
 2. Create new application
-3. Add to .env:
+3. Add to `.env`:
 ```bash
 MASTODON_ACCESS_TOKEN=your_token
 MASTODON_API_URL=https://your.instance
@@ -202,7 +194,7 @@ MASTODON_API_URL=https://your.instance
 
 ### Supabase
 1. Get credentials from your Supabase project settings
-2. Add to .env:
+2. Add to `.env`:
 ```bash
 SUPABASE_URL=your_project_url
 SUPABASE_KEY=your_anon_key
@@ -212,7 +204,7 @@ SUPABASE_KEY=your_anon_key
 1. Go to [OpenCage Data](https://opencagedata.com/)
 2. Sign up for a free account
 3. Create an API key from your dashboard
-4. Add to .env:
+4. Add to `.env`:
 ```bash
 OPENCAGE_API_KEY=your_api_key
 ```
@@ -249,7 +241,7 @@ OPENCAGE_API_KEY=your_opencage_api_key
 ```
 
 ## Set Fly Secrets Quickly
-```
+```bash
 cat .env | grep -v '^#' | grep -v '^$' | while read -r line; do
   echo "Setting $line..."
   flyctl secrets set "$line"
@@ -262,33 +254,50 @@ The project includes two powerful validation utilities for testing data integrit
 
 ### Scrap Validation (`validate_scraps.mjs`)
 
-A comprehensive validation tool for testing data fetching and processing from all sources.
+This script provides a robust validation process for your scraped data. It checks for data integrity, correct data types, and adherence to expected structures. This is crucial for maintaining the quality and consistency of your data.
+
+**Usage:**
+
+The script can be run from your terminal using Node.js:
 
 ```bash
 # Validate all sources
 node scripts/validate_scraps.mjs
 
-# Validate specific source
+# Validate a specific source (e.g., Pinboard)
 node scripts/validate_scraps.mjs pinboard
-node scripts/validate_scraps.mjs mastodon
-node scripts/validate_scraps.mjs arena
-node scripts/validate_scraps.mjs github
 ```
 
-Features:
-- Validates data structure and required fields
-- Checks data types and formats
-- Source-specific validation rules
-- Screenshot validation where applicable
-- Performance benchmarking
-- Detailed error reporting
-- Sample data display
+You can specify a source to validate only that source's data. If no source is specified, it validates all sources.
 
-Example output:
+**Features:**
+
+- **Comprehensive Checks:**  Validates the structure of each scrap, ensuring all required fields are present and of the correct data type.  It checks for missing fields, incorrect types (e.g., string instead of array), and invalid date formats.
+- **Source-Specific Rules:**  Applies validation rules tailored to each data source. For example, Pinboard bookmarks might require a screenshot URL, while Mastodon posts might not.  This ensures that source-specific requirements are met.
+- **URL and Screenshot Validation:** Checks the format of URLs and screenshot URLs, ensuring they are valid and correctly formatted.
+- **Date Validation:** Verifies that `published_at`, `created_at`, and `updated_at` fields contain valid date strings.
+- **Relationship Validation:** If the `relationships` field is present, it checks the structure of each relationship object to ensure it conforms to the expected format.
+- **Performance Benchmarking:**  Measures the execution time of each validation step, allowing you to identify potential performance bottlenecks.
+- **Detailed Error Reporting:** Provides clear and informative error messages, pinpointing the exact location and nature of any issues found.
+- **Sample Data Display:**  After validation, it displays a formatted sample of the data from one of the processed scraps, allowing you to quickly inspect the data structure.
+- **Progress Indicators:** Uses a progress bar to display the progress of the validation process.
+
+
+**Example Output:**
+
+The output clearly indicates whether the validation passed or failed, along with a summary of errors and warnings.  A sample scrap is also displayed to help with debugging.
+
 ```
 ==================================
    SCRAPBOOK VALIDATION UTILITY   
 ==================================
+
++------------------------+
+| VALIDATING SCRAP      |
++------------------------+
+Source: pinboard
+Type: bookmark
+URL: https://www.example.com/...
 
 [CHECKING REQUIRED FIELDS]
   id           [OK]
@@ -298,6 +307,8 @@ Example output:
   title        [OK]
   content      [OK]
   ...
+
+✓ SCRAP PASSED VALIDATION
 
 Validation Summary:
 PASS pinboard: 5 scraps, 0 errors, 0 warnings (1234.56ms)
@@ -608,7 +619,7 @@ INSTANCE_NAME = "fly-{{.Region}}-scrapbook-{{.ID}}"
    - Track processing duration by source
 
 4. **Database Maintenance**
-   - Run validate_db_integrity.mjs regularly
+   - Run `validate_db_integrity.mjs` regularly
    - Monitor claim patterns
    - Clean up orphaned claims
 
