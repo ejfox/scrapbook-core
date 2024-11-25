@@ -24,7 +24,7 @@ async function getBrowserLauncher() {
   // Production (Fly.io)
   if (process.env.NODE_ENV === 'production') {
     return {
-      executablePath: '/usr/bin/chromium',
+      executablePath: '/usr/bin/chromium', // Ensure this path is correct
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -36,29 +36,25 @@ async function getBrowserLauncher() {
 
   // Local development
   if (os.platform() === 'darwin') {
-    try {
-      // Try system Chrome first
-      return {
-        executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        args: [
-          "--no-sandbox",
-          "--disable-gpu"
-        ]
-      };
-    } catch (error) {
-      console.log('System Chrome not found, installing Puppeteer...');
-      // Fallback to full Puppeteer if needed
-      const puppeteer = await import('puppeteer');
-      return {
-        // Let Puppeteer use its bundled Chromium
-        args: ["--no-sandbox"]
-      };
-    }
+    return {
+      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      args: [
+        "--no-sandbox",
+        "--disable-gpu"
+      ]
+    };
   }
 
   throw new Error(`Unsupported environment: ${os.platform()}`);
 }
 
+// In the launch function, ensure to use the returned launcher
+browser = await puppeteer.launch({
+  executablePath: (await getBrowserLauncher()).executablePath,
+  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  headless: 'new',
+  defaultViewport: { width: 1280, height: 800 }
+}); 
 let browser = null;
 
 export async function generateScreenshot({ source, shortId, url, timeout = 15000 }) {
