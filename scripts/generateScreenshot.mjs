@@ -1,11 +1,20 @@
 import puppeteer from 'puppeteer-core';
 import dotenv from "dotenv";
 import path from "path";
-import { uploadToCDN } from "./cdnHelpers.mjs";
 import os from 'os';
 import winston from 'winston';
 
+// Import Cloudinary
+import { v2 as cloudinary } from 'cloudinary';
+
 dotenv.config();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Add logger
 const logger = winston.createLogger({
@@ -52,44 +61,70 @@ async function getBrowserLauncher() {
 }
 
 export async function generateScreenshot({ source, shortId, url, timeout = 15000 }) {
+  let browser;
   try {
-    // Initialize browser if needed
-    if (!browser) {
-      const launcherOptions = await getBrowserLauncher();
-      browser = await puppeteer.launch({
-        executablePath: launcherOptions.executablePath,
-        args: launcherOptions.args,
-        headless: 'new',
-        defaultViewport: { width: 1280, height: 800 }
-      });
-    }
+    // Initialize browser
+    const launcherOptions = await getBrowserLauncher();
+    browser = await puppeteer.launch({
+      executablePath: launcherOptions.executablePath,
+      args: launcherOptions.args,
+      headless: 'new',
+      defaultViewport: { width: 1280, height: 800 }
+    });
 
     // Create new page
     const page = await browser.newPage();
-    
+
     try {
-      // Set shorter timeouts
+      // Set timeouts
       await page.setDefaultNavigationTimeout(timeout);
       await page.setDefaultTimeout(timeout);
 
-      // Navigate and screenshot
-      await page.goto(url, { waitUntil: 'networkidle0' });
-      const screenshot = await page.screenshot();
+      // Navigate to the URL
+      const response = await page.goto(url, { waitUntil: 'networkidle0' });
 
-      // Upload to Cloudinary
-      const result = await cloudinary.uploader.upload(screenshot, {
-        folder: `scrapbook/${source}`,
-        public_id: shortId
+      // Check if navigation was successful
+      if (!response || !response.ok()) {
+        throw new Error(`Failed to load URL: ${url}`);
+      }
+
+      // Take screenshot
+      const screenshotBuffer = await page.screenshot();
+
+      // Upload to Cloudinary using upload_stream
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: `scrapbook/${source}`,
+            public_id: shortId,
+            resource_type: 'image'
+          },
+          (error, result) => {
+            if (error) {
+              logger.error(`Cloudinary upload error: ${error.message}`);
+              return reject(error);
+            }
+            resolve(result);
+          }
+        );
+        uploadStream.end(screenshotBuffer);
       });
 
       return result.secure_url;
     } finally {
-      // Always close the page
-      await page.close();
+      // Close the page
+      if (page) {
+        await page.close();
+      }
     }
   } catch (error) {
     logger.error(`Error generating screenshot: ${error.message}`);
     return null;
+  } finally {
+    // Close the browser
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
