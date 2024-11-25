@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import chalk from 'chalk';
 import sgMail from '@sendgrid/mail';
 
+const STUCK_THRESHOLD_MINS = 5;
+
 dotenv.config();
 
 // Initialize SendGrid only if API key is present
@@ -36,7 +38,7 @@ const VALID_COMBINATIONS = {
 async function checkStuckProcessing() {
   console.log(chalk.yellow('\n🔄 Checking for stuck processing...'));
   
-  const STUCK_THRESHOLD_MINS = 5;
+  
   
   const { data: stuckScraps } = await supabase
     .from('scraps')
@@ -296,48 +298,21 @@ async function checkGeoData() {
 }
 
 // Update the sendEmailReport function
-async function sendEmailReport(report) {
-  const {fields, vectors, sourceTypes, dates, geo, duplicates} = report;
+async function sendEmailReport(report, claimSection) {
+  const { fields, vectors, sourceTypes, dates, geo, duplicates } = report;
   
   const html = `
     <h1>Scrapbook Database Integrity Report</h1>
     <p>Report generated at: ${new Date().toISOString()}</p>
 
-    <h2>🔍 Duplicate Analysis</h2>
-    <div style="margin-bottom: 20px;">
-      <h3>URL Duplicates</h3>
-      <p>Found ${duplicates.duplicate_urls.length} URLs with multiple entries</p>
-      ${duplicates.duplicate_urls.length > 0 ? `
-        <details>
-          <summary>View sample duplicates</summary>
-          <ul>
-            ${duplicates.duplicate_urls.slice(0, 5).map(dupe => 
-              `<li>${dupe.url} (${dupe.count} copies)</li>`
-            ).join('')}
-          </ul>
-        </details>
-      ` : '<p style="color: green">✓ No duplicate URLs found</p>'}
-
-      <h3>Title Duplicates</h3>
-      <p>Found ${duplicates.duplicate_titles.length} titles with multiple entries</p>
-      ${duplicates.duplicate_titles.length > 0 ? `
-        <details>
-          <summary>View sample duplicates</summary>
-          <ul>
-            ${duplicates.duplicate_titles.slice(0, 5).map(dupe => 
-              `<li>${dupe.title} (${dupe.count} copies)</li>`
-            ).join('')}
-          </ul>
-        </details>
-      ` : '<p style="color: green">✓ No duplicate titles found</p>'}
-    </div>
+    ${claimSection}
 
     <h2>📊 Field Coverage</h2>
     ${Object.entries(fields).map(([category, stats]) => `
       <h3>${category.toUpperCase()}</h3>
       <ul>
         ${Object.entries(stats).map(([field, data]) => {
-          const coverage = ((1 - data.null_count/data.total) * 100).toFixed(1);
+          const coverage = ((1 - data.null_count / data.total) * 100).toFixed(1);
           const color = coverage > 90 ? 'green' : coverage > 70 ? 'orange' : 'red';
           return `<li style="color: ${color}">${field}: ${coverage}% coverage (${data.null_count} null)</li>`;
         }).join('')}
@@ -447,72 +422,72 @@ async function checkCriticalFields() {
 }
 
 // Replace checkExactDuplicates with this version
-async function checkExactDuplicates() {
-  console.log(chalk.yellow('\n🔍 Checking for exact duplicates...'));
+// async function checkExactDuplicates() {
+//   console.log(chalk.yellow('\n🔍 Checking for exact duplicates...'));
   
-  // First check if we have any records
-  const { count: totalRecords } = await supabase
-    .from('scraps')
-    .select('*', { count: 'exact', head: true });
+//   // First check if we have any records
+//   const { count: totalRecords } = await supabase
+//     .from('scraps')
+//     .select('*', { count: 'exact', head: true });
     
-  if (!totalRecords) {
-    console.log(chalk.yellow('ℹ️ No records found in database. Skipping duplicate check.'));
-    return {
-      duplicate_urls: [],
-      duplicate_titles: []
-    };
-  }
+//   if (!totalRecords) {
+//     console.log(chalk.yellow('ℹ️ No records found in database. Skipping duplicate check.'));
+//     return {
+//       duplicate_urls: [],
+//       duplicate_titles: []
+//     };
+//   }
 
-  // Check URL duplicates
-  const { data: urlDupes, error: urlError } = await supabase
-    .from('scraps')
-    .select('url, count(*)')
-    .not('url', 'is', null)
-    .group('url')
-    .having('count(*)', 'gt', 1);
+//   // Check URL duplicates
+//   const { data: urlDupes, error: urlError } = await supabase
+//     .from('scraps')
+//     .select('url, count(*)')
+//     .not('url', 'is', null)
+//     .group('url')
+//     .having('count(*)', 'gt', 1);
 
-  if (urlError) {
-    console.error('Error checking URL duplicates:', urlError);
-  }
+//   if (urlError) {
+//     console.error('Error checking URL duplicates:', urlError);
+//   }
 
-  // Check title duplicates
-  const { data: titleDupes, error: titleError } = await supabase
-    .from('scraps')
-    .select('title, count(*)')
-    .not('title', 'is', null)
-    .group('title')
-    .having('count(*)', 'gt', 1);
+//   // Check title duplicates
+//   const { data: titleDupes, error: titleError } = await supabase
+//     .from('scraps')
+//     .select('title, count(*)')
+//     .not('title', 'is', null)
+//     .group('title')
+//     .having('count(*)', 'gt', 1);
 
-  if (titleError) {
-    console.error('Error checking title duplicates:', titleError);
-  }
+//   if (titleError) {
+//     console.error('Error checking title duplicates:', titleError);
+//   }
 
-  // Log duplicates if found
-  if (urlDupes?.length) {
-    console.log(chalk.red(`\nFound ${urlDupes.length} URLs with duplicates:`));
-    for (const dupe of urlDupes.slice(0, 3)) {
-      const { data: examples } = await supabase
-        .from('scraps')
-        .select('id, source, created_at, url')
-        .eq('url', dupe.url)
-        .order('created_at');
+//   // Log duplicates if found
+//   if (urlDupes?.length) {
+//     console.log(chalk.red(`\nFound ${urlDupes.length} URLs with duplicates:`));
+//     for (const dupe of urlDupes.slice(0, 3)) {
+//       const { data: examples } = await supabase
+//         .from('scraps')
+//         .select('id, source, created_at, url')
+//         .eq('url', dupe.url)
+//         .order('created_at');
       
-      if (examples?.length) {
-        console.log(`\n  URL: ${dupe.url}`);
-        examples.forEach(ex => 
-          console.log(`    - ${ex.source} (${new Date(ex.created_at).toLocaleDateString()})`)
-        );
-      }
-    }
-  } else {
-    console.log(chalk.green('No duplicate URLs found'));
-  }
+//       if (examples?.length) {
+//         console.log(`\n  URL: ${dupe.url}`);
+//         examples.forEach(ex => 
+//           console.log(`    - ${ex.source} (${new Date(ex.created_at).toLocaleDateString()})`)
+//         );
+//       }
+//     }
+//   } else {
+//     console.log(chalk.green('No duplicate URLs found'));
+//   }
 
-  return {
-    duplicate_urls: urlDupes || [],
-    duplicate_titles: titleDupes || []
-  };
-}
+//   return {
+//     duplicate_urls: urlDupes || [],
+//     duplicate_titles: titleDupes || []
+//   };
+// }
 
 // Add these validation functions
 async function validateClaimStates() {
@@ -561,22 +536,44 @@ async function validateClaimStates() {
   }
 
   // Check for suspicious patterns (multiple claims by same instance)
-  const { data: activeClaims } = await supabase
+  // Fetch all active claims within the threshold time
+  const { data: activeScraps, error } = await supabase
     .from('scraps')
-    .select('processing_instance_id, count')
+    .select('processing_instance_id')
     .not('processing_instance_id', 'is', null)
-    .gt('processing_started_at', 
+    .gt(
+      'processing_started_at',
       new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
-    )
-    .group('processing_instance_id')
-    .having('count(*)', '>', 10);
+    );
 
-  if (activeClaims?.length) {
-    issues.suspicious = activeClaims;
-    console.log(chalk.yellow(`Found ${activeClaims.length} instances with high claim counts`));
-    activeClaims.forEach(claim => {
-      console.log(chalk.gray(`  ${claim.processing_instance_id}: ${claim.count} active claims`));
-    });
+  if (error) {
+    console.error('Error fetching active claims:', error);
+  } else {
+    // Group and count the number of active claims per instance ID
+    const counts = activeScraps.reduce((acc, scrap) => {
+      const instanceId = scrap.processing_instance_id;
+      acc[instanceId] = (acc[instanceId] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Identify instances with more than 10 active claims
+    const suspiciousInstances = Object.entries(counts)
+      .filter(([_, count]) => count > 10)
+      .map(([instanceId, count]) => ({ processing_instance_id: instanceId, count }));
+
+    if (suspiciousInstances.length > 0) {
+      issues.suspicious = suspiciousInstances;
+      console.log(
+        chalk.yellow(`Found ${suspiciousInstances.length} instances with high claim counts`)
+      );
+      suspiciousInstances.forEach(claim => {
+        console.log(
+          chalk.gray(`  ${claim.processing_instance_id}: ${claim.count} active claims`)
+        );
+      });
+    } else {
+      console.log(chalk.green('No instances with high claim counts found'));
+    }
   }
 
   return issues;
@@ -693,7 +690,8 @@ async function main() {
     
     const report = {
       fields: await checkFieldIntegrity(),
-      duplicates: await checkExactDuplicates(),
+      // duplicates: await checkExactDuplicates(),
+      duplicates: null,
       vectors: await checkVectorDimensions(),
       sourceTypes: await checkSourceTypeValidity(),
       dates: await checkDateConsistency(),
@@ -796,11 +794,8 @@ async function main() {
       </ul>
     `;
 
-    // Add to email HTML
-    emailHtml = emailHtml.replace('</body>', `${claimSection}</body>`);
-    
-    // Send email report
-    await sendEmailReport(report);
+    // Send email report, passing claimSection
+    await sendEmailReport(report, claimSection);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(chalk.green(`\n✨ Check completed in ${duration}s`));
