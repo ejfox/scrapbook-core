@@ -12,22 +12,19 @@ app = "scrapbook-core"
   source = "data"
   destination = "/usr/src/app/data"
 
-# Define the main process
 [processes]
-  scraper = "node scripts/index.mjs --all"
-  cleanup = "node scripts/validate_db_integrity.mjs"
+  app = "node scripts/index.mjs --all"
 
-# Increase memory limit
-[processes.scraper.resources]
-  memory_mb = 2048
+[[vm]]
+  memory = "2048"
   cpu_kind = "shared"
-  cpu_cores = 1
+  cpus = 1
 
-[processes.cleanup.resources]
-  memory_mb = 512
-  cpu_kind = "shared"
-  cpu_cores = 1
+[metrics]
+  port = 9091
+  path = "/metrics"
 
+# Keep scheduled jobs separate from processes
 [scheduled_jobs]
   [[scheduled_jobs.jobs]]
     name = "run-scraper"
@@ -42,8 +39,3 @@ app = "scrapbook-core"
     command = "node scripts/validate_db_integrity.mjs"
     timeout = "5m"
     environment = { DEBUG = "true" }
-
-# Add metrics for monitoring
-[metrics]
-  port = 9091
-  path = "/metrics"
