@@ -219,7 +219,7 @@ function validateAIOutput(type, data) {
   }
 }
 
-// Then update enrichScrapWithAI to use validation
+// Simplify enrichScrapWithAI to handle tags more directly
 async function enrichScrapWithAI(scrapData) {
   if (!process.env.OPENROUTER_API_KEY) {
     logger.info("Skipping AI enrichment - OpenRouter API key not configured");
@@ -236,74 +236,92 @@ async function enrichScrapWithAI(scrapData) {
     }
 
     // Generate summary and tags
-    const summary = validateAIOutput(
-      "summary",
-      await limiter.schedule(() => summarizeContent(contentToProcess))
+    const summary = await limiter.schedule(() =>
+      summarizeContent(contentToProcess)
     );
 
     if (summary) {
       scrapData.summary = summary;
 
-      const summaryTags = validateAIOutput(
-        "tags",
-        await limiter.schedule(() => metaSummaryToTags(summary))
+      // Generate and merge tags
+      const summaryTags = await limiter.schedule(() =>
+        metaSummaryToTags(summary)
       );
 
-      // Safely handle tags
-      let existingTags = [];
-      try {
-        existingTags = scrapData.tags ? JSON.parse(scrapData.tags) : [];
-      } catch (e) {
-        logger.warn("Error parsing existing tags:", e.message);
+      // Initialize tags array if needed
+      scrapData.tags = scrapData.tags || [];
+      if (typeof scrapData.tags === "string") {
+        try {
+          scrapData.tags = JSON.parse(scrapData.tags);
+        } catch {
+          scrapData.tags = [];
+        }
       }
 
-      scrapData.tags = JSON.stringify([
-        ...new Set([...existingTags, ...summaryTags]),
-      ]);
+      // Add new tags
+      scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
     }
 
-    // Extract and validate location
-    const location = validateAIOutput(
-      "location",
-      await limiter.schedule(() => extractLocation(contentToProcess))
+    // Extract location
+    const location = await limiter.schedule(() =>
+      extractLocation(contentToProcess)
     );
 
     if (location?.name) {
       scrapData.location = location.name;
       scrapData.latitude = location.latitude;
       scrapData.longitude = location.longitude;
-      logger.debug(
-        `Extracted location: ${location.name} (${location.latitude}, ${location.longitude})`
-      );
     }
 
-    // Extract and validate relationships
-    const relationships = validateAIOutput(
-      "relationships",
-      await limiter.schedule(() => extractRelationships(contentToProcess))
+    // Extract relationships
+    const relationships = await limiter.schedule(() =>
+      extractRelationships(contentToProcess)
     );
 
     if (relationships?.length) {
-      let existingRelationships = [];
-      try {
-        existingRelationships = scrapData.relationships
-          ? JSON.parse(scrapData.relationships)
-          : [];
-      } catch (e) {
-        logger.warn("Error parsing existing relationships:", e.message);
+      // Initialize relationships array if needed
+      scrapData.relationships = scrapData.relationships || [];
+      if (typeof scrapData.relationships === "string") {
+        try {
+          scrapData.relationships = JSON.parse(scrapData.relationships);
+        } catch {
+          scrapData.relationships = [];
+        }
       }
 
-      scrapData.relationships = JSON.stringify([
-        ...new Set([...existingRelationships, ...relationships]),
-      ]);
+      // Add new relationships
+      scrapData.relationships = [
+        ...new Set([...scrapData.relationships, ...relationships]),
+      ];
     }
 
     return scrapData;
   } catch (error) {
     logger.error("Error during AI enrichment:", error);
-    // Return the original data if enrichment fails
     return scrapData;
   }
+}
+
+// Simplify mergeScrapData as well
+function mergeScrapData(existing, updated) {
+  if (!existing) return updated;
+
+  return {
+    ...existing,
+    ...updated,
+    // Keep existing AI fields if not in update
+    summary: updated.summary || existing.summary,
+    location: updated.location || existing.location,
+    latitude: updated.latitude || existing.latitude,
+    longitude: updated.longitude || existing.longitude,
+    // Keep track of updates
+    metadata: {
+      ...(existing.metadata || {}),
+      ...(updated.metadata || {}),
+      last_updated: new Date().toISOString(),
+      update_count: (existing.metadata?.update_count || 0) + 1,
+    },
+  };
 }
 
 // Update the claimAndProcess function to include AI enrichment
@@ -349,41 +367,6 @@ async function claimAndProcess(scrapId, source, data, processor) {
     logger.error(`Error processing ${scrapId}:`, error);
     return false;
   }
-}
-
-// Update the mergeScrapData function to properly merge AI fields
-function mergeScrapData(existing, updated) {
-  if (!existing) return updated;
-
-  // Parse existing arrays
-  const existingTags = JSON.parse(existing.tags || "[]");
-  const existingRelationships = JSON.parse(existing.relationships || "[]");
-
-  // Parse updated arrays
-  const updatedTags = JSON.parse(updated.tags || "[]");
-  const updatedRelationships = JSON.parse(updated.relationships || "[]");
-
-  return {
-    ...existing,
-    ...updated,
-    // Merge and stringify arrays
-    tags: JSON.stringify([...new Set([...existingTags, ...updatedTags])]),
-    relationships: JSON.stringify([
-      ...new Set([...existingRelationships, ...updatedRelationships]),
-    ]),
-    // Keep existing AI fields if not in update
-    summary: updated.summary || existing.summary,
-    location: updated.location || existing.location,
-    latitude: updated.latitude || existing.latitude,
-    longitude: updated.longitude || existing.longitude,
-    // Keep track of updates
-    metadata: {
-      ...(existing.metadata || {}),
-      ...(updated.metadata || {}),
-      last_updated: new Date().toISOString(),
-      update_count: (existing.metadata?.update_count || 0) + 1,
-    },
-  };
 }
 
 // Improve the upsert function
