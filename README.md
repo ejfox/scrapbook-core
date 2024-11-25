@@ -41,24 +41,36 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 
 ### Scraps table
 ```sql
-CREATE TABLE public.scraps (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
-    source public.scrap_source NOT NULL,
-    content TEXT NOT NULL,
-    summary TEXT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
-    tags TEXT NULL,
-    relationships JSONB NULL,
-    metadata JSONB NULL,
-    scrap_id TEXT NULL,
-    embedding public.vector NULL,
-    title TEXT NULL,
-    graph_imported BOOLEAN NULL DEFAULT FALSE,
-    CONSTRAINT scraps_pkey PRIMARY KEY (id),
-    CONSTRAINT scraps_id_key UNIQUE (id),
-    CONSTRAINT scraps_scrap_id_key UNIQUE (scrap_id)
-);
+public.scraps (
+  id uuid not null default gen_random_uuid (),
+  content text null default ''::text,
+  summary text null,
+  created_at timestamp without time zone null default current_timestamp,
+  updated_at timestamp without time zone null default current_timestamp,
+  tags jsonb null,
+  relationships jsonb null,
+  metadata jsonb null,
+  scrap_id text null,
+  embedding public.vector null,
+  graph_imported boolean null default false,
+  url text null,
+  screenshot_url text null,
+  location text null,
+  title text null,
+  latitude double precision null,
+  longitude double precision null,
+  type text null default 'unknown'::text,
+  published_at timestamp without time zone null,
+  shared boolean null default false,
+  embedding_nomic public.vector null,
+  image_embedding public.vector null,
+  processing_instance_id text null,
+  processing_started_at timestamp without time zone null,
+  source public.scrap_source null default 'lock'::scrap_source,
+  constraint scraps_pkey primary key (id),
+  constraint scraps_id_key unique (id),
+  constraint scraps_scrap_id_key unique (scrap_id)
+) tablespace pg_default;
 ```
 
 
@@ -78,566 +90,113 @@ graph TD
 
 ## Key Components
 
-1. **Data Fetchers**: Modules for each data source (e.g., `dl_pinboard.mjs`, `dl_mastodon.mjs`)
-2. **Processors**: 
-   - `aiSummarization.js`: Generates summaries and tags
-   - `aiGeolocation.mjs`: Extracts location data
-   - `aiRelationshipExtraction.mjs`: Identifies relationships between scraps
-3. **Storage**:
-   - `index.mjs`: Main script for Supabase operations
-   - `sync_supabase_to_sqlite.js`: Syncs data to local SQLite database
-4. **Utilities**:
-   - `helpers.js`: Common helper functions
-   - `manifestHelpers.mjs`: Manages data fetch manifests
-5. **Alfred Workflow**: Enables quick searching of the local SQLite database
+1. **Data Fetchers**: Modules for each data source (e.g., `dl_pinboard.mjs`, `dl_mastodon.mjs`).  These modules handle the retrieval of data from external APIs.
+2. **Processors**: Modules that process the raw data from the fetchers.  This includes:
+   - `aiSummarization.js`: Generates summaries and tags using AI.
+   - `aiGeolocation.mjs`: Extracts location data from text content.
+   - `aiRelationshipExtraction.mjs`: Identifies relationships between different scraps.
+3. **Storage**:  Handles persistence of processed data.
+   - `index.mjs`: The main script orchestrating data fetching, processing, and storage in Supabase.
+   - `sync_supabase_to_sqlite.js`: Synchronizes data between Supabase and a local SQLite database.
+4. **Utilities**: Helper functions and modules.
+   - `helpers.js`: Common utility functions.
+   - `manifestHelpers.mjs`: Manages a manifest file for tracking data fetch operations.
+5. **Alfred Workflow**: Enables quick searching of the local SQLite database.
 
 ## Files
 
-- `index.mjs`: The main entry point of the application. It orchestrates the fetching, processing, and storage of data from all sources.
-- `sync_supabase_to_sqlite.js`: Synchronizes data between Supabase and a local SQLite database.
-- `aiSummarization.js`: Contains functions for summarizing content and generating tags using AI.
-- `dl_pinboard.mjs`: Handles fetching and processing of Pinboard bookmarks.
-- `dl_mastodon.mjs`: Manages the retrieval of Mastodon statuses.
-- `dl_arena.mjs`: Fetches and processes Are.na blocks and channels.
-- `dl_github.mjs`: Retrieves GitHub-related data (stars, issues, PRs, gists).
-- `aiGeolocation.mjs`: Extracts location information from content.
-- `aiRelationshipExtraction.mjs`: Identifies relationships between different pieces of content.
-- `helpers.js`: Contains utility functions used across the project.
-- `manifestHelpers.mjs`: Manages the manifest file for tracking data fetch operations.
-- `alfred_search.js`: Script used by the Alfred Workflow to search the local SQLite database.
-- `Scrapbook Search.alfredworkflow`: Alfred Workflow for quick searching of scraps (included as a zip file).
+- `index.mjs`: Main script orchestrating data flow.
+- `sync_supabase_to_sqlite.js`: Syncs Supabase data to local SQLite.
+- `aiSummarization.js`: AI-powered summarization and tag generation.
+- `dl_pinboard.mjs`: Pinboard bookmark fetching and processing.
+- `dl_mastodon.mjs`: Mastodon status retrieval and processing.
+- `dl_arena.mjs`: Are.na block and channel fetching and processing.
+- `dl_github.mjs`: GitHub data (repos, issues, PRs, gists) retrieval and processing.
+- `aiGeolocation.mjs`: Location data extraction from text.
+- `aiRelationshipExtraction.mjs`: Relationship identification between scraps.
+- `helpers.js`: General utility functions.
+- `manifestHelpers.mjs`: Manages data fetch manifests.
+- `alfred_search.js`: Alfred Workflow search script.
+- `Scrapbook Search.alfredworkflow`: Alfred Workflow (zip file).
 
 ## Setup
 
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up environment variables in a `.env` file (see "Setting Up Credentials" below).
-4. Run the main script: `node index.mjs`
-5. Install the Alfred Workflow:
-   - Unzip the `Local Scrap Search.1.1.alfredworkflow.zip` file
-   - Double-click the extracted file to import it into Alfred
+1. Clone the repository.
+2. Install dependencies: `npm install`.
+3. Set up environment variables (see "Setting Up Credentials" below).
+4. Run the main script: `node index.mjs`.
+5. Install the Alfred Workflow (unzip and double-click the `.alfredworkflow` file).
 
 ## Usage
 
 - Fetch all data: `node index.mjs --all`
-- Fetch specific sources:
-  - Pinboard: `node index.mjs --pinboard`
-  - Mastodon: `node index.mjs --mastodon`
-  - Are.na: `node index.mjs --arena`
-  - GitHub: `node index.mjs --github`
+- Fetch specific sources: `node index.mjs --[source]` (e.g., `--pinboard`, `--mastodon`)
 - Sync to SQLite: `node sync_supabase_to_sqlite.js`
-- Search scraps using Alfred:
-  - Activate Alfred
-  - Type the keyword (default: `sc`) followed by your search query
+- Search scraps using Alfred (keyword: `sc`).
 
 ## Data Flow
 
-1. Data is fetched from various sources
-2. Each item is processed:
-   - Summaries are generated
-   - Locations and relationships are extracted
-   - Screenshots are created (for applicable sources)
-3. Processed data is upserted into Supabase
-4. Data can be synced to a local SQLite database for offline access
-5. The local SQLite database can be searched quickly using the Alfred Workflow
+1. Data is fetched from various sources.
+2. Each item is processed: summaries are generated, locations and relationships are extracted, and screenshots are created (where applicable).
+3. Processed data is upserted into Supabase.
+4. Data is synced to a local SQLite database for offline access.
+5. The local SQLite database can be searched quickly using the Alfred Workflow.
 
 ## Alfred Workflow
 
-The included Alfred Workflow allows for quick searching of the local SQLite database. It uses the `alfred_search.js` script to perform searches and format results. The workflow provides the following features:
-
-- Fast full-text search of scraps
-- Display of relevant information including title, summary, and age of the scrap
-- Quick actions:
-  - Press Enter to open the scrap's URL
-  - Press ⌥ (Option) to view full content
-  - Press ⌘ (Command) to copy a formatted version of the scrap
+The Alfred Workflow enables quick searching of the local SQLite database.  It displays title, summary, and age, with quick actions to open URLs, view full content, or copy formatted scraps.
 
 ## Setting Up Credentials
 
-### GitHub
-1. Go to [GitHub Personal Access Tokens](https://github.com/settings/tokens)
-2. Click "Generate new token (classic)"
-3. Give it a name like "Scrapbook Core"
-4. Select these scopes:
-   - `repo` (for repository access)
-   - `read:user` (for profile info)
-   - `gist` (for gist access)
-5. Copy the token and add to your `.env`:
-```bash
-GITHUB_TOKEN=github_pat_...
-GITHUB_USERNAME=your_username
-```
+This project requires several API keys and secrets.  Store these securely in a `.env` file *in your local repository only*.  **Do not commit your `.env` file to version control.**  Use the `.env-example` file as a template.
 
-### Pinboard
-1. Get your API token from [Pinboard Settings](https://pinboard.in/settings/password)
-2. Add to `.env`:
-```bash
-PINBOARD_TOKEN=user:hash
-```
+| Environment Variable        | Description                                                                     | Source                                                                          |
+|-----------------------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| `GITHUB_TOKEN`              | GitHub Personal Access Token (repo, read:user, gist scopes)                     | [GitHub Personal Access Tokens](https://github.com/settings/tokens)                 |
+| `GITHUB_USERNAME`           | Your GitHub username                                                              |                                                                                   |
+| `PINBOARD_TOKEN`            | Your Pinboard API token                                                            | [Pinboard Settings](https://pinboard.in/settings/password)                         |
+| `ARENA_ACCESS_TOKEN`        | Your Are.na API token                                                             | [Are.na Developer Settings](https://dev.are.na/oauth/applications)                 |
+| `USER_SLUG`                 | Your Are.na username                                                              |                                                                                   |
+| `MASTODON_ACCESS_TOKEN`     | Your Mastodon API token                                                            | Your Mastodon instance's developer settings                                        |
+| `MASTODON_API_URL`          | Your Mastodon instance URL (e.g., `https://mastodon.social`)                     | Your Mastodon instance's developer settings                                        |
+| `SUPABASE_URL`              | Your Supabase project URL                                                         | Your Supabase project settings                                                    |
+| `SUPABASE_KEY`              | Your Supabase anon key                                                            | Your Supabase project settings                                                    |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key (required for database operations)               | Your Supabase project settings                                                    |
+| `CLOUDINARY_CLOUD_NAME`     | Your Cloudinary cloud name                                                        | Your Cloudinary account settings                                                  |
+| `CLOUDINARY_API_KEY`        | Your Cloudinary API key                                                           | Your Cloudinary account settings                                                  |
+| `CLOUDINARY_API_SECRET`     | Your Cloudinary API secret                                                       | Your Cloudinary account settings                                                  |
+| `OPENROUTER_API_KEY`        | OpenRouter API key (for AI summarization)                                      | OpenRouter account settings                                                       |
+| `OPENCAGE_API_KEY`          | OpenCage Geocoding API key (for location extraction)                             | [OpenCage Data](https://opencagedata.com/)                                      |
 
-### Are.na
-1. Create token at [Are.na Developer Settings](https://dev.are.na/oauth/applications)
-2. Add to `.env`:
-```bash
-ARENA_ACCESS_TOKEN=your_token
-USER_SLUG=your_username
-```
 
-### Mastodon
-1. Go to your instance's developer settings
-2. Create new application
-3. Add to `.env`:
-```bash
-MASTODON_ACCESS_TOKEN=your_token
-MASTODON_API_URL=https://your.instance
-```
+## Rate Limiting and Caching
 
-### Supabase
-1. Get credentials from your Supabase project settings
-2. Add to `.env`:
-```bash
-SUPABASE_URL=your_project_url
-SUPABASE_KEY=your_anon_key
-```
+The application employs rate limiting using the `Bottleneck` library to avoid exceeding API limits.  Caching is used to reduce the number of API calls and improve performance.  The cache is stored locally in the `./data` directory.
 
-### OpenCage Data (for Geolocation)
-1. Go to [OpenCage Data](https://opencagedata.com/)
-2. Sign up for a free account
-3. Create an API key from your dashboard
-4. Add to `.env`:
-```bash
-OPENCAGE_API_KEY=your_api_key
-```
+## AI Services
 
-Note: The free tier includes:
-- 2,500 requests per day
-- 1 request per second rate limit
-- HTTPS encryption
-- Full global coverage
+The application utilizes AI services for tasks such as summarization and embedding generation.  Currently, OpenAI's `text-embedding-ada-002` model is used for embeddings.  The `OPENROUTER_API_KEY` is required for AI summarization.  Costs associated with these services are the responsibility of the user.
 
-Your final `.env` file should look like:
-```bash
-# GitHub
-GITHUB_TOKEN=github_pat_...
-GITHUB_USERNAME=your_username
+## Error Handling and Logging
 
-# Pinboard
-PINBOARD_TOKEN=user:hash
+The application includes comprehensive error handling and logging.  Errors are logged to the console, and detailed error messages are provided to aid in troubleshooting.
 
-# Are.na
-ARENA_ACCESS_TOKEN=your_token
-USER_SLUG=your_username
+## Deployment (Fly.io)
 
-# Mastodon
-MASTODON_ACCESS_TOKEN=your_token
-MASTODON_API_URL=https://your.instance
-
-# Supabase
-SUPABASE_URL=your_project_url
-SUPABASE_KEY=your_anon_key
-
-# OpenCage Data
-OPENCAGE_API_KEY=your_opencage_api_key
-```
-
-## Set Fly Secrets Quickly
-```bash
-cat .env | grep -v '^#' | grep -v '^$' | while read -r line; do
-  echo "Setting $line..."
-  flyctl secrets set "$line"
-done
-```
+This application is designed for deployment on Fly.io.  You will need a Fly.io account.  After setting up your environment variables, deploy using `flyctl deploy`.  The `fly.toml` file configures the application for multi-region deployment and health checks.
 
 ## Validation Tools
 
-The project includes two powerful validation utilities for testing data integrity and AI functionality.
+The project includes two validation utilities:
 
 ### Scrap Validation (`validate_scraps.mjs`)
 
-This script provides a robust validation process for your scraped data. It checks for data integrity, correct data types, and adherence to expected structures. This is crucial for maintaining the quality and consistency of your data.
-
-**Usage:**
-
-The script can be run from your terminal using Node.js:
-
-```bash
-# Validate all sources
-node scripts/validate_scraps.mjs
-
-# Validate a specific source (e.g., Pinboard)
-node scripts/validate_scraps.mjs pinboard
-```
-
-You can specify a source to validate only that source's data. If no source is specified, it validates all sources.
-
-**Features:**
-
-- **Comprehensive Checks:**  Validates the structure of each scrap, ensuring all required fields are present and of the correct data type.  It checks for missing fields, incorrect types (e.g., string instead of array), and invalid date formats.
-- **Source-Specific Rules:**  Applies validation rules tailored to each data source. For example, Pinboard bookmarks might require a screenshot URL, while Mastodon posts might not.  This ensures that source-specific requirements are met.
-- **URL and Screenshot Validation:** Checks the format of URLs and screenshot URLs, ensuring they are valid and correctly formatted.
-- **Date Validation:** Verifies that `published_at`, `created_at`, and `updated_at` fields contain valid date strings.
-- **Relationship Validation:** If the `relationships` field is present, it checks the structure of each relationship object to ensure it conforms to the expected format.
-- **Performance Benchmarking:**  Measures the execution time of each validation step, allowing you to identify potential performance bottlenecks.
-- **Detailed Error Reporting:** Provides clear and informative error messages, pinpointing the exact location and nature of any issues found.
-- **Sample Data Display:**  After validation, it displays a formatted sample of the data from one of the processed scraps, allowing you to quickly inspect the data structure.
-- **Progress Indicators:** Uses a progress bar to display the progress of the validation process.
-
-
-**Example Output:**
-
-The output clearly indicates whether the validation passed or failed, along with a summary of errors and warnings.  A sample scrap is also displayed to help with debugging.
-
-```
-==================================
-   SCRAPBOOK VALIDATION UTILITY   
-==================================
-
-+------------------------+
-| VALIDATING SCRAP      |
-+------------------------+
-Source: pinboard
-Type: bookmark
-URL: https://www.example.com/...
-
-[CHECKING REQUIRED FIELDS]
-  id           [OK]
-  source       [OK]
-  type         [OK]
-  url          [OK]
-  title        [OK]
-  content      [OK]
-  ...
-
-✓ SCRAP PASSED VALIDATION
-
-Validation Summary:
-PASS pinboard: 5 scraps, 0 errors, 0 warnings (1234.56ms)
-```
+This script validates the structure and content of scraped data, checking for missing fields, incorrect data types, and invalid formats.  It provides detailed error reporting and performance benchmarking.  Run it with `node scripts/validate_scraps.mjs [source]` (e.g., `node scripts/validate_scraps.mjs pinboard`).
 
 ### AI Service Validation (`validate_ai.mjs`)
 
-Tests all AI-powered features with sample content to ensure proper functionality.
+This script tests the AI-powered features (summarization, geolocation, relationship extraction) using sample data.  Run it with `node scripts/validate_ai.mjs [test_name]` (e.g., `node scripts/validate_ai.mjs summarization`).
 
-```bash
-# Run all AI service tests
-node scripts/validate_ai.mjs
+## Database Maintenance
 
-# Test specific services
-node scripts/validate_ai.mjs summarization
-node scripts/validate_ai.mjs location
-node scripts/validate_ai.mjs relationships
-node scripts/validate_ai.mjs github
-node scripts/validate_ai.mjs mastodon
-```
-
-Available services:
-- `summarization`: Tests content summarization and tag generation
-- `location`: Tests geographic location extraction
-- `relationships`: Tests entity relationship detection
-- `github`: Tests GitHub activity analysis
-- `mastodon`: Tests Mastodon content processing
-
-Features:
-- Uses cached test data
-- Tests multiple prompts
-- Shows input/output samples
-- Performance metrics
-- Error handling verification
-- Model fallback testing
-- Individual service testing
-- Detailed logging
-
-Example output:
-```
-╔═══════════════════════════════════════╗
-║         AI VALIDATION UTILITY         ║
-║  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾  ║
-║    [STATUS: INITIALIZING TESTS]       ║
-╚═══════════════════════════════════════╝
-
-[TESTING SUMMARIZATION]
-Summary: ...
-Tags: technology, javascript, web-development
-
-Validation Summary:
-summarization    PASS              
-Duration:        1234.56ms        
-```
-
-### Development Workflow
-
-1. Run `validate_scraps.mjs` after:
-   - Modifying data fetchers
-   - Updating processing logic
-   - Changing data structures
-   - Adding new sources
-
-2. Run `validate_ai.mjs` after:
-   - Updating AI prompts
-   - Changing model settings
-   - Modifying AI processing
-   - Switching LLM providers
-
-3. Both scripts support:
-   - Debug mode: `DEBUG=true node scripts/validate_*.mjs`
-   - Test mode: Uses smaller data samples
-   - Benchmarking: Timing for each operation
-   - Detailed logging: Check `logs/` directory
-
-### Validation Configuration
-
-The validation tools use several environment variables:
-```bash
-# General
-DEBUG=true|false           # Enable detailed logging
-TEST_MODE=true|false      # Use smaller data samples
-
-# LLM Service
-USE_LOCAL_LLM=true|false  # Use local LLaMA model
-USE_OPENAI=true|false     # Use OpenAI
-OPENROUTER_API_KEY=xxx    # OpenRouter API key
-```
-
-### Adding New Validations
-
-1. Add source config in `validate_scraps.mjs`:
-```javascript
-const SOURCE_CONFIG = {
-  new_source: {
-    requiresScreenshot: boolean,
-    validTypes: ['type1', 'type2']
-  }
-};
-```
-
-2. Add AI test in `validate_ai.mjs`:
-```javascript
-// Add test sample
-const TEST_SAMPLES = {
-  new_test: {
-    // test data
-  }
-};
-
-// Add test case
-try {
-  console.log('[TESTING NEW FEATURE]');
-  const result = await newFeature(TEST_SAMPLES.new_test);
-  results.new_feature = { success: true };
-} catch (error) {
-  results.new_feature = { success: false, error };
-}
-```
-
-## Scrap Processing & Claiming System
-
-### Overview
-The system uses a database-level claiming mechanism to prevent duplicate processing when running multiple instances (e.g., on fly.io). This ensures that even with multiple instances running simultaneously, each scrap is only processed once.
-
-### Schema & Types
-
-1. **Source Types**
-   ```sql
-   CREATE TYPE public.scrap_source AS ENUM (
-       'pinboard',
-       'mastodon',
-       'arena',
-       'github',
-       'lock',
-       'test'
-   );
-   ```
-
-2. **Default Types by Source**
-   ```js
-   const defaultTypes = {
-     pinboard: 'bookmark',
-     mastodon: 'status',
-     arena: 'block',
-     github: 'repo'
-   };
-   ```
-
-### Instance Identification
-
-Each instance gets a unique identifier combining:
-```js
-const INSTANCE_NAME = process.env.INSTANCE_NAME || 
-  `${process.env.NODE_ENV || 'dev'}-${os.hostname()}-${Date.now()}`;
-```
-
-For fly.io deployments, this is automatically set to:
-```toml
-[env]
-INSTANCE_NAME = "fly-{{.Region}}-scrapbook-{{.ID}}"
-```
-
-### Claiming Process
-
-1. **Check & Create**
-   ```js
-   async function claimScrap(scrapId, source) {
-     // First check if exists
-     const { data: existing } = await supabase
-       .from('scraps')
-       .select('id')
-       .eq('scrap_id', scrapId)
-       .maybeSingle();
-
-     if (!existing) {
-       // Create with minimal fields
-       return await supabase
-         .from('scraps')
-         .insert({
-           scrap_id: scrapId,
-           source: source,
-           content: 'Processing...',
-           type: getTypeFromSource(source),
-           processing_instance_id: INSTANCE_NAME,
-           processing_started_at: new Date().toISOString()
-         })
-         .select()
-         .single();
-     }
-
-     // Try to claim existing
-     return await supabase
-       .from('scraps')
-       .update({
-         processing_instance_id: INSTANCE_NAME,
-         processing_started_at: new Date().toISOString()
-       })
-       .eq('scrap_id', scrapId)
-       .is('processing_instance_id', null)
-       .select()
-       .single();
-   }
-   ```
-
-2. **Release Pattern**
-   ```js
-   try {
-     if (await claimScrap(scrapId, source)) {
-       try {
-         // Process scrap
-         await processScrap(scrap);
-       } finally {
-         // Always release
-         await releaseScrap(scrapId);
-       }
-     }
-   } catch (error) {
-     logger.error(`Error processing: ${error}`);
-     await releaseScrap(scrapId);
-   }
-   ```
-
-### Automatic Cleanup
-
-1. **Periodic Cleanup**
-   ```js
-   // In main()
-   if (options.all) {
-     const cleanupInterval = setInterval(clearStuckProcessing, 60 * 1000);
-     process.on('exit', () => clearInterval(cleanupInterval));
-   }
-   ```
-
-2. **Fly.io Scheduled Jobs**
-   ```toml
-   [scheduled_jobs]
-     [[scheduled_jobs.jobs]]
-       name = "cleanup-stuck"
-       schedule = "@hourly"
-       command = "node scripts/validate_db_integrity.mjs"
-   ```
-
-### Monitoring & Validation
-
-1. **Check Stuck Claims**
-   ```sql
-   SELECT scrap_id, processing_instance_id, processing_started_at,
-          EXTRACT(EPOCH FROM (NOW() - processing_started_at))/60 as mins_stuck
-   FROM scraps 
-   WHERE processing_instance_id IS NOT NULL
-   ORDER BY processing_started_at ASC;
-   ```
-
-2. **Monitor Instance Activity**
-   ```sql
-   SELECT processing_instance_id, 
-          COUNT(*) as active_claims,
-          MAX(processing_started_at) as latest_claim
-   FROM scraps 
-   WHERE processing_instance_id IS NOT NULL
-   GROUP BY processing_instance_id;
-   ```
-
-3. **Run Validation**
-   ```bash
-   node scripts/validate_db_integrity.mjs
-   ```
-
-### Deployment Configuration
-
-1. **Multi-Region Setup**
-   ```toml
-   [[vm]]
-     cpu_kind = "shared"
-     memory_mb = 1024
-     count = 3
-     regions = ["sjc", "lax", "sea"]
-   ```
-
-2. **Health Checks**
-   ```toml
-   [[http_service.checks]]
-     interval = "30s"
-     timeout = "5s"
-     grace_period = "10s"
-     method = "GET"
-     path = "/health"
-     protocol = "http"
-   ```
-
-### Best Practices
-
-1. **Always Use Source-Specific IDs**
-   - `pinboard-{hash}`
-   - `mastodon-{id}`
-   - `arena-{id}`
-   - `github-{id}`
-
-2. **Handle Errors Properly**
-   - Always release claims in finally blocks
-   - Log all claim/release operations
-   - Include source and ID in error messages
-
-3. **Monitor Processing Times**
-   - Set appropriate STUCK_THRESHOLD_MINS (default: 5)
-   - Watch for patterns in stuck claims
-   - Track processing duration by source
-
-4. **Database Maintenance**
-   - Run `validate_db_integrity.mjs` regularly
-   - Monitor claim patterns
-   - Clean up orphaned claims
-
-### Troubleshooting
-
-1. **Reset All Claims**
-   ```sql
-   UPDATE scraps 
-   SET processing_instance_id = NULL, 
-       processing_started_at = NULL;
-   ```
-
-2. **Check Instance Logs**
-   ```bash
-   flyctl logs --include-app 'processing_instance_id|processing_started_at'
-   ```
-
-3. **Manual Cleanup**
-   ```bash
-   flyctl ssh console -C "node scripts/validate_db_integrity.mjs"
-   ```
+Regularly run `node scripts/validate_db_integrity.mjs` to check for and clean up any orphaned or stuck processing records in the database.
