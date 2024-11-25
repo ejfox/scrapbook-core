@@ -19,6 +19,9 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()]
 });
 
+// Move the browser declaration to the top
+let browser = null;
+
 // Get appropriate browser launcher based on environment
 async function getBrowserLauncher() {
   // Production (Fly.io)
@@ -34,7 +37,7 @@ async function getBrowserLauncher() {
     };
   }
 
-  // Local development
+  // Local development (macOS)
   if (os.platform() === 'darwin') {
     return {
       executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -48,21 +51,14 @@ async function getBrowserLauncher() {
   throw new Error(`Unsupported environment: ${os.platform()}`);
 }
 
-// In the launch function, ensure to use the returned launcher
-browser = await puppeteer.launch({
-  executablePath: (await getBrowserLauncher()).executablePath,
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  headless: 'new',
-  defaultViewport: { width: 1280, height: 800 }
-}); 
-let browser = null;
-
 export async function generateScreenshot({ source, shortId, url, timeout = 15000 }) {
   try {
     // Initialize browser if needed
     if (!browser) {
+      const launcherOptions = await getBrowserLauncher();
       browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: launcherOptions.executablePath,
+        args: launcherOptions.args,
         headless: 'new',
         defaultViewport: { width: 1280, height: 800 }
       });
