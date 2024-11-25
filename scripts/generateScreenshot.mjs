@@ -28,7 +28,7 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()]
 });
 
-// Move the browser declaration to the top
+// Global browser variable
 let browser = null;
 
 // Get appropriate browser launcher based on environment
@@ -61,16 +61,17 @@ async function getBrowserLauncher() {
 }
 
 export async function generateScreenshot({ source, shortId, url, timeout = 15000 }) {
-  let browser;
   try {
-    // Initialize browser
-    const launcherOptions = await getBrowserLauncher();
-    browser = await puppeteer.launch({
-      executablePath: launcherOptions.executablePath,
-      args: launcherOptions.args,
-      headless: 'new',
-      defaultViewport: { width: 1280, height: 800 }
-    });
+    // Initialize browser if not already
+    if (!browser) {
+      const launcherOptions = await getBrowserLauncher();
+      browser = await puppeteer.launch({
+        executablePath: launcherOptions.executablePath,
+        args: launcherOptions.args,
+        headless: 'new',
+        defaultViewport: { width: 1280, height: 800 }
+      });
+    }
 
     // Create new page
     const page = await browser.newPage();
@@ -78,7 +79,7 @@ export async function generateScreenshot({ source, shortId, url, timeout = 15000
     try {
       // Set timeouts
       await page.setDefaultNavigationTimeout(timeout);
-      await page.setDefaultTimeout(timeout);
+      await page.setDefaultTimeout(timeout); 
 
       // Navigate to the URL
       const response = await page.goto(url, { waitUntil: 'networkidle0' });
@@ -120,23 +121,17 @@ export async function generateScreenshot({ source, shortId, url, timeout = 15000
   } catch (error) {
     logger.error(`Error generating screenshot: ${error.message}`);
     return null;
-  } finally {
-    // Close the browser
-    if (browser) {
-      await browser.close();
-    }
   }
 }
 
-// Add cleanup function
-export async function cleanupScreenshot() {
-  if (browser) {
-    await browser.close();
-    browser = null;
-  }
-}
+// Remove cleanup function and process exit handlers if not needed
+// export async function cleanupScreenshot() {
+//   if (browser) {
+//     await browser.close();
+//     browser = null;
+//   }
+// }
 
-// Add cleanup on process exit
-process.on('exit', cleanupScreenshot);
-process.on('SIGINT', cleanupScreenshot);
-process.on('SIGTERM', cleanupScreenshot); 
+// process.on('exit', cleanupScreenshot);
+// process.on('SIGINT', cleanupScreenshot);
+// process.on('SIGTERM', cleanupScreenshot); 

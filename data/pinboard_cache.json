@@ -1,5 +1,126 @@
 [
   {
+    "href": "https://www.hamradio.com/detail.cfm?pid=H0-017255&srsltid=AfmBOoo5Lh2R4QsgJm7Oth7e4XlMxU1I2lZixg4TItgbS1hL03m28GKj",
+    "description": "LAB599, TX-500, Transceivers Portable QRP, TX500",
+    "extended": "",
+    "meta": "72a073dc092a4241dc8938fd1276fc24",
+    "hash": "16edbdef3e3676d193114664e848454b",
+    "time": "2024-11-24T23:32:43Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://www.thoughtasylum.com/2021/09/12/automating-your-obsidian-workspace/",
+    "description": "Automating Your Obsidian Workspace | ThoughtAsylum",
+    "extended": "",
+    "meta": "bc5cdef73b6997a476d345428e1b461e",
+    "hash": "8eafe5d8ebafdf1ee821f1240ace063a",
+    "time": "2024-11-24T18:28:41Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://www.electronjs.org/docs/latest/tutorial/tray",
+    "description": "Tray | Electron",
+    "extended": "",
+    "meta": "044b5e7f241983ee620cd02db56d4e07",
+    "hash": "6366589a94805a86277f0555e961316f",
+    "time": "2024-11-24T17:13:08Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV",
+    "description": "deptofdefense/AndroidTacticalAssaultKit-CIV",
+    "extended": "",
+    "meta": "615e3d6125dfebcfd98ee768c628643f",
+    "hash": "8661c268067daecc18b3c772cd17a93c",
+    "time": "2024-11-24T08:21:04Z",
+    "shared": "yes",
+    "toread": "yes",
+    "tags": ""
+  },
+  {
+    "href": "https://github.com/dilame/instagram-private-api",
+    "description": "dilame/instagram-private-api: NodeJS Instagram private API SDK. Written in TypeScript.",
+    "extended": "",
+    "meta": "12862cc146a84564c2639d73adc16500",
+    "hash": "d3942caf6fc8d9507c1a07e828f4aba0",
+    "time": "2024-11-22T16:27:01Z",
+    "shared": "yes",
+    "toread": "yes",
+    "tags": ""
+  },
+  {
+    "href": "https://www.nytimes.com/2024/11/21/us/trump-neo-nazi-anti-government-groups.html?smid=nytcore-ios-share&referringSource=articleShare",
+    "description": "Across the U.S., White Supremacist Incidents Have Become the Norm",
+    "extended": "",
+    "meta": "8449e430c957f8b0507e0dc6a6a44846",
+    "hash": "2f627bed1f197fcf91841c9dbef80502",
+    "time": "2024-11-22T15:47:46Z",
+    "shared": "yes",
+    "toread": "yes",
+    "tags": ""
+  },
+  {
+    "href": "https://meta.wikimedia.org/wiki/Research:Newsletter/2024/November",
+    "description": "Research:Newsletter/2024/November - Meta",
+    "extended": "",
+    "meta": "c1904250924d35322c2d520e2ddb5102",
+    "hash": "0255c10a1b89c59e4e774120868743d6",
+    "time": "2024-11-22T14:47:35Z",
+    "shared": "yes",
+    "toread": "yes",
+    "tags": ""
+  },
+  {
+    "href": "https://www.nynjtc.org/position-trail-maintainer/",
+    "description": "Position: Trail Maintainer - New York-New Jersey Trail Conference",
+    "extended": "Trail Maintainer Description Become a part of the Trail Conference family and adopt a trail of your very own! Trail Conference volunteers are outdoor-loving people who want to make a difference. People just like you! From the Catskills to the Delaware Water Gap, the majority of our 2,200 volunteers are Trail Maintainers. Each Trail Maintainer […]",
+    "meta": "f63848fc7ba3c4d8d71d3172fe3ea401",
+    "hash": "d85051a6fc0b8cbccb1edeb74713ca00",
+    "time": "2024-11-22T00:45:56Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://github.com/gwern/gwern.net/blob/master/build/tagguesser.py",
+    "description": "gwern.net/build/tagguesser.py at master · gwern/gwern.net",
+    "extended": "",
+    "meta": "6cfc12d2a14bc5481deb7f83384fcfff",
+    "hash": "e977b12494a5ced4391b2e2ffa45746e",
+    "time": "2024-11-22T00:15:48Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://www.jphilll.com/p/fascism-isnt-an-isolated-event",
+    "description": "Fascism isn’t an isolated event",
+    "extended": "We must transform society to defeat it",
+    "meta": "d0f1c6f49ab8190cdafccbfd8336e399",
+    "hash": "3d317160a6ccc9ff73145288f06e8fc9",
+    "time": "2024-11-21T20:25:17Z",
+    "shared": "yes",
+    "toread": "yes",
+    "tags": ""
+  },
+  {
+    "href": "https://www.cnn.com/2024/11/19/media/comcast-nbcuniversal-cable-spinoff-msnbc/index.html",
+    "description": "Comcast to spin off its cable channels, including MSNBC and CNBC, into separate company | CNN Business",
+    "extended": "",
+    "meta": "bae339c008ede9093c7652a61c3616fd",
+    "hash": "7ef2bc4f2e952ce071fa3aeacd202891",
+    "time": "2024-11-20T00:04:13Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
     "href": "https://downeast.com/maine-made/strata-knives-portland/",
     "description": "Portland's Strata Has the Sharpest Knives Around | Down East Magazine Magazine",
     "extended": "",
