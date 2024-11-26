@@ -117,70 +117,114 @@ export async function extractLocation(content, options = {}) {
 
 async function extractLocationsFromString(content) {
   try {
-    const prompt = `${PROMPTS.LOCATION.EXTRACT}
+    // Create properly formatted messages array with clearer instructions
+    const messages = [
+      {
+        role: "system",
+        content:
+          "You are a location extraction specialist. You output ONLY valid JSON containing location data, with no explanations or additional text.",
+      },
+      {
+        role: "user",
+        content: `Extract locations from this text and return ONLY a JSON object with this exact structure:
+{
+  "locations": [
+    {"name": "location name", "type": "location type"}
+  ]
+}
 
-If no locations are found, respond with:
-Primary: null
-Others:
+Rules:
+- Return ONLY the JSON object, no other text
+- Include ONLY specific places (cities, neighborhoods, landmarks, addresses)
+- Skip general regions or non-specific locations
+- If no locations found, return empty locations array
+- Maintain exact JSON format
 
 Text to analyze:
-${content}`;
+${content}`,
+      },
+    ];
 
-    const response = await completion(prompt, {
-      temperature: 0.1,
-      maxTokens: 500,
+    const response = await completion({
+      messages,
+      temperature: 0.3,
+      maxTokens: 1000,
       model: MODELS.CLAUDE_3_SONNET,
     });
 
-    // Handle null response from completion (e.g., when we hit token limit)
     if (!response) {
-      log("❌ No response from LLM (possibly hit token limit)");
-      return {
-        primary: null,
-        others: [],
-      };
+      log("❌ No response from LLM");
+      return { primary: null, others: [] };
     }
 
-    // Parse the response
-    const lines = response.trim().split("\n");
+    try {
+      // Clean the response to extract only the JSON
+      const cleanResponse = (text) => {
+        // Remove any text before the first {
+        const jsonStart = text.indexOf("{");
+        // Remove any text after the last }
+        const jsonEnd = text.lastIndexOf("}") + 1;
 
-    // Get primary location
-    const primaryLine = lines.find((l) =>
-      l.toLowerCase().startsWith("primary:")
-    );
-    const primary = primaryLine
-      ? primaryLine.replace(/^primary:\s*/i, "").trim()
-      : null;
+        if (jsonStart === -1 || jsonEnd === 0) {
+          log("❌ No JSON found in response");
+          return null;
+        }
 
-    // Get other locations
-    const othersStartIndex = lines.findIndex((l) =>
-      l.toLowerCase().startsWith("others:")
-    );
-    const others =
-      othersStartIndex >= 0
-        ? lines
-            .slice(othersStartIndex + 1)
-            .filter((l) => l.trim().startsWith("-"))
-            .map((l) => l.replace(/^-\s*/, "").trim())
-            .filter(Boolean)
-        : [];
+        return text.slice(jsonStart, jsonEnd);
+      };
 
-    log(
-      `Found locations - Primary: ${primary || "none"}, Others: ${
-        others.length
-      }`
-    );
+      // Get clean JSON string
+      const jsonStr = cleanResponse(response);
+      if (!jsonStr) {
+        return { primary: null, others: [] };
+      }
 
-    return {
-      primary: primary === "null" ? null : primary,
-      others,
-    };
+      // Parse the cleaned JSON
+      const parsed = JSON.parse(jsonStr);
+
+      if (!parsed.locations || !Array.isArray(parsed.locations)) {
+        log("❌ Invalid locations array in response");
+        return { primary: null, others: [] };
+      }
+
+      // Validate each location object
+      const validLocations = parsed.locations.filter(
+        (loc) =>
+          loc &&
+          typeof loc === "object" &&
+          typeof loc.name === "string" &&
+          loc.name.trim().length > 0
+      );
+
+      if (validLocations.length === 0) {
+        log("❌ No valid locations found");
+        return { primary: null, others: [] };
+      }
+
+      // Get primary location (first in the list) and others
+      const [primary, ...others] = validLocations;
+
+      if (DEBUG) {
+        log("✅ Extracted locations:");
+        log("Primary:", primary);
+        log("Others:", others);
+      }
+
+      return {
+        primary: primary.name,
+        others: others.map((loc) => loc.name),
+      };
+    } catch (error) {
+      console.error("Error parsing location response:", error);
+      if (DEBUG) {
+        console.error("Raw response:", response);
+        console.error("Attempted clean response:", cleanResponse(response));
+      }
+      return { primary: null, others: [] };
+    }
   } catch (error) {
     console.error("Error extracting locations:", error);
-    return {
-      primary: null,
-      others: [],
-    };
+    return { primary: null, others: [] };
   }
 }
 
