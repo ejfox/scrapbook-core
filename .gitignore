@@ -3,3 +3,5 @@ node_modules/
 screenshots/
 *.log
 relationship_extraction.log
+data/pinboard_cache_meta.json
+data/pinboard_cache.json
