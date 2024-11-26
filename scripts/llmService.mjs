@@ -2,6 +2,9 @@ import dotenv from "dotenv";
 import axios from "axios";
 import { PROMPTS } from "./prompts.mjs";
 import chalk from "chalk";
+import sharp from "sharp";
+import { FormData } from "@web-std/form-data";
+import { File, Blob } from "node:buffer";
 
 dotenv.config();
 
@@ -71,6 +74,13 @@ const tokenUsage = {
   total: 0,
   byModel: {},
   byEndpoint: {},
+};
+
+// Add embedding dimension constants
+const EMBEDDING_DIMENSIONS = {
+  NOMIC_TEXT: 768,
+  NOMIC_IMAGE: 768,
+  OPENAI: 1536,
 };
 
 const service = {
@@ -380,41 +390,88 @@ const service = {
 
     const { type = "text", model } = options;
     const defaultModel =
-      type === "image"
-        ? DEFAULT_IMAGE_EMBEDDING_MODEL
-        : DEFAULT_TEXT_EMBEDDING_MODEL;
-    const endpoint = type === "image" ? "embedding/image" : "embedding/text";
+      type === "image" ? "nomic-embed-vision-v1.5" : "nomic-embed-text-v1.5";
 
     try {
-      const payload =
-        type === "image"
-          ? {
-              model: model || defaultModel,
-              images: Array.isArray(input) ? input : [input], // Base64 encoded images
-            }
-          : {
-              model: model || defaultModel,
-              texts: Array.isArray(input) ? input : [input],
-            };
+      let response;
 
-      const response = await axios.post(
-        `${NOMIC_API_URL}/${endpoint}`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
-            "Content-Type": "application/json",
-          },
+      if (type === "image") {
+        // Handle image input
+        let imageBuffer;
+
+        if (input.startsWith("http")) {
+          // Fetch image from URL
+          const imageResponse = await axios.get(input, {
+            responseType: "arraybuffer",
+          });
+          imageBuffer = Buffer.from(imageResponse.data);
+        } else {
+          // Handle base64 input
+          imageBuffer = Buffer.from(input, "base64");
         }
-      );
-      return Array.isArray(input)
-        ? response.data.embeddings
-        : response.data.embeddings[0];
+
+        // Resize image before embedding
+        const resizedBuffer = await resizeImageForEmbedding(imageBuffer);
+
+        // Create form data
+        const form = new FormData();
+        form.append("model", model || defaultModel);
+
+        // Create a proper Blob from the buffer
+        const blob = new Blob([resizedBuffer], { type: "image/jpeg" });
+        form.append("images", blob, "image.jpg");
+
+        if (DEBUG) {
+          console.log(
+            "Image size after processing:",
+            `${(resizedBuffer.length / 1024).toFixed(2)}KB`
+          );
+        }
+
+        response = await axios.post(
+          "https://api-atlas.nomic.ai/v1/embedding/image",
+          form,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
+            },
+          }
+        );
+      } else {
+        // Text embeddings
+        response = await axios.post(
+          "https://api-atlas.nomic.ai/v1/embedding/text",
+          {
+            model: model || defaultModel,
+            texts: Array.isArray(input) ? input : [input],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      if (DEBUG) {
+        console.log(`📊 ${type.toUpperCase()} Embedding Response:`, {
+          model: model || defaultModel,
+          dimensions: response.data.embeddings[0]?.length,
+          usage: response.data.usage,
+        });
+      }
+
+      return response.data.embeddings[0];
     } catch (error) {
       console.error(
-        "Nomic embedding error:",
+        `Nomic ${type} embedding error:`,
         error.response?.data || error.message
       );
+      if (DEBUG) {
+        console.error("Full error:", error);
+      }
       return null;
     }
   },
@@ -531,3 +588,39 @@ export { PROMPTS };
 // Export token usage methods
 export const getTokenUsage = () => service.getTokenUsage();
 export const resetTokenUsage = () => service.resetTokenUsage();
+
+// Export dimensions for use in other files
+export { EMBEDDING_DIMENSIONS };
+
+async function resizeImageForEmbedding(imageBuffer) {
+  try {
+    // Resize image to reasonable dimensions while maintaining aspect ratio
+    // and compress to stay under 1024KB
+    const resized = await sharp(imageBuffer)
+      .resize(800, 800, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 80,
+        progressive: true,
+      })
+      .toBuffer();
+
+    // Check final size
+    if (resized.length > 1024 * 1024) {
+      // If still too large, compress more aggressively
+      return await sharp(resized)
+        .jpeg({
+          quality: 60,
+          progressive: true,
+        })
+        .toBuffer();
+    }
+
+    return resized;
+  } catch (error) {
+    console.error("Error resizing image:", error);
+    throw error;
+  }
+}
