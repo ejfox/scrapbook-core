@@ -343,19 +343,24 @@ async function enrichScrapWithAI(scrapData) {
     }
 
     // Extract location with improved logging
-    const location = await limiter.schedule(() =>
+    const locationData = await limiter.schedule(() =>
       extractLocation(contentToProcess, {
         url: scrapData.url,
         rawHtml: scrapData.rawHtml,
       })
     );
 
-    if (location) {
-      log(`✅ Location extracted: ${JSON.stringify(location)}`);
-      scrapData.location = location.location;
-      scrapData.latitude = location.latitude;
-      scrapData.longitude = location.longitude;
-      scrapData.otherLocations = location.otherLocations;
+    if (locationData) {
+      log(`✅ Location extracted: ${JSON.stringify(locationData)}`);
+      scrapData.location = locationData.location;
+      scrapData.latitude = locationData.latitude;
+      scrapData.longitude = locationData.longitude;
+
+      // Merge otherLocations into metadata
+      scrapData.metadata = {
+        ...scrapData.metadata,
+        otherLocations: locationData.metadata?.otherLocations || [],
+      };
     } else {
       log(`❌ Location extraction failed for scrap ${scrapData.scrap_id}`);
     }

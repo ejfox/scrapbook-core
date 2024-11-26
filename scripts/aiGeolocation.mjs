@@ -29,7 +29,9 @@ export async function extractLocation(content, options = {}) {
       location: null,
       latitude: null,
       longitude: null,
-      otherLocations: [],
+      metadata: {
+        otherLocations: [],
+      },
     };
   }
 
@@ -46,7 +48,9 @@ export async function extractLocation(content, options = {}) {
         location: null,
         latitude: null,
         longitude: null,
-        otherLocations: [],
+        metadata: {
+          otherLocations: [],
+        },
       };
     }
 
@@ -72,7 +76,9 @@ export async function extractLocation(content, options = {}) {
         location: null,
         latitude: null,
         longitude: null,
-        otherLocations: [],
+        metadata: {
+          otherLocations: [],
+        },
       };
     }
 
@@ -96,13 +102,16 @@ export async function extractLocation(content, options = {}) {
       );
     }
 
+    // Return object with otherLocations in a format suitable for metadata
     return {
       location: locations.primary,
       latitude: primaryCoords.latitude,
       longitude: primaryCoords.longitude,
-      otherLocations: otherLocationsWithCoords.filter(
-        (l) => l.latitude && l.longitude
-      ),
+      metadata: {
+        otherLocations: otherLocationsWithCoords.filter(
+          (l) => l.latitude && l.longitude
+        ),
+      },
     };
   } catch (error) {
     console.error("❌ Error in location extraction:", error);
@@ -110,7 +119,9 @@ export async function extractLocation(content, options = {}) {
       location: null,
       latitude: null,
       longitude: null,
-      otherLocations: [],
+      metadata: {
+        otherLocations: [],
+      },
     };
   }
 }
