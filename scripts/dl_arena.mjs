@@ -7,6 +7,7 @@ import { generateScreenshot } from "./generateScreenshot.mjs";
 import { processImagesForScrap } from "./imageEmbedding.mjs";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
+import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
 
 dotenv.config();
 
@@ -40,11 +41,6 @@ if (!ARENA_ACCESS_TOKEN) {
 
 logger.info("Initializing Arena client");
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
-
-// Add near the top after imports
-const INSTANCE_NAME =
-  process.env.INSTANCE_NAME ||
-  `${process.env.NODE_ENV || "dev"}-arena-${Date.now()}`;
 
 // Initialize Supabase client
 const supabase = createClient(

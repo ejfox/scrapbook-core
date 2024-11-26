@@ -94,6 +94,23 @@ function getResponseError(response) {
   return errorMap[status] || `HTTP ${status} - ${statusText}`;
 }
 
+// Add Chrome path detection
+const getChromePath = () => {
+  if (process.env.CHROME_EXECUTABLE_PATH) {
+    return process.env.CHROME_EXECUTABLE_PATH;
+  }
+
+  // Default paths by platform
+  switch (process.platform) {
+    case "darwin":
+      return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    case "linux":
+      return "/usr/bin/chromium";
+    default:
+      throw new Error(`Unsupported platform: ${process.platform}`);
+  }
+};
+
 export async function generateScreenshot({
   source,
   shortId,
@@ -111,7 +128,7 @@ export async function generateScreenshot({
       browser = await puppeteer.connect({ browserWSEndpoint });
     } else {
       browser = await puppeteer.launch({
-        executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined,
+        executablePath: getChromePath(),
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",

@@ -4,6 +4,7 @@ import { subDays } from "date-fns";
 import { generateScrapId } from "../helpers.js";
 import { createClient } from "@supabase/supabase-js";
 import winston from "winston";
+import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
 
 dotenv.config();
 
@@ -20,10 +21,6 @@ const octokit = new Octokit({
   userAgent: `${username}-scrapbook`,
   previews: ["mercy-preview"],
 });
-
-const INSTANCE_NAME =
-  process.env.INSTANCE_NAME ||
-  `${process.env.NODE_ENV || "dev"}-github-${Date.now()}`;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
