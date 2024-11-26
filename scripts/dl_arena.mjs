@@ -2,11 +2,11 @@
 import Arena from "are.na";
 import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
-import { generateScrapId } from '../helpers.js';
-import { generateScreenshot } from './generateScreenshot.mjs';
-import { processImagesForScrap } from './imageEmbedding.mjs';
+import { generateScrapId } from "../helpers.js";
+import { generateScreenshot } from "./generateScreenshot.mjs";
+import { processImagesForScrap } from "./imageEmbedding.mjs";
 import winston from "winston";
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
@@ -22,7 +22,7 @@ const logger = winston.createLogger({
       return `${timestamp} [${level.toUpperCase()}]: ${message}`;
     })
   ),
-  transports: [new winston.transports.Console()]
+  transports: [new winston.transports.Console()],
 });
 
 // Rate limiters
@@ -42,8 +42,9 @@ logger.info("Initializing Arena client");
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
 
 // Add near the top after imports
-const INSTANCE_NAME = process.env.INSTANCE_NAME || 
-  `${process.env.NODE_ENV || 'dev'}-arena-${Date.now()}`;
+const INSTANCE_NAME =
+  process.env.INSTANCE_NAME ||
+  `${process.env.NODE_ENV || "dev"}-arena-${Date.now()}`;
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -51,7 +52,7 @@ const supabase = createClient(
   process.env.SUPABASE_KEY,
   {
     auth: { persistSession: false },
-    db: { schema: 'public' }
+    db: { schema: "public" },
   }
 );
 
@@ -83,7 +84,12 @@ async function mergeExistingScrap(newScrap) {
       image_embedding: existing.image_embedding || newScrap.image_embedding,
       // Merge arrays without duplicates
       tags: [...new Set([...(existing.tags || []), ...(newScrap.tags || [])])],
-      relationships: [...new Set([...(existing.relationships || []), ...(newScrap.relationships || [])])],
+      relationships: [
+        ...new Set([
+          ...(existing.relationships || []),
+          ...(newScrap.relationships || []),
+        ]),
+      ],
       // Merge metadata, keeping track of updates
       metadata: {
         ...(existing.metadata || {}),
@@ -92,16 +98,16 @@ async function mergeExistingScrap(newScrap) {
         update_count: (existing.metadata?.update_count || 0) + 1,
         previous_image_urls: [
           ...(existing.metadata?.image_urls || []),
-          ...(existing.metadata?.previous_image_urls || [])
-        ].filter(Boolean)
-      }
+          ...(existing.metadata?.previous_image_urls || []),
+        ].filter(Boolean),
+      },
     };
 
     logger.debug(`Merged scrap details:
       • ID: ${merged.scrap_id}
       • Title: ${merged.title}
       • Has image embedding: ${Boolean(merged.image_embedding)}
-      • Tags: ${merged.tags.join(', ')}
+      • Tags: ${merged.tags.join(", ")}
       • Update count: ${merged.metadata.update_count}
     `);
 
@@ -115,7 +121,7 @@ async function mergeExistingScrap(newScrap) {
 // Update processBlock to use merging and better logging
 export async function processBlock(block) {
   if (!block || !block.id) {
-    logger.error('Invalid block:', block);
+    logger.error("Invalid block:", block);
     return null;
   }
 
@@ -126,21 +132,26 @@ export async function processBlock(block) {
   try {
     // Handle different block classes (Image, Text, Media, Link, etc)
     const content = (() => {
-      if (!block.class) return 'No content';
+      if (!block.class) return "No content";
 
-      switch(block.class.toLowerCase()) {
-        case 'image':
-          return block.description || block.title || block.generated_title || 'Untitled image';
-        case 'text':
-          return block.content || block.description || 'Empty text block';
-        case 'link':
-          return block.description || block.source?.title || 'Untitled link';
-        case 'attachment':
-          return block.description || block.title || 'Untitled attachment';
-        case 'media':
-          return block.description || block.embed?.title || 'Untitled media';
+      switch (block.class.toLowerCase()) {
+        case "image":
+          return (
+            block.description ||
+            block.title ||
+            block.generated_title ||
+            "Untitled image"
+          );
+        case "text":
+          return block.content || block.description || "Empty text block";
+        case "link":
+          return block.description || block.source?.title || "Untitled link";
+        case "attachment":
+          return block.description || block.title || "Untitled attachment";
+        case "media":
+          return block.description || block.embed?.title || "Untitled media";
         default:
-          return block.content || block.description || 'No content';
+          return block.content || block.description || "No content";
       }
     })();
 
@@ -163,74 +174,80 @@ export async function processBlock(block) {
     // Parse dates safely
     const created = block.created_at ? new Date(block.created_at) : new Date();
     const updated = block.updated_at ? new Date(block.updated_at) : created;
-    
+
     const scrap = {
-      id: generateScrapId('arena', block.id),
+      id: generateScrapId("arena", block.id),
       source: "arena",
       type: "block",
       url,
-      title: block.title || block.generated_title || 'Untitled Block',
+      title: block.title || block.generated_title || "Untitled Block",
       content,
       screenshot_url,
       published_at: created.toISOString(),
       created_at: created.toISOString(),
       updated_at: updated.toISOString(),
-      shared: false,  // Always false by default
+      shared: false, // Always false by default
       tags: [
         block.class?.toLowerCase(),
-        block.base_class?.toLowerCase()
+        block.base_class?.toLowerCase(),
       ].filter(Boolean),
       metadata: {
         class: block.class,
         base_class: block.base_class,
         channel: block.channel,
-        connected_to_channels: block.connected_to_channels?.map(c => ({
+        connected_to_channels: block.connected_to_channels?.map((c) => ({
           id: c.id,
-          title: c.title
+          title: c.title,
         })),
         source_data: block.source && {
           provider: block.source.provider?.name,
           url: block.source.url,
-          title: block.source.title
+          title: block.source.title,
         },
         image_data: block.image && {
           thumb: block.image.thumb?.url,
           square: block.image.square?.url,
-          display: block.image.display?.url
+          display: block.image.display?.url,
         },
         embed: block.embed && {
           type: block.embed.type,
           title: block.embed.title,
           author_name: block.embed.author_name,
           author_url: block.embed.author_url,
-          thumbnail_url: block.embed.thumbnail_url
+          thumbnail_url: block.embed.thumbnail_url,
         },
         attachment: block.attachment && {
           file_name: block.attachment.file_name,
           extension: block.attachment.extension,
           content_type: block.attachment.content_type,
-          file_size: block.attachment.file_size
-        }
-      }
+          file_size: block.attachment.file_size,
+        },
+      },
     };
 
-    logger.debug('Image data available:', {
-      'metadata.image_data': scrap.metadata.image_data,
+    logger.debug("Image data available:", {
+      "metadata.image_data": scrap.metadata.image_data,
       screenshot_url: scrap.screenshot_url,
-      class: scrap.metadata.class
+      class: scrap.metadata.class,
     });
 
     // Process images and get embeddings
     logger.info(`🖼️ Processing images for block ${blockId}`);
     const scrapWithImages = await processImagesForScrap(scrap);
-    
+
     if (scrapWithImages.image_embedding) {
-      logger.info(`✅ Generated image embedding for ${blockId} (${scrapWithImages.image_embedding.length} dimensions)`);
+      logger.info(
+        `✅ Generated image embedding for ${blockId} (${scrapWithImages.image_embedding.length} dimensions)`
+      );
     } else {
-      logger.info(`ℹ️ No image embedding generated for ${blockId}. Available image data:`, {
-        'metadata.image_urls': scrapWithImages.metadata?.image_urls,
-        'metadata.primary_image_url': scrapWithImages.metadata?.primary_image_url
-      });
+      logger.info(
+        `ℹ️ No image embedding generated for ${blockId}. Available image data:`,
+        {
+          "metadata.image_urls": scrapWithImages.metadata?.image_urls,
+          "metadata.primary_image_url":
+            scrapWithImages.metadata?.primary_image_url,
+        }
+      );
     }
 
     // Merge with existing data
@@ -242,12 +259,11 @@ export async function processBlock(block) {
       • Title: ${mergedScrap.title.substring(0, 50)}...
       • Channel: ${mergedScrap.metadata.channel}
       • Has image embedding: ${Boolean(mergedScrap.image_embedding)}
-      • Tags: ${mergedScrap.tags.join(', ')}
+      • Tags: ${mergedScrap.tags.join(", ")}
       • Update count: ${mergedScrap.metadata.update_count || 1}
     `);
 
     return mergedScrap;
-
   } catch (error) {
     logger.error(`❌ Error processing block ${blockId}:`, error);
     return null;
@@ -282,8 +298,10 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
 
     for (const channel of channelsToProcess) {
       currentChannel++;
-      logger.info(`\n📂 Processing channel ${currentChannel}/${totalChannels}: ${channel.title}`);
-      
+      logger.info(
+        `\n📂 Processing channel ${currentChannel}/${totalChannels}: ${channel.title}`
+      );
+
       const response = await arenaLimiter.schedule(() =>
         arena.channel(channel.id).contents({
           page: 1,
@@ -292,25 +310,26 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
           direction: "desc",
         })
       );
-      
+
       const blocks = response || [];
+      processedCount += blocks.length;
 
       // Process blocks with claiming
       for (const block of blocks) {
         if (isShuttingDown) break;
 
         const scrapId = `arena-${block.id}`;
-        
+
         try {
           // Try to claim the block
           const { data: claim } = await supabase
-            .from('scraps')
+            .from("scraps")
             .update({
               processing_instance_id: INSTANCE_NAME,
-              processing_started_at: new Date().toISOString()
+              processing_started_at: new Date().toISOString(),
             })
-            .eq('scrap_id', scrapId)
-            .is('processing_instance_id', null)
+            .eq("scrap_id", scrapId)
+            .is("processing_instance_id", null)
             .select()
             .single();
 
@@ -332,7 +351,7 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
               ],
             };
 
-            const processedBlock = await processLimiter.schedule(() => 
+            const processedBlock = await processLimiter.schedule(() =>
               processBlock(enrichedBlock)
             );
 
@@ -342,28 +361,27 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
           } finally {
             // Always release the claim
             await supabase
-              .from('scraps')
+              .from("scraps")
               .update({
                 processing_instance_id: null,
-                processing_started_at: null
+                processing_started_at: null,
               })
-              .eq('scrap_id', scrapId);
+              .eq("scrap_id", scrapId);
           }
         } catch (error) {
           logger.error(`Error processing block ${block.id}:`, error);
           // Make sure to release claim on error
           await supabase
-            .from('scraps')
+            .from("scraps")
             .update({
               processing_instance_id: null,
-              processing_started_at: null
+              processing_started_at: null,
             })
-            .eq('scrap_id', scrapId);
+            .eq("scrap_id", scrapId);
         }
       }
 
       // Update progress
-      processedCount += processedBlocks.length;
       logger.info(`Progress: ${processedCount} blocks processed`);
       logger.info(`Channel progress: ${currentChannel}/${totalChannels}`);
     }
@@ -380,7 +398,7 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
     logger.error("\n❌ Error fetching blocks:", error);
     throw error;
   }
-}
+};
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   logger.info("Starting main execution");
@@ -388,7 +406,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .then((blocks) => {
       logger.info(`Total blocks fetched: ${blocks.length}`);
       if (DEBUG && blocks.length > 0) {
-        logger.debug('Sample block:', JSON.stringify(blocks[0], null, 2));
+        logger.debug("Sample block:", JSON.stringify(blocks[0], null, 2));
       }
     })
     .catch((error) => {
