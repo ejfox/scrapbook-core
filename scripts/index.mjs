@@ -709,6 +709,9 @@ async function clearStuckProcessing() {
   }
 }
 
+// Add OpenRouter API URL
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1";
+
 // Then define the functions
 async function fetchAndUpsertPinboardBookmarks() {
   const bookmarks = await fetchBookmarksWithCache();
@@ -857,21 +860,19 @@ async function checkOpenRouterCredits() {
   }
 
   try {
-    const response = await axios.get(`${OPENROUTER_API_URL}/credits`, {
+    const response = await axios.get(`${OPENROUTER_API_URL}/auth/key`, {
       headers: {
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
     });
 
-    if (response.status !== 200) {
-      throw new Error(
-        `OpenRouter credit check failed with status ${response.status}: ${response.statusText}`
-      );
+    if (!response.data?.data) {
+      throw new Error("Invalid response format from OpenRouter API");
     }
 
-    const credits = response.data.credits;
-    const usage = response.data.usage;
-    const limit = response.data.limit;
+    const { usage, limit, is_free_tier, rate_limit } = response.data.data;
 
     if (usage >= limit) {
       logger.error(
@@ -883,7 +884,9 @@ async function checkOpenRouterCredits() {
     }
 
     logger.info(
-      `OpenRouter credits: ${credits}, Usage: ${usage}, Limit: ${limit}`
+      `OpenRouter credits - Usage: ${usage}, Limit: ${limit}, Type: ${
+        is_free_tier ? "Free" : "Paid"
+      }, Rate Limit: ${rate_limit?.requests}/${rate_limit?.interval}`
     );
     return true;
   } catch (error) {
@@ -915,11 +918,17 @@ async function main() {
     for (const source of ["pinboard", "github", "mastodon", "arena"]) {
       if (options.all || options[source]) {
         logger.info(`\nFetching and processing from ${source}...`);
-        const processFunc = `fetchAndUpsert${
-          source.charAt(0).toUpperCase() + source.slice(1)
-        }`;
+
+        // Map source names to their functions
+        const sourceFunctions = {
+          pinboard: fetchAndUpsertPinboardBookmarks,
+          github: fetchAndUpsertGithubData,
+          mastodon: fetchAndUpsertMastodonStatuses,
+          arena: fetchAndUpsertArenaBlocks,
+        };
+
         try {
-          await eval(processFunc)(); // Use eval to call the correct function dynamically
+          await sourceFunctions[source]();
         } catch (error) {
           logger.error(`Error processing ${source}:`, error);
         }
