@@ -114,7 +114,7 @@ ${chunk}`,
       const response = await completion({
         messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
-        maxTokens: options.meta ? 500 : 2000,
+        maxTokens: options.meta ? 1024 : 8196,
         model: MODELS.CLAUDE_3_SONNET,
       });
 
@@ -185,7 +185,9 @@ Return only valid tags from the list above, one per line, no explanations.`,
       messages,
       temperature: 0.2,
       maxTokens: 100,
-      model: MODELS.CLAUDE_3_SONNET,
+      // model: MODELS.CLAUDE_3_SONNET,
+      // lets use a cheaper model for this
+      model: MODELS.GPT_3_5_TURBO,
     });
     const endTime = performance.now();
     log(`✅ Tags generated in ${endTime - startTime}ms`);

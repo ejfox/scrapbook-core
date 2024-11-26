@@ -26,43 +26,45 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-let browser = null;
+// Add browser lifecycle management
+let browserWSEndpoint = null;
 
 // Enhanced browser launcher with better error checking
 async function getBrowserLauncher() {
   try {
+    // Production configuration for Fly.io
     if (process.env.NODE_ENV === "production") {
-      const execPath = "/usr/bin/chromium";
-      // Check if Chrome exists
-      try {
-        await import("fs").then((fs) => fs.promises.access(execPath));
-      } catch {
-        throw new Error(`Chrome not found at ${execPath}`);
-      }
-
       return {
-        executablePath: execPath,
+        executablePath: "/usr/bin/chromium",
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-gpu",
           "--disable-software-rasterizer",
+          "--disable-dev-shm-usage", // Important for Docker/Fly.io
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote", // Recommended for running in containers
+          "--single-process", // Recommended for containerized environments
+          "--disable-extensions",
+          "--window-size=1080,1920",
         ],
+        headless: "new",
+        defaultViewport: {
+          width: 1080,
+          height: 1920,
+          deviceScaleFactor: 2,
+        },
       };
     }
 
+    // Development configuration
     if (os.platform() === "darwin") {
-      const execPath =
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-      try {
-        await import("fs").then((fs) => fs.promises.access(execPath));
-      } catch {
-        throw new Error(`Chrome not found at ${execPath}`);
-      }
-
       return {
-        executablePath: execPath,
+        executablePath:
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         args: ["--no-sandbox", "--disable-gpu"],
+        headless: "new",
       };
     }
 
@@ -98,29 +100,27 @@ export async function generateScreenshot({
   url,
   timeout = 15000,
 }) {
+  let browser = null;
   let page = null;
 
   try {
     logger.info(`Starting screenshot generation for ${url}`);
 
-    // Initialize browser if needed
-    if (!browser) {
-      logger.debug("Initializing browser...");
-      const launcherOptions = await getBrowserLauncher();
+    // Connect to existing browser or launch new one
+    if (browserWSEndpoint) {
+      browser = await puppeteer.connect({ browserWSEndpoint });
+    } else {
       browser = await puppeteer.launch({
-        executablePath: launcherOptions.executablePath,
+        executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined,
         args: [
-          ...launcherOptions.args,
-          "--force-device-scale-factor=4", // 4x DPI
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--single-process",
         ],
         headless: "new",
-        defaultViewport: {
-          width: 1080,
-          height: 1920,
-          deviceScaleFactor: 4, // 4x DPI
-        },
       });
-      logger.debug("Browser initialized successfully");
+      browserWSEndpoint = browser.wsEndpoint();
     }
 
     // Create new page with error monitoring
@@ -244,14 +244,26 @@ export async function generateScreenshot({
 
     return null;
   } finally {
-    // Cleanup
     if (page) {
-      try {
-        await page.close();
-        logger.debug("Page closed successfully");
-      } catch (error) {
-        logger.error("Error closing page:", error);
-      }
+      await page.close().catch((e) => logger.error("Error closing page:", e));
+    }
+    // Don't close the browser, just disconnect if we connected to existing one
+    if (browser && !browserWSEndpoint) {
+      await browser
+        .close()
+        .catch((e) => logger.error("Error closing browser:", e));
     }
   }
 }
+
+// Add cleanup on process exit
+process.on("SIGTERM", async () => {
+  if (browserWSEndpoint) {
+    try {
+      const browser = await puppeteer.connect({ browserWSEndpoint });
+      await browser.close();
+    } catch (error) {
+      logger.error("Error cleaning up browser:", error);
+    }
+  }
+});
