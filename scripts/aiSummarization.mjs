@@ -82,43 +82,51 @@ export async function summarizeContent(content, options = {}) {
   }
 }
 
-async function summarizeChunk(content, options = {}) {
-  log(`Summarizing chunk of ${content.length} characters...`);
+async function summarizeChunk(chunk, options = {}) {
+  const startTime = performance.now();
   let summary = null;
   let retries = 0;
-  let messages = options.messages || []; // Initialize messages array
+  let messages = options.messages || [];
 
   const blacklistInstruction = `The following phrases are not allowed in the summary: ${blacklistPhrases
     .map((phrase) => `"${phrase}"`)
     .join(", ")}.`;
-  const enhancedPrompt = `Generate a newline-delimited list of concise, factual summary points.  Prioritize key information, interesting details, and direct quotes from the provided text.  Do not include any introductory or concluding phrases; only provide the list.  Focus on telling a story or highlighting the most important aspects.  Thoroughly cover the content.
+
+  // Create properly formatted messages array
+  const systemMessage = {
+    role: "system",
+    content:
+      "You are a precise summarizer that creates concise, factual summaries.",
+  };
+
+  const userMessage = {
+    role: "user",
+    content: `Generate a newline-delimited list of concise, factual summary points. Prioritize key information, interesting details, and direct quotes from the provided text. Do not include any introductory or concluding phrases; only provide the list. Focus on telling a story or highlighting the most important aspects. Thoroughly cover the content.
 
 ${blacklistInstruction}
 
 Text:
-${content}
-`;
+${chunk}`,
+  };
 
   while (summary === null && retries < 3) {
-    const startTime = performance.now();
     try {
-      const { message } = await completion({
-        prompt: enhancedPrompt,
-        messages,
+      const response = await completion({
+        messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
         maxTokens: options.meta ? 500 : 2000,
         model: MODELS.CLAUDE_3_SONNET,
       });
-      summary = message;
 
-      //Improved blacklist check - trim whitespace before checking
-      if (blacklistPhrases.some((phrase) => summary.trim().includes(phrase))) {
+      summary = response;
+
+      if (blacklistPhrases.some((phrase) => summary?.trim().includes(phrase))) {
         log(
-          `❌ Summary contains blacklisted phrase "${phrase}". Retrying... (Attempt ${
+          `❌ Summary contains blacklisted phrase. Retrying... (Attempt ${
             retries + 1
           })`
         );
-        messages.push({ role: "user", content: enhancedPrompt });
+        messages.push(userMessage);
         messages.push({
           role: "assistant",
           content:
@@ -130,13 +138,16 @@ ${content}
       }
     } catch (error) {
       console.error("❌ Error during completion:", error);
-      messages.push({ role: "assistant", content: `Error: ${error.message}` });
+      messages.push({
+        role: "assistant",
+        content: `Error: ${error.message}`,
+      });
       retries++;
     }
-    const endTime = performance.now();
-    log(`✅ Chunk summarized in ${endTime - startTime}ms`);
   }
 
+  const endTime = performance.now();
+  log(`✅ Chunk summarized in ${endTime - startTime}ms`);
   return summary;
 }
 
@@ -150,17 +161,28 @@ export async function metaSummaryToTags(summary) {
     log("🏷️ Generating tags...");
     const coreTags = await loadCoreTags();
 
-    // Create the prompt string directly
-    const prompt = `You are tagging content. Choose 2-3 most relevant tags from this list:
+    // Convert prompt to messages array format
+    const messages = [
+      {
+        role: "system",
+        content:
+          "You are a precise content tagger that selects the most relevant tags from a predefined list.",
+      },
+      {
+        role: "user",
+        content: `Choose 2-3 most relevant tags from this list:
 ${coreTags.join("\n")}
 
 Content to tag:
 ${summary}
 
-Return only valid tags from the list above, one per line, no explanations.`;
+Return only valid tags from the list above, one per line, no explanations.`,
+      },
+    ];
 
     const startTime = performance.now();
-    const response = await completion(prompt, {
+    const response = await completion({
+      messages,
       temperature: 0.2,
       maxTokens: 100,
       model: MODELS.CLAUDE_3_SONNET,

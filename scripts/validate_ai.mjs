@@ -7,6 +7,8 @@ import { summarizeGitHubActivity } from "./aiGithubSummarization.mjs";
 import chalk from "chalk";
 import { performance } from "perf_hooks";
 import axios from "axios";
+import { getTokenUsage, resetTokenUsage } from "./llmService.mjs";
+import { program } from "commander";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1";
 
@@ -20,9 +22,28 @@ console.log(
 `)
 );
 
+// Add command line options
+program
+  .option("--location", "Only test location extraction")
+  .option("--debug", "Enable debug mode")
+  .parse(process.argv);
+
+const options = program.opts();
+const DEBUG = options.debug || process.env.DEBUG === "true";
+
 // Test data
 const TEST_CONTENT = [
   `While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API...`,
+  `The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications...`,
+];
+
+// Add more test cases specifically for location testing
+const LOCATION_TEST_CASES = [
+  `While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API...`,
+  `The new Apple Store in downtown Shanghai, located at 123 Huaihai Road, has a stunning glass facade.`,
+  `Remote work has allowed me to split my time between Berlin's Kreuzberg neighborhood and a small village in the South of France.`,
+  `This photo was taken at the Louvre Museum in Paris, just steps away from the Seine River.`,
+  // Technical content with no locations (negative test case)
   `The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications...`,
 ];
 
@@ -41,16 +62,12 @@ async function checkCredits() {
       },
     });
 
-    console.log(chalk.cyan("\n📊 Raw API Response:"));
-    console.log(chalk.cyan("━".repeat(50)));
-    console.log(JSON.stringify(response.data, null, 2));
-    console.log(chalk.cyan("━".repeat(50)));
-
     if (!response.data?.data) {
       throw new Error("No data received from OpenRouter API");
     }
 
-    const { usage, limit, limit_remaining, is_free_tier } = response.data.data;
+    const { usage, limit, limit_remaining, is_free_tier, rate_limit } =
+      response.data.data;
 
     // Check limit_remaining first!
     if (limit_remaining <= 0) {
@@ -79,7 +96,12 @@ async function checkCredits() {
       `Account Type: ${chalk.blue(is_free_tier ? "Free Tier" : "Paid")}`
     );
     console.log(
-      `Usage: ${chalk.yellow(usage)} / ${chalk.yellow(
+      `Rate Limit: ${chalk.blue(
+        `${rate_limit.requests}/${rate_limit.interval}`
+      )}`
+    );
+    console.log(
+      `Usage: ${chalk.yellow(usage.toFixed(2))} / ${chalk.yellow(
         limit
       )} (${usagePercent.toFixed(1)}%)`
     );
@@ -93,23 +115,14 @@ async function checkCredits() {
     console.log(`${creditBar} ${usagePercent.toFixed(1)}%`);
     console.log(chalk.cyan("━".repeat(50)));
 
-    if (usage >= limit) {
-      console.error(
-        chalk.red("\n❌ Credit limit exceeded! Tests cannot proceed.")
-      );
-      return false;
-    }
-
     return true;
   } catch (error) {
     console.error(chalk.red("\n❌ Error checking credits:"));
     if (error.response) {
       console.error(`Status: ${error.response.status}`);
-      console.error(`Headers:`, error.response.headers);
       console.error(`Data:`, error.response.data);
     } else if (error.request) {
       console.error("No response received from API");
-      console.error(error.request);
     } else {
       console.error(`Error: ${error.message}`);
     }
@@ -121,16 +134,60 @@ async function runTests() {
   // Check credits first
   const hasCredits = await checkCredits();
   if (!hasCredits) {
-    console.log(
-      chalk.yellow("\n⚠️  Skipping tests due to insufficient credits")
-    );
-    process.exit(1);
+    console.error(chalk.red("\n❌ Credit check failed - stopping tests"));
     return;
   }
 
-  console.log(chalk.green("\n✅ Credit check passed. Starting tests...\n"));
+  // If location flag is set, only run location tests
+  if (options.location) {
+    console.log(chalk.cyan("\n🌍 Running Location Extraction Tests"));
+    console.log(chalk.cyan("━".repeat(50)));
 
-  // Rest of your test code...
+    for (const content of LOCATION_TEST_CASES) {
+      console.log("\n" + "=".repeat(50));
+      console.log(chalk.blue("📝 Test Content:"));
+      console.log(content);
+
+      try {
+        console.time("Location Extraction");
+        const location = await extractLocation(content);
+        console.timeEnd("Location Extraction");
+
+        if (location.location || location.otherLocations.length > 0) {
+          console.log(chalk.green("\n✅ Locations Found:"));
+          if (location.location) {
+            console.log(chalk.cyan("\nPrimary Location:"));
+            console.log(`Name: ${location.location}`);
+            console.log(
+              `Coordinates: ${location.latitude}, ${location.longitude}`
+            );
+          }
+
+          if (location.otherLocations.length > 0) {
+            console.log(chalk.cyan("\nOther Locations:"));
+            location.otherLocations.forEach((loc) => {
+              console.log(
+                `- ${loc.location} (${loc.latitude}, ${loc.longitude})`
+              );
+            });
+          }
+        } else {
+          console.log(chalk.yellow("\n⚠️ No locations found"));
+        }
+      } catch (error) {
+        console.error(chalk.red("\n❌ Error in location extraction:"), error);
+      }
+    }
+
+    // Log final token usage
+    const usage = getTokenUsage();
+    console.log(chalk.cyan("\n📊 Token Usage Stats:"));
+    console.log(chalk.cyan("━".repeat(50)));
+    console.log(`Total Tokens Used: ${chalk.yellow(usage.total)}`);
+    return;
+  }
+
+  // Test each content piece
   for (const content of TEST_CONTENT) {
     console.log("\n" + "=".repeat(50));
     console.log("Testing content:", content.substring(0, 100) + "...");
@@ -139,7 +196,10 @@ async function runTests() {
     console.log("\n[TESTING SUMMARIZATION]");
     try {
       console.time("Summary Generation");
-      const summary = await summarizeContent(content);
+      const summary = await summarizeContent(content, {
+        temperature: 0.3,
+        maxTokens: 500,
+      });
       console.timeEnd("Summary Generation");
       console.log(chalk.green("✓ Summary:"), summary);
 
@@ -175,6 +235,21 @@ async function runTests() {
       console.error(chalk.red("❌ Error in relationship extraction:"), error);
     }
   }
+
+  // Log final token usage stats
+  const usage = getTokenUsage();
+  console.log(chalk.cyan("\n📊 Final Token Usage Stats:"));
+  console.log(chalk.cyan("━".repeat(50)));
+  console.log(`Total Tokens Used: ${chalk.yellow(usage.total)}`);
+  console.log("\nBy Model:");
+  Object.entries(usage.byModel).forEach(([model, tokens]) => {
+    console.log(`${chalk.blue(model)}: ${chalk.yellow(tokens)}`);
+  });
+  console.log("\nBy Endpoint:");
+  Object.entries(usage.byEndpoint).forEach(([endpoint, tokens]) => {
+    console.log(`${chalk.blue(endpoint)}: ${chalk.yellow(tokens)}`);
+  });
+  console.log(chalk.cyan("━".repeat(50)));
 }
 
 // Run tests with error handling
