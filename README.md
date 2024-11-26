@@ -41,36 +41,24 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 
 ### Scraps table
 ```sql
-public.scraps (
-  id uuid not null default gen_random_uuid (),
-  content text null default ''::text,
-  summary text null,
-  created_at timestamp without time zone null default current_timestamp,
-  updated_at timestamp without time zone null default current_timestamp,
-  tags jsonb null,
-  relationships jsonb null,
-  metadata jsonb null,
-  scrap_id text null,
-  embedding public.vector null,
-  graph_imported boolean null default false,
-  url text null,
-  screenshot_url text null,
-  location text null,
-  title text null,
-  latitude double precision null,
-  longitude double precision null,
-  type text null default 'unknown'::text,
-  published_at timestamp without time zone null,
-  shared boolean null default false,
-  embedding_nomic public.vector null,
-  image_embedding public.vector null,
-  processing_instance_id text null,
-  processing_started_at timestamp without time zone null,
-  source public.scrap_source null default 'lock'::scrap_source,
-  constraint scraps_pkey primary key (id),
-  constraint scraps_id_key unique (id),
-  constraint scraps_scrap_id_key unique (scrap_id)
-) tablespace pg_default;
+CREATE TABLE public.scraps (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    source TEXT NOT NULL,
+    content TEXT NOT NULL,
+    summary TEXT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    tags TEXT[],
+    relationships JSONB NULL,
+    metadata JSONB NULL,
+    scrap_id TEXT NULL,
+    embedding VECTOR NULL,
+    title TEXT NULL,
+    graph_imported BOOLEAN NULL DEFAULT FALSE,
+    CONSTRAINT scraps_pkey PRIMARY KEY (id),
+    CONSTRAINT scraps_id_key UNIQUE (id),
+    CONSTRAINT scraps_scrap_id_key UNIQUE (scrap_id)
+);
 ```
 
 
@@ -171,7 +159,7 @@ This project requires several API keys and secrets.  Store these securely in a `
 
 ## Rate Limiting and Caching
 
-The application employs rate limiting using the `Bottleneck` library to avoid exceeding API limits.  Caching is used to reduce the number of API calls and improve performance.  The cache is stored locally in the `./data` directory.
+The application employs rate limiting using the `Bottleneck` library to avoid exceeding API limits.  Caching is used to reduce the number of API calls and improve performance.  The cache is stored locally in the `./data` directory.  A manifest file (`public/data/scrapbook/manifest.json`) tracks the last updated timestamp for each source.
 
 ## AI Services
 
@@ -179,7 +167,7 @@ The application utilizes AI services for tasks such as summarization and embeddi
 
 ## Error Handling and Logging
 
-The application includes comprehensive error handling and logging.  Errors are logged to the console, and detailed error messages are provided to aid in troubleshooting.
+The application includes comprehensive error handling and logging using `winston`. Errors are logged to the console, and detailed error messages are provided to aid in troubleshooting.
 
 ## Deployment (Fly.io)
 
@@ -200,3 +188,47 @@ This script tests the AI-powered features (summarization, geolocation, relations
 ## Database Maintenance
 
 Regularly run `node scripts/validate_db_integrity.mjs` to check for and clean up any orphaned or stuck processing records in the database.
+
+## Claiming and Processing
+
+The application uses a claiming mechanism to prevent multiple instances from processing the same data concurrently.  This ensures data consistency and avoids race conditions.  The claiming process is managed using Supabase's database capabilities.
+
+```mermaid
+graph LR
+  A[Data Source] --> B{Check Existing Scrap};
+  B -- Exists --> C[Merge with Existing];
+  B -- Does Not Exist --> D[Claim Scrap];
+  D --> E[Process Scrap];
+  E --> F[Upsert to Database];
+  C --> F;
+  F --> G[Release Claim];
+  subgraph "Error Handling"
+    E -.-> H[Handle Error];
+    H --> G;
+  end
+```
+
+## Overall Data Flow
+
+This diagram illustrates the high-level data flow of the application.
+
+```mermaid
+graph LR
+  A[Data Sources] --> B(Fetchers);
+  B --> C(Processors);
+  C --> D(Enrichment);
+  D --> E(Supabase);
+  E --> F(SQLite Sync);
+  F --> G(Alfred Workflow);
+  subgraph "Error Handling"
+    B -.-> I[Handle Errors];
+    C -.-> I;
+    D -.-> I;
+    E -.-> I;
+    F -.-> I;
+  end
+  subgraph "Caching"
+    B -.-> J[Cache];
+    J --> B;
+  end
+```

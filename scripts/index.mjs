@@ -23,8 +23,32 @@ import winston from "winston";
 import { generateScreenshot } from "./generateScreenshot.mjs";
 import { v2 as cloudinary } from "cloudinary";
 import os from "os";
+import axios from "axios";
+import chalk from "chalk";
+import sgMail from "@sendgrid/mail";
 
 dotenv.config();
+
+// Configure SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Function to send email notification using SendGrid
+async function sendEmailNotification(subject, message) {
+  const msg = {
+    to: "ejfox@ejfox.com",
+    from: process.env.SENDGRID_FROM_EMAIL, // Your SendGrid verified sender email
+    subject: subject,
+    text: message,
+    html: `<p>${message}</p>`, // Optional HTML body
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info("Email notification sent successfully!");
+  } catch (error) {
+    logger.error("Error sending email notification:", error);
+  }
+}
 
 // IMMEDIATELY set up commander before anything else
 program
@@ -262,15 +286,22 @@ async function enrichScrapWithAI(scrapData) {
       scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
     }
 
-    // Extract location
+    // Extract location with improved logging
     const location = await limiter.schedule(() =>
-      extractLocation(contentToProcess)
+      extractLocation(contentToProcess, {
+        url: scrapData.url,
+        rawHtml: scrapData.rawHtml,
+      })
     );
 
-    if (location?.name) {
-      scrapData.location = location.name;
+    if (location) {
+      log(`✅ Location extracted: ${JSON.stringify(location)}`);
+      scrapData.location = location.location;
       scrapData.latitude = location.latitude;
       scrapData.longitude = location.longitude;
+      scrapData.otherLocations = location.otherLocations;
+    } else {
+      log(`❌ Location extraction failed for scrap ${scrapData.scrap_id}`);
     }
 
     // Extract relationships
@@ -760,39 +791,83 @@ async function initializeDatabaseIfNeeded() {
   }
 }
 
+// Add a function to check OpenRouter credits
+async function checkOpenRouterCredits() {
+  if (!process.env.OPENROUTER_API_KEY) {
+    logger.info(
+      "Skipping OpenRouter credit check - OpenRouter API key not configured"
+    );
+    return true; // Assume sufficient credits if key is not set
+  }
+
+  try {
+    const response = await axios.get(`${OPENROUTER_API_URL}/credits`, {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new Error(
+        `OpenRouter credit check failed with status ${response.status}: ${response.statusText}`
+      );
+    }
+
+    const credits = response.data.credits;
+    const usage = response.data.usage;
+    const limit = response.data.limit;
+
+    if (usage >= limit) {
+      logger.error(
+        chalk.redBright(
+          `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. Processing stopped.`
+        )
+      );
+      return false;
+    }
+
+    logger.info(
+      `OpenRouter credits: ${credits}, Usage: ${usage}, Limit: ${limit}`
+    );
+    return true;
+  } catch (error) {
+    logger.error(
+      `Error checking OpenRouter credits: ${error.message}. Processing stopped.`
+    );
+    return false;
+  }
+}
+
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
 
   try {
+    // Check OpenRouter credits before starting processing
+    const sufficientCredits = await checkOpenRouterCredits();
+    if (!sufficientCredits) {
+      return; // Stop processing if credits are insufficient
+    }
+
     // Initialize database if needed
     await initializeDatabaseIfNeeded();
 
     // Clear any stuck processing before starting
     await clearStuckProcessing();
 
-    // 1. Pinboard first
-    if (options.all || options.pinboard) {
-      logger.info("\nFetching from Pinboard...");
-      await fetchAndUpsertPinboardBookmarks();
-    }
-
-    // 2. GitHub second
-    if (options.all || options.github) {
-      logger.info("\nFetching from GitHub...");
-      await fetchAndUpsertGithubData();
-    }
-
-    // 3. Mastodon third
-    if (options.all || options.mastodon) {
-      logger.info("\nFetching from Mastodon...");
-      await fetchAndUpsertMastodonStatuses();
-    }
-
-    // 4. Are.na last
-    if (options.all || options.arena) {
-      logger.info("\nFetching from Are.na...");
-      await fetchAndUpsertArenaBlocks();
+    // Process each source
+    for (const source of ["pinboard", "github", "mastodon", "arena"]) {
+      if (options.all || options[source]) {
+        logger.info(`\nFetching and processing from ${source}...`);
+        const processFunc = `fetchAndUpsert${
+          source.charAt(0).toUpperCase() + source.slice(1)
+        }`;
+        try {
+          await eval(processFunc)(); // Use eval to call the correct function dynamically
+        } catch (error) {
+          logger.error(`Error processing ${source}:`, error);
+        }
+      }
     }
 
     logger.info("\nProcessing completed successfully");
