@@ -259,14 +259,12 @@ async function enrichScrapWithAI(scrapData) {
       return scrapData;
     }
 
-    // Generate summary and tags
+    // Generate summary and tags first
     const summary = await limiter.schedule(() =>
       summarizeContent(contentToProcess)
     );
-
     if (summary) {
       scrapData.summary = summary;
-
       // Generate and merge tags
       const summaryTags = await limiter.schedule(() =>
         metaSummaryToTags(summary)
@@ -284,6 +282,64 @@ async function enrichScrapWithAI(scrapData) {
 
       // Add new tags
       scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
+    }
+
+    // Generate embeddings based on source type
+    switch (scrapData.source) {
+      case "arena":
+        // Generate image embeddings for Arena blocks
+        if (scrapData.metadata?.image_url) {
+          scrapData.image_embedding = await limiter.schedule(() =>
+            generateImageEmbedding(scrapData.metadata.image_url)
+          );
+        }
+        // Also embed any text content
+        if (scrapData.content || scrapData.title) {
+          scrapData.embedding_nomic = await limiter.schedule(() =>
+            generateEmbedding(
+              [scrapData.title, scrapData.content].filter(Boolean).join("\n")
+            )
+          );
+        }
+        break;
+
+      case "mastodon":
+        // Embed the status content
+        if (contentToProcess) {
+          scrapData.embedding_nomic = await limiter.schedule(() =>
+            generateEmbedding(contentToProcess)
+          );
+        }
+        // Embed any attached images
+        if (scrapData.metadata?.media_attachments?.length) {
+          const imageUrls = scrapData.metadata.media_attachments
+            .filter((m) => m.type === "image")
+            .map((m) => m.url);
+
+          if (imageUrls.length) {
+            scrapData.image_embedding = await limiter.schedule(
+              () => generateImageEmbedding(imageUrls[0]) // Just use first image for now
+            );
+          }
+        }
+        break;
+
+      case "pinboard":
+        // Embed the summary and title
+        const textToEmbed = [
+          scrapData.title,
+          scrapData.summary,
+          scrapData.description,
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        if (textToEmbed) {
+          scrapData.embedding_nomic = await limiter.schedule(() =>
+            generateEmbedding(textToEmbed)
+          );
+        }
+        break;
     }
 
     // Extract location with improved logging
