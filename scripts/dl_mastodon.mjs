@@ -6,6 +6,7 @@ import { createRestAPIClient } from "masto";
 import sanitizeHtml from "sanitize-html";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
+import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
 
 dotenv.config();
 
@@ -16,11 +17,6 @@ if (!MASTODON_API_URL || !MASTODON_ACCESS_TOKEN) {
   console.error("MASTODON_API_URL and MASTODON_ACCESS_TOKEN must be set");
   process.exit(1);
 }
-
-// Add near the top after imports
-const INSTANCE_NAME =
-  process.env.INSTANCE_NAME ||
-  `${process.env.NODE_ENV || "dev"}-mastodon-${Date.now()}`;
 
 // Initialize Supabase client
 const supabase = createClient(

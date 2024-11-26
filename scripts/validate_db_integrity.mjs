@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import chalk from "chalk";
 import sgMail from "@sendgrid/mail";
+import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
 
 const STUCK_THRESHOLD_MINS = 5;
 
@@ -829,7 +830,7 @@ async function main() {
     // Print detailed report
     console.log(chalk.blue("\n═══════════════════════════════"));
     console.log(chalk.blue("     INTEGRITY REPORT   "));
-    console.log(chalk.blue("═══════════════════════════════\n"));
+    console.log(chalk.blue("═══════��═════════��═════════════\n"));
 
     // Field Stats
     console.log(chalk.yellow("📊 FIELD COVERAGE"));

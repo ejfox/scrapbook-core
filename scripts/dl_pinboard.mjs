@@ -10,6 +10,7 @@ import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { getImageEmbedding } from "./imageEmbedding.mjs";
 import OpenAI from "openai";
+import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
 
 dotenv.config();
 
@@ -25,11 +26,6 @@ if (!apiToken) {
   console.error("PINBOARD_TOKEN is not set in environment variables");
   process.exit(1);
 }
-
-// Add near the top after imports
-const INSTANCE_NAME =
-  process.env.INSTANCE_NAME ||
-  `${process.env.NODE_ENV || "dev"}-pinboard-${Date.now()}`;
 
 // Initialize clients
 const supabase = createClient(
