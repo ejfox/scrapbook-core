@@ -5,3 +5,5 @@ screenshots/
 relationship_extraction.log
 data/pinboard_cache_meta.json
 data/pinboard_cache.json
+data/pinboard_cache_meta.json
+data/pinboard_cache.json

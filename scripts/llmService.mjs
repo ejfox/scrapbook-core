@@ -413,6 +413,12 @@ const service = {
         // Resize image before embedding
         const resizedBuffer = await resizeImageForEmbedding(imageBuffer);
 
+        // Check if resizedBuffer is empty
+        if (resizedBuffer.length === 0) {
+          console.error("Resized image buffer is empty. Aborting upload.");
+          return null; // Handle empty buffer case
+        }
+
         // Create form data
         const form = new FormData();
         form.append("model", model || defaultModel);
