@@ -111,11 +111,30 @@ const getChromePath = () => {
   }
 };
 
+// Add retry logic
+async function takeScreenshotWithRetry(page, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const screenshotBuffer = await page.screenshot({
+        type: "jpeg",
+        quality: 85,
+        fullPage: false,
+        captureBeyondViewport: false,
+      });
+      return screenshotBuffer;
+    } catch (error) {
+      logger.warn(`Screenshot attempt ${i + 1} failed: ${error.message}`);
+      if (i === retries - 1) throw error;
+      await page.waitForTimeout(1000);
+    }
+  }
+}
+
 export async function generateScreenshot({
   source,
   shortId,
   url,
-  timeout = 15000,
+  timeout = 30000,
 }) {
   let browser = null;
   let page = null;
@@ -127,14 +146,36 @@ export async function generateScreenshot({
     if (browserWSEndpoint) {
       browser = await puppeteer.connect({ browserWSEndpoint });
     } else {
+      const browserArgs = [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--window-size=1080,1920",
+        "--hide-scrollbars",
+        "--disable-notifications",
+        "--disable-extensions",
+        "--disable-infobars",
+        "--ignore-certificate-errors",
+        "--no-first-run",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-breakpad",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-features=TranslateUI,BlinkGenPropertyTrees",
+        "--disable-ipc-flooding-protection",
+        "--disable-renderer-backgrounding",
+        "--enable-features=NetworkService,NetworkServiceInProcess",
+        "--force-color-profile=srgb",
+        "--metrics-recording-only",
+        "--mute-audio",
+      ];
+
       browser = await puppeteer.launch({
         executablePath: getChromePath(),
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--single-process",
-        ],
+        args: browserArgs,
         headless: "new",
       });
       browserWSEndpoint = browser.wsEndpoint();
@@ -147,7 +188,7 @@ export async function generateScreenshot({
     await page.setViewport({
       width: 1080,
       height: 1920,
-      deviceScaleFactor: 4, // 4x DPI
+      deviceScaleFactor: 2, // 2x DPI
     });
 
     // Monitor console errors
@@ -179,7 +220,7 @@ export async function generateScreenshot({
 
     // Navigate with detailed error handling
     const response = await page.goto(url, {
-      waitUntil: "networkidle0",
+      waitUntil: ["networkidle0", "domcontentloaded", "load"],
       timeout,
     });
 
@@ -201,12 +242,7 @@ export async function generateScreenshot({
 
     // Take full-page screenshot with high quality settings
     logger.debug("Taking screenshot...");
-    const screenshotBuffer = await page.screenshot({
-      type: "jpeg",
-      quality: 100,
-      fullPage: true, // Capture entire page height
-      captureBeyondViewport: true, // Ensure we get everything
-    });
+    const screenshotBuffer = await takeScreenshotWithRetry(page);
     logger.debug("Screenshot captured successfully");
 
     // Upload to Cloudinary with optimization settings
@@ -218,11 +254,12 @@ export async function generateScreenshot({
           public_id: shortId,
           resource_type: "image",
           format: "jpg",
-          quality: 90, // High quality but with some compression
-          density: 400, // 4x DPI
+          quality: 85, // Slightly reduced for better performance
+          density: 200, // Changed to match 2x DPI
           transformation: [
             { width: 1080, height: 1920, crop: "limit" },
-            { quality: "auto:best" },
+            { quality: "auto:good" }, // Changed from auto:best for better success rate
+            { fetch_format: "auto" },
           ],
         },
         (error, result) => {
