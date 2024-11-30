@@ -113,155 +113,128 @@ const sanitizeOptions = {
 };
 
 // Add more detailed logging for status processing
-export async function processStatus(status) {
+export async function processStatus(status, isValidation = false) {
   const scrapId = `mastodon-${status.id}`;
 
   try {
-    // Try to claim the status
-    const { data: claim } = await supabase
-      .from("scraps")
-      .update({
-        processing_instance_id: INSTANCE_NAME,
-        processing_started_at: new Date().toISOString(),
-      })
-      .eq("scrap_id", scrapId)
-      .is("processing_instance_id", null)
-      .select()
-      .single();
+    // Skip claiming during validation
+    if (!isValidation) {
+      const { data: claim } = await supabase
+        .from("scraps")
+        .update({
+          processing_instance_id: INSTANCE_NAME,
+          processing_started_at: new Date().toISOString(),
+        })
+        .eq("scrap_id", scrapId)
+        .is("processing_instance_id", null)
+        .select()
+        .single();
 
-    if (!claim) {
-      logger.info(`Skipping status ${status.id} - already being processed`);
+      if (!claim) {
+        logger.info(`Skipping status ${status.id} - already being processed`);
+        return null;
+      }
+    }
+
+    logger.info(`\n🔄 Processing Mastodon status: ${status.id}`);
+
+    // Basic validation of required fields
+    if (!status || !status.id) {
+      logger.error("Invalid status object received");
       return null;
     }
 
-    try {
-      logger.info(`\n🔄 Processing Mastodon status: ${status.id}`);
-      logger.debug("Raw status data:", {
+    // Clean up HTML content - store raw HTML in metadata
+    const cleanContent = sanitizeHtml(status.content || "", sanitizeOptions);
+
+    // More lenient content validation during validation mode
+    if (!isValidation && !cleanContent.trim()) {
+      logger.warn(`⚠️ Skipping status ${status.id} - empty after sanitization`);
+      return null;
+    }
+
+    // Ensure we have a URL - construct one if missing
+    const url =
+      status.url ||
+      `${MASTODON_API_URL}/@${status.account?.username || "unknown"}/${
+        status.id
+      }`;
+
+    // Convert Mastodon date strings to ISO format with fallbacks
+    const now = new Date().toISOString();
+    const published_at = status.created_at
+      ? new Date(status.created_at).toISOString()
+      : now;
+    const created_at = status.created_at
+      ? new Date(status.created_at).toISOString()
+      : now;
+    const updated_at = status.edited_at
+      ? new Date(status.edited_at).toISOString()
+      : created_at;
+
+    // Create scrap object with more defensive programming
+    const scrap = {
+      id: scrapId,
+      source: "mastodon",
+      type: "status",
+      url,
+      title: cleanContent
+        ? cleanContent.substring(0, 100) +
+          (cleanContent.length > 100 ? "..." : "")
+        : `Mastodon Status ${status.id}`,
+      content: cleanContent || `Empty status ${status.id}`,
+      published_at,
+      created_at,
+      updated_at,
+      shared: false,
+      tags: [
+        ...(status.tags
+          ?.map((tag) => tag.name?.toLowerCase())
+          ?.filter(Boolean) || []),
+        status.visibility,
+      ].filter(Boolean),
+      metadata: {
         id: status.id,
-        url: status.url,
-        content: status.content?.substring(0, 100) + "...",
-        raw_content_length: status.content?.length || 0,
-      });
+        visibility: status.visibility || "unknown",
+        sensitive: !!status.sensitive,
+        language: status.language || "unknown",
+        replies_count: status.repliesCount || 0,
+        reblogs_count: status.reblogsCount || 0,
+        favourites_count: status.favouritesCount || 0,
+        media_attachments:
+          status.mediaAttachments?.map((media) => ({
+            type: media.type || "unknown",
+            url: media.url,
+            preview_url: media.previewUrl,
+            description: media.description,
+          })) || [],
+        mentions:
+          status.mentions?.map((mention) => ({
+            id: mention.id,
+            username: mention.username,
+            url: mention.url,
+          })) || [],
+        raw_html_content: status.content || "",
+        original_created_at: status.created_at,
+        original_edited_at: status.edited_at,
+      },
+    };
 
-      // Skip if no content
-      if (!status.content) {
-        logger.warn(`⚠️ Skipping status ${status.id} - no content`);
-        return null;
-      }
-
-      // Check for existing first
-      const existing = await checkExistingStatus(status.id);
-      if (existing && !status.edited_at) {
-        logger.info(`⏭️ Skipping unchanged status: ${status.id}`);
-        return existing;
-      }
-
-      // Clean up HTML content - store raw HTML in metadata
-      logger.info("Sanitizing HTML content...");
-      const cleanContent = sanitizeHtml(status.content, sanitizeOptions);
-
-      // Skip if sanitized content is empty
-      if (!cleanContent.trim()) {
-        logger.warn(
-          `⚠️ Skipping status ${status.id} - empty after sanitization`
-        );
-        return null;
-      }
-
-      logger.debug(
-        "Sanitized content:",
-        cleanContent.substring(0, 100) + "..."
+    // Process images if present and not in validation mode
+    if (!isValidation && status.mediaAttachments?.length > 0) {
+      logger.info(
+        `Processing ${status.mediaAttachments.length} media attachments...`
       );
+      return await processImagesForScrap(scrap);
+    }
 
-      // Ensure we have a URL
-      const url =
-        status.url ||
-        `https://mastodon.social/@${status.account.username}/${status.id}`;
-      if (!url) {
-        logger.error(`❌ No URL available for status ${status.id}`);
-        return null;
-      }
+    logger.info(`✅ Successfully processed status: ${status.id}`);
+    return scrap;
+  } catch (error) {
+    logger.error(`Error processing status ${status.id}:`, error);
 
-      // Convert Mastodon date strings to ISO format
-      logger.info("Processing dates...");
-      const published_at = new Date(status.created_at).toISOString();
-      const created_at = new Date(status.created_at).toISOString();
-      const updated_at = status.edited_at
-        ? new Date(status.edited_at).toISOString()
-        : created_at;
-
-      logger.debug("Dates:", { published_at, created_at, updated_at });
-
-      // Create scrap object with clean content
-      logger.info("Building scrap object...");
-      const scrap = {
-        id: generateScrapId("mastodon", status.id),
-        source: "mastodon",
-        type: "status",
-        url,
-        title:
-          cleanContent.substring(0, 100) +
-          (cleanContent.length > 100 ? "..." : ""),
-        content: cleanContent,
-        published_at,
-        created_at,
-        updated_at,
-        shared: false,
-        tags: [
-          ...(status.tags?.map((tag) => tag.name.toLowerCase()) || []),
-          status.visibility,
-        ].filter(Boolean),
-        metadata: {
-          id: status.id,
-          visibility: status.visibility,
-          sensitive: status.sensitive,
-          language: status.language,
-          replies_count: status.repliesCount,
-          reblogs_count: status.reblogsCount,
-          favourites_count: status.favouritesCount,
-          media_attachments:
-            status.mediaAttachments?.map((media) => ({
-              type: media.type,
-              url: media.url,
-              preview_url: media.previewUrl,
-              description: media.description,
-            })) || [],
-          mentions:
-            status.mentions?.map((mention) => ({
-              id: mention.id,
-              username: mention.username,
-              url: mention.url,
-            })) || [],
-          raw_html_content: status.content,
-          original_created_at: status.created_at,
-          original_edited_at: status.edited_at,
-        },
-      };
-
-      logger.debug("Created scrap:", {
-        id: scrap.id,
-        url: scrap.url,
-        dates: {
-          published_at: scrap.published_at,
-          created_at: scrap.created_at,
-          updated_at: scrap.updated_at,
-        },
-        tags: scrap.tags,
-        media: scrap.metadata.media_attachments.length,
-      });
-
-      // Process images if present
-      if (status.mediaAttachments?.length > 0) {
-        logger.info(
-          `Processing ${status.mediaAttachments.length} media attachments...`
-        );
-        return await processImagesForScrap(scrap);
-      }
-
-      logger.info(`✅ Successfully processed status: ${status.id}`);
-      return scrap;
-    } finally {
-      // Release claim
+    // Only handle claims if not in validation mode
+    if (!isValidation) {
       await supabase
         .from("scraps")
         .update({
@@ -270,17 +243,13 @@ export async function processStatus(status) {
         })
         .eq("scrap_id", scrapId);
     }
-  } catch (error) {
-    logger.error(`Error processing status ${status.id}:`, error);
-    // Release claim on error
-    await supabase
-      .from("scraps")
-      .update({
-        processing_instance_id: null,
-        processing_started_at: null,
-      })
-      .eq("scrap_id", scrapId);
-    throw error;
+
+    // During validation, we want to see the error
+    if (isValidation) {
+      throw error;
+    }
+
+    return null;
   }
 }
 
