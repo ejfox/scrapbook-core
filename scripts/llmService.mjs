@@ -64,6 +64,15 @@ const MODEL_TIERS = [
   [MODELS.CLAUDE_INSTANT, MODELS.GPT_3_5_TURBO, MODELS.MISTRAL_SMALL],
 ];
 
+// Add dedicated embedding model configuration
+const EMBEDDING_MODELS = {
+  text: MODELS.NOMIC_EMBED_TEXT,
+  image: MODELS.NOMIC_EMBED_IMAGE,
+};
+
+// Export the embedding models configuration
+export { MODEL_TIERS, EMBEDDING_MODELS };
+
 // Default to a good balance of capability and cost
 const DEFAULT_COMPLETION_MODEL = MODELS.CLAUDE_3_SONNET;
 const DEFAULT_TEXT_EMBEDDING_MODEL = MODELS.NOMIC_EMBED_TEXT;
@@ -579,15 +588,6 @@ export async function completion(promptOrOptions, options = {}) {
   );
 }
 
-export async function generateEmbedding(input, options = {}) {
-  return service.embedding(input, options);
-}
-
-// Helper function to generate image embedding
-export async function generateImageEmbedding(imageBase64) {
-  return service.embedding(imageBase64, { type: "image" });
-}
-
 // Add PROMPTS to exports
 export { PROMPTS };
 
@@ -600,33 +600,117 @@ export { EMBEDDING_DIMENSIONS };
 
 async function resizeImageForEmbedding(imageBuffer) {
   try {
-    // Resize image to reasonable dimensions while maintaining aspect ratio
-    // and compress to stay under 1024KB
+    const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB limit
+
+    // Resize to 1024px width while preserving aspect ratio
     const resized = await sharp(imageBuffer)
-      .resize(800, 800, {
+      .resize(1024, null, {
         fit: "inside",
         withoutEnlargement: true,
       })
       .jpeg({
-        quality: 80,
+        quality: 95, // Higher quality since we're already at a small size
         progressive: true,
       })
       .toBuffer();
 
-    // Check final size
-    if (resized.length > 1024 * 1024) {
-      // If still too large, compress more aggressively
-      return await sharp(resized)
-        .jpeg({
-          quality: 60,
-          progressive: true,
-        })
-        .toBuffer();
+    // If still too large, compress progressively until under limit
+    if (resized.length > MAX_FILE_SIZE) {
+      let quality = 90;
+      let compressed = resized;
+
+      while (compressed.length > MAX_FILE_SIZE && quality > 40) {
+        compressed = await sharp(compressed)
+          .jpeg({
+            quality: quality,
+            progressive: true,
+          })
+          .toBuffer();
+
+        quality -= 10;
+      }
+
+      if (compressed.length > MAX_FILE_SIZE) {
+        throw new Error(
+          `Image too large (${compressed.length} bytes) even after compression`
+        );
+      }
+
+      if (DEBUG) {
+        console.log(
+          chalk.gray(
+            `Image compressed from ${resized.length} to ${
+              compressed.length
+            } bytes (quality: ${quality + 10})`
+          )
+        );
+      }
+
+      return compressed;
     }
 
     return resized;
   } catch (error) {
     console.error("Error resizing image:", error);
+    throw error;
+  }
+}
+
+// Consolidated embedding functions
+export async function generateEmbedding(text, options = {}) {
+  try {
+    const response = await axios.post(
+      `${NOMIC_API_URL}/embedding/text`,
+      {
+        model: DEFAULT_TEXT_EMBEDDING_MODEL,
+        texts: [text],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.data?.embeddings?.[0]) {
+      throw new Error("No embedding returned from Nomic API");
+    }
+
+    return response.data.embeddings[0];
+  } catch (error) {
+    console.error("Error generating text embedding:", error);
+    throw error;
+  }
+}
+
+export async function generateImageEmbedding(imageBase64) {
+  try {
+    const imageBuffer = Buffer.from(imageBase64, "base64");
+    const resizedImage = await resizeImageForEmbedding(imageBuffer);
+
+    const form = new FormData();
+    form.append("model", DEFAULT_IMAGE_EMBEDDING_MODEL);
+    form.append("images", new Blob([resizedImage], { type: "image/jpeg" }));
+
+    const response = await axios.post(
+      `${NOMIC_API_URL}/embedding/image`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    if (!response.data?.embeddings?.[0]) {
+      throw new Error("No embedding returned from Nomic API");
+    }
+
+    return response.data.embeddings[0];
+  } catch (error) {
+    console.error("Error generating image embedding:", error);
     throw error;
   }
 }

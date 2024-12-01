@@ -2,7 +2,7 @@
 
 // First do all imports
 import { program } from "commander";
-import { fetchAllBlocks } from "./dl_arena.mjs";
+import { fetchAllBlocks, processBlock } from "./dl_arena.mjs";
 import { fetchStatuses, fetchUserId, processStatus } from "./dl_mastodon.mjs";
 import { fetchBookmarksWithCache, processBookmark } from "./dl_pinboard.mjs";
 import { fetchGithubData } from "./dl_github.mjs";
@@ -26,29 +26,10 @@ import os from "os";
 import axios from "axios";
 import chalk from "chalk";
 import sgMail from "@sendgrid/mail";
+import Arena from "are.na";
+import { arenaLimiter, processLimiter } from "./shared/rateLimiters.mjs";
 
 dotenv.config();
-
-// Configure SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-// Function to send email notification using SendGrid
-async function sendEmailNotification(subject, message) {
-  const msg = {
-    to: "ejfox@ejfox.com",
-    from: process.env.SENDGRID_FROM_EMAIL, // Your SendGrid verified sender email
-    subject: subject,
-    text: message,
-    html: `<p>${message}</p>`, // Optional HTML body
-  };
-
-  try {
-    await sgMail.send(msg);
-    logger.info("Email notification sent successfully!");
-  } catch (error) {
-    logger.error("Error sending email notification:", error);
-  }
-}
 
 // IMMEDIATELY set up commander before anything else
 program
@@ -71,6 +52,50 @@ console.log("Parsed options:", program.opts());
 // Get options
 const options = program.opts();
 const DEBUG = options.debug || process.env.DEBUG === "true";
+
+// Setup logging
+const logger = winston.createLogger({
+  level: DEBUG ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [new winston.transports.Console()],
+});
+
+// Initialize Arena client
+const USER_SLUG = process.env.USER_SLUG || "ej-fox";
+const ARENA_ACCESS_TOKEN = process.env.ARENA_ACCESS_TOKEN;
+
+if (!ARENA_ACCESS_TOKEN) {
+  console.error("ARENA_ACCESS_TOKEN is not set in environment variables");
+  process.exit(1);
+}
+
+const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
+
+// Configure SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Function to send email notification using SendGrid
+async function sendEmailNotification(subject, message) {
+  const msg = {
+    to: "ejfox@ejfox.com",
+    from: process.env.SENDGRID_FROM_EMAIL, // Your SendGrid verified sender email
+    subject: subject,
+    text: message,
+    html: `<p>${message}</p>`, // Optional HTML body
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info("Email notification sent successfully!");
+  } catch (error) {
+    logger.error("Error sending email notification:", error);
+  }
+}
 
 // Validate required environment variables early
 const requiredEnvVars = [
@@ -120,18 +145,6 @@ cloudinary.config({
 const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
 const upsertLimiter = new Bottleneck({ maxConcurrent: 3, minTime: 1500 });
 const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
-
-// Setup logging
-const logger = winston.createLogger({
-  level: process.env.DEBUG === "true" ? "debug" : "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
-  ),
-  transports: [new winston.transports.Console()],
-});
 
 // Replace console.log with logger
 function log(...args) {
@@ -417,44 +430,124 @@ function mergeScrapData(existing, updated) {
 }
 
 // Update the claimAndProcess function to include AI enrichment
-async function claimAndProcess(scrapId, source, data, processor) {
+async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
   try {
-    // First process the data
-    let processedData = await processor(data);
-    if (!processedData) {
-      logger.debug(`No processed data for ${scrapId}`);
-      return false;
-    }
-
-    // Add source and type
-    processedData.source = source;
-    processedData.type = processedData.type || getTypeFromSource(source);
-
-    // Enrich with AI if we have content
-    processedData = await enrichScrapWithAI(processedData);
-
-    // Then try to insert in one atomic operation
-    const { data: inserted, error } = await supabase
+    // First check if scrap exists and its processing status
+    const { data: existing } = await supabase
       .from("scraps")
-      .insert({
-        scrap_id: scrapId,
-        ...processedData,
-        processing_instance_id: INSTANCE_NAME,
-        processing_started_at: new Date().toISOString(),
-      })
-      .select()
+      .select(
+        "processing_instance_id, processing_started_at, screenshot_url, metadata"
+      )
+      .eq("scrap_id", scrapId)
       .single();
 
-    if (error) {
-      if (error.code === "23505") {
-        // Already exists
-        logger.debug(`Scrap ${scrapId} already exists`);
-        return false;
+    if (existing) {
+      // Check if we already have a valid image
+      const hasValidImage =
+        existing.screenshot_url ||
+        existing.metadata?.image_data?.cloudinary_url;
+
+      if (hasValidImage) {
+        logger.debug(
+          `Skipping image processing for ${scrapId} - already has image`
+        );
+        data.screenshot_url = existing.screenshot_url;
+        data.metadata = {
+          ...data.metadata,
+          image_data: existing.metadata?.image_data,
+        };
       }
-      throw error;
     }
 
-    return true;
+    if (!existing) {
+      // New scrap - create it with our claim
+      const { error: insertError } = await supabase.from("scraps").insert({
+        scrap_id: scrapId,
+        processing_instance_id: INSTANCE_NAME,
+        processing_started_at: new Date().toISOString(),
+        source: source,
+        type: getTypeFromSource(source),
+        content: "",
+        title: "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        metadata: {},
+        tags: [],
+      });
+
+      if (insertError) {
+        logger.error(`Failed to create scrap ${scrapId}:`, insertError);
+        return false;
+      }
+    } else {
+      // Existing scrap - check if stuck and try to claim
+      const processingStarted = new Date(existing.processing_started_at);
+      const isStuck = Date.now() - processingStarted.getTime() > 5 * 60 * 1000;
+
+      if (existing.processing_instance_id && !isStuck) {
+        logger.info(`Skipping ${scrapId} - already being processed`);
+        return false;
+      }
+
+      // Try to claim existing scrap
+      const { error: updateError } = await supabase
+        .from("scraps")
+        .update({
+          processing_instance_id: INSTANCE_NAME,
+          processing_started_at: new Date().toISOString(),
+        })
+        .eq("scrap_id", scrapId);
+
+      if (updateError) {
+        logger.error(`Failed to claim scrap ${scrapId}:`, updateError);
+        return false;
+      }
+    }
+
+    try {
+      const processedData = await processFunction(data);
+
+      if (processedData) {
+        // Upsert the processed data
+        const { error: upsertError } = await supabase.from("scraps").upsert(
+          {
+            ...processedData,
+            source: source,
+            type: processedData.type || getTypeFromSource(source),
+            scrap_id: scrapId,
+            content: processedData.content || "",
+            title: processedData.title || "",
+            metadata: processedData.metadata || {},
+            tags: processedData.tags || [],
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "scrap_id",
+            returning: "minimal",
+          }
+        );
+
+        if (upsertError) {
+          logger.error(`Failed to upsert ${scrapId}:`, upsertError);
+          return false;
+        }
+
+        logger.info(
+          chalk.green(`✅ Successfully upserted ${scrapId} to database`)
+        );
+      }
+
+      return true;
+    } finally {
+      // Release the claim
+      await supabase
+        .from("scraps")
+        .update({
+          processing_instance_id: null,
+          processing_started_at: null,
+        })
+        .eq("scrap_id", scrapId);
+    }
   } catch (error) {
     logger.error(`Error processing ${scrapId}:`, error);
     return false;
@@ -596,10 +689,12 @@ async function shouldProcessScrap(scrapData) {
   return hoursSinceLastCheck > 24;
 }
 
-// Add near the top with other constants
-const INSTANCE_NAME =
-  process.env.INSTANCE_NAME ||
-  `${process.env.NODE_ENV || "dev"}-${os.hostname()}-${Date.now()}`;
+// Get instance ID using Fly.io's allocation ID or fallback for local dev
+const INSTANCE_NAME = process.env.FLY_ALLOC_ID
+  ? `fly-${process.env.FLY_ALLOC_ID}`
+  : `local-${os.hostname().toLowerCase()}-${process.platform}-${
+      process.env.NODE_ENV || "dev"
+    }`;
 const STUCK_THRESHOLD_MINS = 5;
 
 // Add this helper function
@@ -729,7 +824,12 @@ async function fetchAndUpsertPinboardBookmarks() {
 
     try {
       if (
-        !(await claimAndProcess(scrapId, "pinboard", bookmark, processBookmark))
+        !(await claimProcessAndUpsert(
+          scrapId,
+          "pinboard",
+          bookmark,
+          processBookmark
+        ))
       ) {
         logger.info(
           `Skipping bookmark ${bookmark.href} - already being processed`
@@ -754,7 +854,12 @@ async function fetchAndUpsertMastodonStatuses() {
 
     try {
       if (
-        !(await claimAndProcess(scrapId, "mastodon", status, processStatus))
+        !(await claimProcessAndUpsert(
+          scrapId,
+          "mastodon",
+          status,
+          processStatus
+        ))
       ) {
         logger.info(`Skipping status ${status.id} - already being processed`);
         continue;
@@ -767,23 +872,69 @@ async function fetchAndUpsertMastodonStatuses() {
 }
 
 async function fetchAndUpsertArenaBlocks() {
-  const blocks = await fetchAllBlocks();
-  logger.info(`Fetched ${blocks.length} Are.na blocks`);
+  const channels = await arena.user(USER_SLUG).channels();
+  logger.info(chalk.green(`📚 Found ${channels.length} channels`));
 
-  for (const block of blocks) {
+  for (const channel of channels) {
     if (isShuttingDown) break;
 
-    const scrapId = `arena-${block.id}`;
+    logger.info(chalk.blue(`\n📂 Processing channel: ${channel.title}`));
 
-    try {
-      if (!(await claimAndProcess(scrapId, "arena", block, processBlock))) {
-        logger.info(`Skipping block ${block.id} - already being processed`);
-        continue;
-      }
-    } catch (error) {
-      logger.error(`Failed to process block: ${block.id}`, error);
-      await releaseScrap(scrapId);
+    const blocks = await arenaLimiter.schedule(() =>
+      arena.channel(channel.id).contents({
+        page: 1,
+        per: 100,
+        sort: "updated_at",
+        direction: "desc",
+      })
+    );
+
+    if (!blocks?.length) {
+      logger.warn(chalk.yellow(`No blocks found in channel: ${channel.title}`));
+      continue;
     }
+
+    logger.info(chalk.green(`📦 Found ${blocks.length} blocks`));
+
+    // Process blocks in this channel
+    for (const block of blocks) {
+      if (isShuttingDown) break;
+
+      const enrichedBlock = {
+        ...block,
+        channel: channel.title,
+        connected_to_channels: [
+          {
+            id: channel.id,
+            title: channel.title,
+          },
+          ...(block.connected_to_channels || []),
+        ],
+      };
+
+      const scrapId = `arena-${block.id}`;
+
+      try {
+        if (
+          !(await claimProcessAndUpsert(
+            scrapId,
+            "arena",
+            enrichedBlock,
+            processBlock
+          ))
+        ) {
+          logger.info(`Skipping block ${block.id} - already being processed`);
+          continue;
+        }
+      } catch (error) {
+        logger.error(`Failed to process block: ${block.id}`, error);
+        await releaseScrap(scrapId);
+      }
+    }
+
+    logger.info(
+      chalk.green(`✅ Finished processing channel: ${channel.title}`)
+    );
   }
 }
 
@@ -807,7 +958,7 @@ async function fetchAndUpsertGithubData() {
 
     try {
       if (
-        !(await claimAndProcess(scrapId, "github", scrap, processGitHubItem))
+        !(await claimProcessAndUpsert(scrapId, "github", scrap, (data) => data))
       ) {
         logger.info(
           `Skipping GitHub item ${scrap.id} - already being processed`
@@ -905,24 +1056,47 @@ async function checkOpenRouterCredits() {
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
+  +(+logger.info(chalk.blue("\n🗺️ Processing Plan:")));
+  +logger.info(chalk.gray("1. Check OpenRouter credits (for AI features)"));
+  +logger.info(chalk.gray("2. Initialize database if needed"));
+  +logger.info(
+    chalk.gray("3. Clear any stuck processing from crashed instances")
+  );
+  +logger.info(chalk.gray("4. Process each source in sequence:"));
+  +logger.info(chalk.gray("   • Pinboard: Fetch bookmarks & process"));
+  +logger.info(chalk.gray("   • GitHub: Fetch repos/PRs/issues & process"));
+  +logger.info(chalk.gray("   • Mastodon: Fetch statuses & process"));
+  +logger.info(chalk.gray("   • Are.na: Fetch channels -> blocks & process"));
+  +logger.info(chalk.gray("\nFor each item:"));
+  +logger.info(chalk.gray("1. Try to claim it for processing"));
+  +logger.info(chalk.gray("2. Process content & generate embeddings"));
+  +logger.info(chalk.gray("3. Upload images to Cloudinary if needed"));
+  +logger.info(chalk.gray("4. Save to database"));
+  +logger.info(chalk.gray("5. Release claim\n"));
 
   try {
     // Check OpenRouter credits before starting processing
+    +logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
     const sufficientCredits = await checkOpenRouterCredits();
     if (!sufficientCredits) {
       return; // Stop processing if credits are insufficient
     }
 
     // Initialize database if needed
+    +logger.info(chalk.blue("\n2️⃣ Initializing Database..."));
     await initializeDatabaseIfNeeded();
 
     // Clear any stuck processing before starting
+    +logger.info(chalk.blue("\n3️⃣ Cleaning Up Stuck Processing..."));
     await clearStuckProcessing();
 
     // Process each source
+    +logger.info(chalk.blue("\n4️⃣ Processing Sources..."));
     for (const source of ["pinboard", "github", "mastodon", "arena"]) {
       if (options.all || options[source]) {
-        logger.info(`\nFetching and processing from ${source}...`);
+        logger.info(
+          chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`)
+        );
 
         // Map source names to their functions
         const sourceFunctions = {
@@ -935,7 +1109,13 @@ async function main() {
         try {
           await sourceFunctions[source]();
         } catch (error) {
-          logger.error(`Error processing ${source}:`, error);
+          logger.error(
+            chalk.red(`❌ Error processing ${source}:`),
+            error.message
+          );
+          if (DEBUG) {
+            logger.error(chalk.gray("Full error:"), error);
+          }
         }
       }
     }

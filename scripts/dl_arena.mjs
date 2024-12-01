@@ -8,6 +8,9 @@ import { processImagesForScrap } from "./imageEmbedding.mjs";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
+import chalk from "chalk";
+import { arenaLimiter, processLimiter } from "./shared/rateLimiters.mjs";
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
@@ -25,10 +28,6 @@ const logger = winston.createLogger({
   ),
   transports: [new winston.transports.Console()],
 });
-
-// Rate limiters
-const arenaLimiter = new Bottleneck({ minTime: 333 });
-const processLimiter = new Bottleneck({ maxConcurrent: 3 });
 
 // Environment checks
 const USER_SLUG = process.env.USER_SLUG || "ej-fox";
@@ -51,6 +50,13 @@ const supabase = createClient(
     db: { schema: "public" },
   }
 );
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // Add this helper function for merging scraps
 async function mergeExistingScrap(newScrap) {
@@ -115,7 +121,7 @@ async function mergeExistingScrap(newScrap) {
 }
 
 // Update processBlock to use merging and better logging
-export async function processBlock(block) {
+export const processBlock = async (block) => {
   if (!block || !block.id) {
     logger.error("Invalid block:", block);
     return null;
@@ -159,13 +165,61 @@ export async function processBlock(block) {
       return `https://www.are.na/block/${block.id}`;
     })();
 
-    // Get best available image URL
-    const screenshot_url = (() => {
+    // Get best available image URL with highest resolution
+    const getHighestResolutionUrl = () => {
+      if (block.image?.original?.url) return block.image.original.url;
+      if (block.image?.large?.url) return block.image.large.url;
       if (block.image?.display?.url) return block.image.display.url;
+      if (block.image?.square?.url) return block.image.square.url;
+      if (block.image?.thumb?.url) return block.image.thumb.url;
       if (block.attachment?.url) return block.attachment.url;
       if (block.embed?.thumbnail_url) return block.embed.thumbnail_url;
       return null;
-    })();
+    };
+
+    const originalImageUrl = getHighestResolutionUrl();
+    let screenshot_url = null;
+
+    if (originalImageUrl) {
+      // Check if we already have a Cloudinary version
+      const existingCloudinaryUrl = block.metadata?.image_data?.cloudinary_url;
+      if (existingCloudinaryUrl) {
+        logger.debug(`Using existing Cloudinary URL: ${existingCloudinaryUrl}`);
+        screenshot_url = existingCloudinaryUrl;
+      } else {
+        try {
+          // Upload to Cloudinary
+          const result = await cloudinary.uploader.upload(originalImageUrl, {
+            folder: "arena",
+            public_id: `arena-${block.id}`,
+            overwrite: true,
+            resource_type: "auto",
+            transformation: [
+              { quality: "auto" },
+              { fetch_format: "auto" },
+              { dpr: "auto" },
+            ],
+          });
+
+          screenshot_url = result.secure_url;
+          logger.debug("Cloudinary upload result:", {
+            original_url: originalImageUrl,
+            cloudinary_url: screenshot_url,
+            public_id: result.public_id,
+            bytes: result.bytes,
+            format: result.format,
+          });
+
+          logger.info(`✅ Uploaded image to Cloudinary: ${screenshot_url}`);
+        } catch (error) {
+          logger.error(
+            `Failed to upload image to Cloudinary: ${error.message}`
+          );
+          // Fallback to original URL if Cloudinary upload fails
+          screenshot_url = originalImageUrl;
+        }
+      }
+    }
 
     // Parse dates safely
     const created = block.created_at ? new Date(block.created_at) : new Date();
@@ -204,6 +258,8 @@ export async function processBlock(block) {
           thumb: block.image.thumb?.url,
           square: block.image.square?.url,
           display: block.image.display?.url,
+          original_url: originalImageUrl,
+          cloudinary_url: screenshot_url,
         },
         embed: block.embed && {
           type: block.embed.type,
@@ -237,7 +293,7 @@ export async function processBlock(block) {
       );
     } else {
       logger.info(
-        `ℹ️ No image embedding generated for ${blockId}. Available image data:`,
+        `ℹ No image embedding generated for ${blockId}. Available image data:`,
         {
           "metadata.image_urls": scrapWithImages.metadata?.image_urls,
           "metadata.primary_image_url":
@@ -246,25 +302,23 @@ export async function processBlock(block) {
       );
     }
 
-    // Merge with existing data
-    logger.info(`🔄 Checking for existing data for ${blockId}`);
-    const mergedScrap = await mergeExistingScrap(scrapWithImages);
+    // Return processed scrap
+    logger.info(`📊 Final scrap state for ${blockId}:`);
 
     // Log the final state
     logger.info(`📊 Final scrap state for ${blockId}:
-      • Title: ${mergedScrap.title.substring(0, 50)}...
-      • Channel: ${mergedScrap.metadata.channel}
-      • Has image embedding: ${Boolean(mergedScrap.image_embedding)}
-      • Tags: ${mergedScrap.tags.join(", ")}
-      • Update count: ${mergedScrap.metadata.update_count || 1}
+      • Title: ${scrapWithImages.title.substring(0, 50)}...
+      • Channel: ${scrapWithImages.metadata.channel}
+      • Has image embedding: ${Boolean(scrapWithImages.image_embedding)}
+      • Tags: ${scrapWithImages.tags.join(", ")}
     `);
 
-    return mergedScrap;
+    return scrapWithImages;
   } catch (error) {
     logger.error(`❌ Error processing block ${blockId}:`, error);
     return null;
   }
-}
+};
 
 // Add at top level
 let isShuttingDown = false;
@@ -287,8 +341,12 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
   try {
     logger.info("\n🔍 Fetching Are.na channels...");
     const userChannels = await arena.user(USER_SLUG).channels();
+    if (!userChannels?.length) {
+      throw new Error("No channels found for user");
+    }
     totalChannels = userChannels.length;
-    logger.info(`📚 Found ${totalChannels} channels`);
+    logger.info(chalk.green(`📚 Found ${totalChannels} channels`));
+    logger.debug("Channels:", userChannels.map((c) => c.title).join(", "));
 
     const channelsToProcess = testMode ? [userChannels[0]] : userChannels;
 
@@ -308,73 +366,33 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
       );
 
       const blocks = response || [];
+      if (!blocks.length) {
+        logger.warn(
+          chalk.yellow(`No blocks found in channel: ${channel.title}`)
+        );
+        continue;
+      }
+      logger.info(
+        chalk.green(`📦 Found ${blocks.length} blocks in ${channel.title}`)
+      );
       processedCount += blocks.length;
 
-      // Process blocks with claiming
       for (const block of blocks) {
         if (isShuttingDown) break;
+        // Enrich block with channel info before passing to index.mjs
+        const enrichedBlock = {
+          ...block,
+          channel: channel.title,
+          connected_to_channels: [
+            {
+              id: channel.id,
+              title: channel.title,
+            },
+            ...(block.connected_to_channels || []),
+          ],
+        };
 
-        const scrapId = `arena-${block.id}`;
-
-        try {
-          // Try to claim the block
-          const { data: claim } = await supabase
-            .from("scraps")
-            .update({
-              processing_instance_id: INSTANCE_NAME,
-              processing_started_at: new Date().toISOString(),
-            })
-            .eq("scrap_id", scrapId)
-            .is("processing_instance_id", null)
-            .select()
-            .single();
-
-          if (!claim) {
-            logger.info(`Skipping block ${block.id} - already being processed`);
-            continue;
-          }
-
-          try {
-            const enrichedBlock = {
-              ...block,
-              channel: channel.title,
-              connected_to_channels: [
-                {
-                  id: channel.id,
-                  title: channel.title,
-                },
-                ...(block.connected_to_channels || []),
-              ],
-            };
-
-            const processedBlock = await processLimiter.schedule(() =>
-              processBlock(enrichedBlock)
-            );
-
-            if (processedBlock) {
-              allBlocks.push(processedBlock);
-            }
-          } finally {
-            // Always release the claim
-            await supabase
-              .from("scraps")
-              .update({
-                processing_instance_id: null,
-                processing_started_at: null,
-              })
-              .eq("scrap_id", scrapId);
-          }
-        } catch (error) {
-          logger.error(`Error processing block ${block.id}:`, error);
-          // Make sure to release claim on error
-          await supabase
-            .from("scraps")
-            .update({
-              processing_instance_id: null,
-              processing_started_at: null,
-            })
-            .eq("scrap_id", scrapId);
-        }
+        allBlocks.push(enrichedBlock);
       }
 
       // Update progress
