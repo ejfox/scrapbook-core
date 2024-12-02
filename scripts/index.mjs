@@ -263,141 +263,82 @@ async function enrichScrapWithAI(scrapData) {
     return scrapData;
   }
 
+  // Add fallback for missing scrap_id
+  const scrapIdentifier =
+    scrapData.scrap_id || scrapData.id || `${scrapData.source}-${Date.now()}`;
+
+  logger.info(`🔍 Starting AI enrichment for ${scrapIdentifier}`);
+  logger.info(
+    `OpenRouter API Key present: ${!!process.env.OPENROUTER_API_KEY}`
+  );
+
   try {
-    // Get content to process
-    const contentToProcess =
-      scrapData.content || scrapData.description || scrapData.title;
+    // Get content to process - be more explicit about what we're processing
+    const contentToProcess = [
+      scrapData.content,
+      scrapData.description,
+      scrapData.title,
+      // Add any metadata that might be useful
+      scrapData.metadata?.description,
+      scrapData.metadata?.content,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    logger.info(`📝 Content length: ${contentToProcess.length} characters`);
+    logger.info(`Content preview: ${contentToProcess.slice(0, 100)}...`);
+
     if (!contentToProcess) {
-      logger.debug("No content to process for AI enrichment");
+      logger.info("⚠️ No content to process for AI enrichment");
       return scrapData;
     }
 
-    // Generate summary and tags first
-    const summary = await limiter.schedule(() =>
-      summarizeContent(contentToProcess)
-    );
-    if (summary) {
-      scrapData.summary = summary;
-      // Generate and merge tags
-      const summaryTags = await limiter.schedule(() =>
-        metaSummaryToTags(summary)
+    logger.info(`🤖 Generating summary for ${scrapIdentifier}...`);
+
+    try {
+      // Generate summary with meta option
+      const summary = await limiter.schedule(() =>
+        summarizeContent(contentToProcess, { metaSummary: true })
       );
 
-      // Initialize tags array if needed
-      scrapData.tags = scrapData.tags || [];
-      if (typeof scrapData.tags === "string") {
-        try {
-          scrapData.tags = JSON.parse(scrapData.tags);
-        } catch {
-          scrapData.tags = [];
-        }
-      }
+      logger.info(`Summary result: ${summary ? "Success" : "Failed"}`);
+      if (summary) {
+        logger.info(`✅ Generated summary (${summary.length} chars)`);
+        logger.info(`Summary preview: ${summary.slice(0, 100)}...`);
+        scrapData.summary = summary;
 
-      // Add new tags
-      scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
-    }
+        // Generate and merge tags
+        logger.info(`🏷️ Generating tags from summary...`);
+        const summaryTags = await limiter.schedule(() =>
+          metaSummaryToTags(summary)
+        );
 
-    // Generate embeddings based on source type
-    switch (scrapData.source) {
-      case "arena":
-        // Generate image embeddings for Arena blocks
-        if (scrapData.metadata?.image_url) {
-          scrapData.image_embedding = await limiter.schedule(() =>
-            generateImageEmbedding(scrapData.metadata.image_url)
+        if (summaryTags?.length) {
+          logger.info(
+            `✅ Generated ${summaryTags.length} tags: ${summaryTags.join(", ")}`
           );
-        }
-        // Also embed any text content
-        if (scrapData.content || scrapData.title) {
-          scrapData.embedding_nomic = await limiter.schedule(() =>
-            generateEmbedding(
-              [scrapData.title, scrapData.content].filter(Boolean).join("\n")
-            )
-          );
-        }
-        break;
-
-      case "mastodon":
-        // Embed the status content
-        if (contentToProcess) {
-          scrapData.embedding_nomic = await limiter.schedule(() =>
-            generateEmbedding(contentToProcess)
-          );
-        }
-        // Embed any attached images
-        if (scrapData.metadata?.media_attachments?.length) {
-          const imageUrls = scrapData.metadata.media_attachments
-            .filter((m) => m.type === "image")
-            .map((m) => m.url);
-
-          if (imageUrls.length) {
-            scrapData.image_embedding = await limiter.schedule(
-              () => generateImageEmbedding(imageUrls[0]) // Just use first image for now
-            );
+          // Initialize tags array if needed
+          scrapData.tags = scrapData.tags || [];
+          if (typeof scrapData.tags === "string") {
+            try {
+              scrapData.tags = JSON.parse(scrapData.tags);
+            } catch (error) {
+              logger.error(`Error parsing existing tags: ${error.message}`);
+              scrapData.tags = [];
+            }
           }
+          // Add new tags
+          scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
+          logger.info(`Final tags: ${scrapData.tags.join(", ")}`);
+        } else {
+          logger.info("⚠️ No tags generated from summary");
         }
-        break;
-
-      case "pinboard":
-        // Embed the summary and title
-        const textToEmbed = [
-          scrapData.title,
-          scrapData.summary,
-          scrapData.description,
-        ]
-          .filter(Boolean)
-          .join("\n");
-
-        if (textToEmbed) {
-          scrapData.embedding_nomic = await limiter.schedule(() =>
-            generateEmbedding(textToEmbed)
-          );
-        }
-        break;
-    }
-
-    // Extract location with improved logging
-    const locationData = await limiter.schedule(() =>
-      extractLocation(contentToProcess, {
-        url: scrapData.url,
-        rawHtml: scrapData.rawHtml,
-      })
-    );
-
-    if (locationData) {
-      log(`✅ Location extracted: ${JSON.stringify(locationData)}`);
-      scrapData.location = locationData.location;
-      scrapData.latitude = locationData.latitude;
-      scrapData.longitude = locationData.longitude;
-
-      // Merge otherLocations into metadata
-      scrapData.metadata = {
-        ...scrapData.metadata,
-        otherLocations: locationData.metadata?.otherLocations || [],
-      };
-    } else {
-      log(`❌ Location extraction failed for scrap ${scrapData.scrap_id}`);
-    }
-
-    // Extract relationships
-    const relationships = await limiter.schedule(() =>
-      extractRelationships(contentToProcess)
-    );
-
-    if (relationships?.length) {
-      // Initialize relationships array if needed
-      scrapData.relationships = scrapData.relationships || [];
-      if (typeof scrapData.relationships === "string") {
-        try {
-          scrapData.relationships = JSON.parse(scrapData.relationships);
-        } catch {
-          scrapData.relationships = [];
-        }
+      } else {
+        logger.warn("⚠️ No summary generated");
       }
-
-      // Add new relationships
-      scrapData.relationships = [
-        ...new Set([...scrapData.relationships, ...relationships]),
-      ];
+    } catch (error) {
+      logger.error(`Error in summarization/tagging: ${error.message}`);
+      logger.error(error.stack);
     }
 
     return scrapData;
@@ -505,20 +446,27 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
     }
 
     try {
+      // Process the data first
       const processedData = await processFunction(data);
 
       if (processedData) {
-        // Upsert the processed data
+        // Ensure scrap_id is set before AI enrichment
+        processedData.scrap_id = scrapId;
+
+        // Add AI enrichment step here
+        const enrichedData = await enrichScrapWithAI(processedData);
+
+        // Upsert the enriched data
         const { error: upsertError } = await supabase.from("scraps").upsert(
           {
-            ...processedData,
+            ...enrichedData,
             source: source,
-            type: processedData.type || getTypeFromSource(source),
-            scrap_id: scrapId,
-            content: processedData.content || "",
-            title: processedData.title || "",
-            metadata: processedData.metadata || {},
-            tags: processedData.tags || [],
+            type: enrichedData.type || getTypeFromSource(source),
+            scrap_id: scrapId, // Ensure scrap_id is set in final data
+            content: enrichedData.content || "",
+            title: enrichedData.title || "",
+            metadata: enrichedData.metadata || {},
+            tags: enrichedData.tags || [],
             updated_at: new Date().toISOString(),
           },
           {

@@ -1,5 +1,82 @@
 [
   {
+    "href": "https://arstechnica.com/information-technology/2024/12/certain-names-make-chatgpt-grind-to-a-halt-and-we-know-why/?utm_brand=arstechnica&utm_social-type=owned",
+    "description": "Certain names make ChatGPT grind to a halt, and we know why - Ars Technica",
+    "extended": "",
+    "meta": "13c37319550dbf576b02c2eec01cad79",
+    "hash": "6888b626e7c34267e501a4202554d0ab",
+    "time": "2024-12-02T22:27:10Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://distill.pub/2020/circuits/visualizing-weights/",
+    "description": "Visualizing Weights",
+    "extended": "",
+    "meta": "fd826a10f914d8d0f543e53943af77f6",
+    "hash": "de8996cbd656f224e2d6ebf5cc4c31c9",
+    "time": "2024-12-02T19:43:25Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://distill.pub/2018/building-blocks/",
+    "description": "The Building Blocks of Interpretability",
+    "extended": "",
+    "meta": "c41bc69ebecd430931a9242a4e77b007",
+    "hash": "05041b3bd8084f853aedd2c19516fa20",
+    "time": "2024-12-02T19:42:45Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": "machinelearning dataviz"
+  },
+  {
+    "href": "https://playground.tensorflow.org/#activation=tanh&batchSize=10&dataset=circle&regDataset=reg-plane&learningRate=0.03&regularizationRate=0&noise=0&networkShape=4,2&seed=0.90997&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false",
+    "description": "A Neural Network Playground",
+    "extended": "",
+    "meta": "e72e5ee99294c0d9ad2b51710fcf45d3",
+    "hash": "fa478afe31a9de4aff15594ccc7b99dc",
+    "time": "2024-12-02T18:43:47Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
+    "href": "https://www.youtube.com/watch?v=-gI2MICgTro",
+    "description": "Lecture 16: AutoEncoders (Denoising, Sparse and Contractive) - YouTube",
+    "extended": "",
+    "meta": "edda4a31c03f18f71402471306064768",
+    "hash": "54f009e14844c722095f5bf2bd7694c5",
+    "time": "2024-12-02T18:34:04Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": "machinelearning"
+  },
+  {
+    "href": "https://www.cell.com/heliyon/fulltext/S2405-8440(24)15796-9",
+    "description": "[no title]",
+    "extended": "",
+    "meta": "2ec90be58cd64d7c0b4c480837e97b1d",
+    "hash": "c7905904e343b4bb15c0d242dc432e9b",
+    "time": "2024-12-02T14:21:43Z",
+    "shared": "yes",
+    "toread": "yes",
+    "tags": ""
+  },
+  {
+    "href": "https://www.lexaloffle.com/bbs/?tid=140751",
+    "description": "http GET request?",
+    "extended": "",
+    "meta": "8252f8e1c30c868d75de43a4d7273b11",
+    "hash": "6a866fbec818d0e53b9c62143d113bd5",
+    "time": "2024-12-01T17:07:46Z",
+    "shared": "yes",
+    "toread": "no",
+    "tags": ""
+  },
+  {
     "href": "https://lifehacker.com/tech/sill-app-links-in-bluesky-mastodon-feeds",
     "description": "'Sill' Is the Best Way to Read Bluesky and Mastadon Links",
     "extended": "Sill is a link aggregation service for Bluesky and Mastodon. It allows you to view all the links shared to your timeline and has mute filters to keep unwanted links at bay.",
