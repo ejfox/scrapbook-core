@@ -22,11 +22,16 @@ export async function summarizeContent(content, options = {}) {
   }
 
   try {
+    log(` Original content length: ${content.length}`);
+
     // Clean up HTML content if present
     const cleanContent = content
-      .replace(/<[^>]*>/g, " ") //Improved regex for HTML tag removal
+      .replace(/<[^>]*>/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+
+    log(`📝 Cleaned content length: ${cleanContent.length}`);
+    log(`📝 Content preview: ${cleanContent.slice(0, 100)}...`);
 
     if (!cleanContent) {
       log("❌ No content after cleaning");
@@ -35,49 +40,37 @@ export async function summarizeContent(content, options = {}) {
 
     // Configure chunk size based on model
     const chunkSizeTokens = options.chunkSize || 120000;
+    log(`📏 Using chunk size: ${chunkSizeTokens}`);
 
     // Break content into chunks
     const chunks = breakContentIntoChunks(cleanContent, chunkSizeTokens);
-
-    // Now we can safely use chunks.length
-    log(
-      `🔄 Processing ${cleanContent.length} characters in ${chunks.length} chunks...`
-    );
     log(`📑 Split into ${chunks.length} chunks`);
+    chunks.forEach((chunk, i) => {
+      log(`Chunk ${i + 1} length: ${chunk.length}`);
+    });
 
     // Process chunks
     log("🤖 Generating summaries...");
     const summaries = await Promise.all(
-      chunks.map((chunk) =>
-        limiter.schedule(() => summarizeChunk(chunk, options))
+      chunks.map((chunk, i) =>
+        limiter.schedule(async () => {
+          log(`Processing chunk ${i + 1}/${chunks.length}`);
+          const summary = await summarizeChunk(chunk, options);
+          log(`Chunk ${i + 1} summary length: ${summary?.length || 0}`);
+          return summary;
+        })
       )
     );
 
     // Combine summaries
     const summary = summaries.join("\n").trim();
-
-    if (!summary) {
-      log("❌ No summary generated");
-      return null;
-    }
-
-    log(`✅ Summarized to ${summary.length} characters`);
+    log(`✅ Final summary length: ${summary.length}`);
     log(`First line: ${summary.split("\n")[0]}`);
-
-    // Generate meta summary if requested
-    if (options.metaSummary) {
-      log("📊 Generating meta summary...");
-      const metaSummary = await summarizeChunk(summary, {
-        ...options,
-        meta: true,
-      });
-      log(`✅ Meta-summarized to ${metaSummary.length} characters`);
-      return metaSummary;
-    }
 
     return summary;
   } catch (error) {
     console.error("❌ Error in summarization:", error);
+    console.error(error.stack);
     return null;
   }
 }
