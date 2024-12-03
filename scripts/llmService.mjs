@@ -5,6 +5,7 @@ import chalk from "chalk";
 import sharp from "sharp";
 import { FormData } from "@web-std/form-data";
 import { File, Blob } from "node:buffer";
+import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
 
 dotenv.config();
 
@@ -657,13 +658,25 @@ async function resizeImageForEmbedding(imageBuffer) {
 }
 
 // Consolidated embedding functions
-export async function generateEmbedding(text, options = {}) {
+export async function generateEmbedding(input, options = {}) {
+  const { type = "text" } = options;
+
+  if (!process.env.NOMIC_API_KEY) {
+    logger.warn("Nomic API key not configured - please set NOMIC_API_KEY");
+    return null;
+  }
+
   try {
+    if (type === "image") {
+      return await getImageEmbedding(input);
+    }
+
+    // Text embedding
     const response = await axios.post(
-      `${NOMIC_API_URL}/embedding/text`,
+      "https://api-atlas.nomic.ai/v1/embedding/text",
       {
-        model: DEFAULT_TEXT_EMBEDDING_MODEL,
-        texts: [text],
+        model: "nomic-embed-text-v1.5",
+        texts: Array.isArray(input) ? input : [input],
       },
       {
         headers: {
@@ -673,44 +686,9 @@ export async function generateEmbedding(text, options = {}) {
       }
     );
 
-    if (!response.data?.embeddings?.[0]) {
-      throw new Error("No embedding returned from Nomic API");
-    }
-
     return response.data.embeddings[0];
   } catch (error) {
-    console.error("Error generating text embedding:", error);
-    throw error;
-  }
-}
-
-export async function generateImageEmbedding(imageBase64) {
-  try {
-    const imageBuffer = Buffer.from(imageBase64, "base64");
-    const resizedImage = await resizeImageForEmbedding(imageBuffer);
-
-    const form = new FormData();
-    form.append("model", DEFAULT_IMAGE_EMBEDDING_MODEL);
-    form.append("images", new Blob([resizedImage], { type: "image/jpeg" }));
-
-    const response = await axios.post(
-      `${NOMIC_API_URL}/embedding/image`,
-      form,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    if (!response.data?.embeddings?.[0]) {
-      throw new Error("No embedding returned from Nomic API");
-    }
-
-    return response.data.embeddings[0];
-  } catch (error) {
-    console.error("Error generating image embedding:", error);
-    throw error;
+    logger.error(`Error generating ${type} embedding:`, error.message);
+    return null;
   }
 }
