@@ -28,6 +28,7 @@ import chalk from "chalk";
 import sgMail from "@sendgrid/mail";
 import Arena from "are.na";
 import { arenaLimiter, processLimiter } from "./shared/rateLimiters.mjs";
+import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
 
 dotenv.config();
 
@@ -189,12 +190,6 @@ process.on("unhandledRejection", (reason, promise) => {
   gracefulShutdown();
 });
 
-// Remove OpenAI-specific code
-const generateEmbedding = async (text) => {
-  // For now, just return null if embeddings are requested
-  return null;
-};
-
 // Improve the existing scrap check function
 async function getExistingScrap(scrapData) {
   const { data, error } = await supabase
@@ -241,9 +236,10 @@ function validateAIOutput(type, data) {
       case "location":
         if (!data || typeof data !== "object") return null;
         return {
-          name: String(data.name || ""),
+          name: data.location || "",
           latitude: Number(data.latitude) || null,
           longitude: Number(data.longitude) || null,
+          metadata: data.metadata || {},
         };
 
       default:
@@ -258,87 +254,122 @@ function validateAIOutput(type, data) {
 
 // Simplify enrichScrapWithAI to handle tags more directly
 async function enrichScrapWithAI(scrapData) {
-  if (!process.env.OPENROUTER_API_KEY) {
-    logger.info("Skipping AI enrichment - OpenRouter API key not configured");
+  if (!process.env.OPENROUTER_API_KEY || !process.env.NOMIC_API_KEY) {
+    logger.info("Skipping AI enrichment - API keys not configured");
     return scrapData;
   }
 
-  // Add fallback for missing scrap_id
   const scrapIdentifier =
     scrapData.scrap_id || scrapData.id || `${scrapData.source}-${Date.now()}`;
-
   logger.info(`🔍 Starting AI enrichment for ${scrapIdentifier}`);
-  logger.info(
-    `OpenRouter API Key present: ${!!process.env.OPENROUTER_API_KEY}`
-  );
 
   try {
-    // Get content to process - be more explicit about what we're processing
+    // Get content to process
     const contentToProcess = [
       scrapData.content,
       scrapData.description,
       scrapData.title,
-      // Add any metadata that might be useful
       scrapData.metadata?.description,
       scrapData.metadata?.content,
     ]
       .filter(Boolean)
       .join("\n\n");
 
-    logger.info(`📝 Content length: ${contentToProcess.length} characters`);
-    logger.info(`Content preview: ${contentToProcess.slice(0, 100)}...`);
-
     if (!contentToProcess) {
       logger.info("⚠️ No content to process for AI enrichment");
       return scrapData;
     }
 
-    logger.info(`🤖 Generating summary for ${scrapIdentifier}...`);
+    // Generate text embedding
+    logger.info("📊 Generating text embedding...");
+    const textEmbedding = await limiter.schedule(() =>
+      generateEmbedding(contentToProcess, { type: "text" })
+    );
+    if (textEmbedding) {
+      scrapData.embedding_nomic = textEmbedding;
+      logger.info("✅ Text embedding generated");
+    }
 
-    try {
-      // Generate summary with meta option
-      const summary = await limiter.schedule(() =>
-        summarizeContent(contentToProcess, { metaSummary: true })
+    // Process images and generate image embedding if screenshot exists
+    if (scrapData.screenshot_url) {
+      logger.info("🖼️ Processing image...");
+      const withImageEmbedding = await processImagesForScrap(scrapData);
+      if (withImageEmbedding.image_embedding) {
+        scrapData.image_embedding = withImageEmbedding.image_embedding;
+        logger.info("✅ Image embedding generated");
+      }
+    }
+
+    // Generate summary
+    logger.info(`🤖 Generating summary for ${scrapIdentifier}...`);
+    const summary = await limiter.schedule(() =>
+      summarizeContent(contentToProcess, { metaSummary: true })
+    );
+
+    if (summary) {
+      logger.info(`✅ Generated summary (${summary.length} chars)`);
+      scrapData.summary = summary;
+
+      // Generate tags from summary
+      logger.info(`🏷️ Generating tags from summary...`);
+      const summaryTags = await limiter.schedule(() =>
+        metaSummaryToTags(summary)
       );
 
-      logger.info(`Summary result: ${summary ? "Success" : "Failed"}`);
-      if (summary) {
-        logger.info(`✅ Generated summary (${summary.length} chars)`);
-        logger.info(`Summary preview: ${summary.slice(0, 100)}...`);
-        scrapData.summary = summary;
-
-        // Generate and merge tags
-        logger.info(`🏷️ Generating tags from summary...`);
-        const summaryTags = await limiter.schedule(() =>
-          metaSummaryToTags(summary)
+      if (summaryTags?.length) {
+        logger.info(
+          `✅ Generated ${summaryTags.length} tags: ${summaryTags.join(", ")}`
         );
-
-        if (summaryTags?.length) {
-          logger.info(
-            `✅ Generated ${summaryTags.length} tags: ${summaryTags.join(", ")}`
-          );
-          // Initialize tags array if needed
-          scrapData.tags = scrapData.tags || [];
-          if (typeof scrapData.tags === "string") {
-            try {
-              scrapData.tags = JSON.parse(scrapData.tags);
-            } catch (error) {
-              logger.error(`Error parsing existing tags: ${error.message}`);
-              scrapData.tags = [];
-            }
+        scrapData.tags = scrapData.tags || [];
+        if (typeof scrapData.tags === "string") {
+          try {
+            scrapData.tags = JSON.parse(scrapData.tags);
+          } catch (error) {
+            logger.error(`Error parsing existing tags: ${error.message}`);
+            scrapData.tags = [];
           }
-          // Add new tags
-          scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
-          logger.info(`Final tags: ${scrapData.tags.join(", ")}`);
-        } else {
-          logger.info("⚠️ No tags generated from summary");
         }
-      } else {
-        logger.warn("⚠️ No summary generated");
+        scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
       }
-    } catch (error) {
-      logger.error(`Error in summarization/tagging: ${error.message}`);
-      logger.error(error.stack);
+
+      // Extract location information
+      logger.info("🌍 Extracting location information...");
+      const locationInfo = await limiter.schedule(() =>
+        extractLocation(contentToProcess)
+      );
+
+      if (locationInfo) {
+        const validatedLocation = validateAIOutput("location", locationInfo);
+        if (validatedLocation) {
+          scrapData.location = validatedLocation.name;
+          scrapData.latitude = validatedLocation.latitude;
+          scrapData.longitude = validatedLocation.longitude;
+          scrapData.metadata = {
+            ...scrapData.metadata,
+            otherLocations: validatedLocation.metadata.otherLocations || [],
+          };
+          logger.info(`✅ Location extracted: ${validatedLocation.name}`);
+        }
+      }
+
+      // Extract relationships
+      logger.info("🔗 Extracting relationships...");
+      const relationships = await limiter.schedule(() =>
+        extractRelationships(contentToProcess)
+      );
+
+      if (relationships) {
+        const validatedRelationships = validateAIOutput(
+          "relationships",
+          relationships
+        );
+        if (validatedRelationships.length > 0) {
+          scrapData.relationships = validatedRelationships;
+          logger.info(
+            `✅ Found ${validatedRelationships.length} relationships`
+          );
+        }
+      }
     }
 
     return scrapData;
