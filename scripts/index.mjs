@@ -16,6 +16,7 @@ import {
   gitHubSummaryToTags,
 } from "./aiGithubSummarization.mjs";
 import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
+import { generateEmbedding } from "./llmService.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
