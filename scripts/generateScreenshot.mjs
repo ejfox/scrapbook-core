@@ -134,7 +134,7 @@ export async function generateScreenshot({
   source,
   shortId,
   url,
-  timeout = 30000,
+  timeout = 60000,
 }) {
   let browser = null;
   let page = null;
@@ -159,18 +159,9 @@ export async function generateScreenshot({
         "--disable-infobars",
         "--ignore-certificate-errors",
         "--no-first-run",
-        "--disable-background-networking",
-        "--disable-background-timer-throttling",
-        "--disable-backgrounding-occluded-windows",
-        "--disable-breakpad",
-        "--disable-component-extensions-with-background-pages",
-        "--disable-features=TranslateUI,BlinkGenPropertyTrees",
-        "--disable-ipc-flooding-protection",
-        "--disable-renderer-backgrounding",
-        "--enable-features=NetworkService,NetworkServiceInProcess",
-        "--force-color-profile=srgb",
-        "--metrics-recording-only",
-        "--mute-audio",
+        "--js-flags=--max-old-space-size=4096",
+        "--memory-pressure-off",
+        "--deterministic-mode",
       ];
 
       browser = await puppeteer.launch({
@@ -218,10 +209,13 @@ export async function generateScreenshot({
 
     logger.debug(`Navigating to ${url}...`);
 
+    // Add a small delay before screenshot to ensure full render
+    await page.waitForTimeout(2000);
+
     // Navigate with detailed error handling
     const response = await page.goto(url, {
       waitUntil: ["networkidle0", "domcontentloaded", "load"],
-      timeout,
+      timeout: timeout,
     });
 
     if (!response) {
