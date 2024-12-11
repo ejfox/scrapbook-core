@@ -14,6 +14,25 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Helper function to upload to Cloudinary
+async function uploadToCloudinary(buffer) {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "scrapbook/screenshots",
+        format: "jpg",
+        quality: "auto:good",
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+
+    uploadStream.end(buffer);
+  });
+}
+
 // Enhanced logger
 const logger = winston.createLogger({
   level: process.env.DEBUG === "true" ? "debug" : "info",
@@ -130,177 +149,47 @@ async function takeScreenshotWithRetry(page, retries = 2) {
   }
 }
 
-export async function generateScreenshot({
-  source,
-  shortId,
-  url,
-  timeout = 60000,
-}) {
-  let browser = null;
-  let page = null;
+export async function generateScreenshot(url) {
+  if (!url) {
+    throw new Error("URL is required for screenshot generation");
+  }
+
+  const browser = await puppeteer.launch({
+    headless: "new",
+    executablePath: getChromePath(),
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 
   try {
-    logger.info(`Starting screenshot generation for ${url}`);
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1200, height: 800 });
 
-    // Connect to existing browser or launch new one
-    if (browserWSEndpoint) {
-      browser = await puppeteer.connect({ browserWSEndpoint });
-    } else {
-      const browserArgs = [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-        "--window-size=1080,1920",
-        "--hide-scrollbars",
-        "--disable-notifications",
-        "--disable-extensions",
-        "--disable-infobars",
-        "--ignore-certificate-errors",
-        "--no-first-run",
-        "--js-flags=--max-old-space-size=4096",
-        "--memory-pressure-off",
-        "--deterministic-mode",
-      ];
+    // Set a reasonable timeout
+    await page.setDefaultNavigationTimeout(30000);
 
-      browser = await puppeteer.launch({
-        executablePath: getChromePath(),
-        args: browserArgs,
-        headless: "new",
-      });
-      browserWSEndpoint = browser.wsEndpoint();
-    }
-
-    // Create new page with error monitoring
-    page = await browser.newPage();
-
-    // Set viewport for portrait screenshots
-    await page.setViewport({
-      width: 1080,
-      height: 1920,
-      deviceScaleFactor: 2, // 2x DPI
+    // Navigate and wait for network idle
+    await page.goto(url, {
+      waitUntil: ["networkidle0", "domcontentloaded"],
+      timeout: 30000,
     });
 
-    // Monitor console errors
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        logger.debug(`Console error for ${url}: ${msg.text()}`);
-      }
+    // Wait a bit for any animations/lazy loading
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Take the screenshot
+    const screenshot = await page.screenshot({
+      type: "jpeg",
+      quality: 80,
+      fullPage: true,
     });
 
-    // Monitor network errors
-    page.on("requestfailed", (request) => {
-      logger.debug(
-        `Failed request for ${url}: ${request.url()} - ${
-          request.failure().errorText
-        }`
-      );
-    });
-
-    // Set timeouts
-    await page.setDefaultNavigationTimeout(timeout);
-    await page.setDefaultTimeout(timeout);
-
-    // Set user agent to look more like a real browser
-    await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-    );
-
-    logger.debug(`Navigating to ${url}...`);
-
-    // Add a small delay before screenshot to ensure full render
-    await page.waitForTimeout(2000);
-
-    // Navigate with detailed error handling
-    const response = await page.goto(url, {
-      waitUntil: ["networkidle0", "domcontentloaded", "load"],
-      timeout: timeout,
-    });
-
-    if (!response) {
-      throw new Error(`No response received from ${url}`);
-    }
-
-    if (!response.ok()) {
-      throw new Error(
-        `Failed to load URL: ${url} - ${getResponseError(response)}`
-      );
-    }
-
-    // Check if page has content
-    const content = await page.content();
-    if (!content || content.length < 100) {
-      throw new Error(`Page loaded but appears empty: ${url}`);
-    }
-
-    // Take full-page screenshot with high quality settings
-    logger.debug("Taking screenshot...");
-    const screenshotBuffer = await takeScreenshotWithRetry(page);
-    logger.debug("Screenshot captured successfully");
-
-    // Upload to Cloudinary with optimization settings
-    logger.debug("Uploading to Cloudinary...");
-    const result = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: `scrapbook/${source}`,
-          public_id: shortId,
-          resource_type: "image",
-          format: "jpg",
-          quality: 85, // Slightly reduced for better performance
-          density: 200, // Changed to match 2x DPI
-          transformation: [
-            { width: 1080, height: 1920, crop: "limit" },
-            { quality: "auto:good" }, // Changed from auto:best for better success rate
-            { fetch_format: "auto" },
-          ],
-        },
-        (error, result) => {
-          if (error) {
-            logger.error(`Cloudinary upload error: ${error.message}`);
-            return reject(error);
-          }
-          resolve(result);
-        }
-      );
-      uploadStream.end(screenshotBuffer);
-    });
-
-    logger.info(`Screenshot generated and uploaded successfully for ${url}`);
-    return result.secure_url;
+    // Upload to Cloudinary using the imported function
+    const result = await uploadToCloudinary(screenshot);
+    return { url: result.secure_url };
   } catch (error) {
-    // Enhanced error reporting
-    let errorDetails = error.message;
-
-    if (error.name === "TimeoutError") {
-      errorDetails = `Timeout (${timeout}ms) - Page took too long to load`;
-    }
-
-    if (error.message.includes("net::")) {
-      errorDetails = `Network error - ${error.message}`;
-    }
-
-    logger.error(`Screenshot generation failed for ${url}:
-    Error: ${errorDetails}
-    Browser: ${browser ? "Running" : "Not initialized"}
-    Platform: ${os.platform()}
-    Node Version: ${process.version}
-    Memory: ${Math.round(
-      process.memoryUsage().heapUsed / 1024 / 1024
-    )}MB used`);
-
-    return null;
+    throw error;
   } finally {
-    if (page) {
-      await page.close().catch((e) => logger.error("Error closing page:", e));
-    }
-    // Don't close the browser, just disconnect if we connected to existing one
-    if (browser && !browserWSEndpoint) {
-      await browser
-        .close()
-        .catch((e) => logger.error("Error closing browser:", e));
-    }
+    await browser.close();
   }
 }
 
