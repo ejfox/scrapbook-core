@@ -204,3 +204,34 @@ process.on("SIGTERM", async () => {
     }
   }
 });
+
+export async function handleArenaImage(scrap) {
+  // Arena blocks have image data in their source_data
+  if (!scrap.source_data?.image) {
+    throw new Error("No image data in Arena block");
+  }
+
+  // Get the highest resolution image URL
+  // Arena provides: large, display, square, thumb versions
+  const imageUrl =
+    scrap.source_data.image.large?.url ||
+    scrap.source_data.image.display?.url ||
+    scrap.source_data.image.original?.url;
+
+  if (!imageUrl) {
+    throw new Error("No suitable image URL found in Arena block");
+  }
+
+  try {
+    // Upload directly to Cloudinary using the URL
+    const result = await cloudinary.uploader.upload(imageUrl, {
+      folder: "scrapbook/arena",
+      format: "jpg",
+      quality: "auto:good",
+    });
+
+    return { url: result.secure_url };
+  } catch (error) {
+    throw new Error(`Failed to upload Arena image: ${error.message}`);
+  }
+}

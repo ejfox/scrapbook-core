@@ -1220,6 +1220,18 @@ async function identifyAndFixMissingData(options = {}) {
       enabled: processAI,
       condition: "summary.is.null,location.is.null,relationships.is.null",
       process: async (scrap) => {
+        // Skip AI enrichment for Arena scraps
+        if (scrap.source === "arena") {
+          logger.info(chalk.gray("⏭️ Skipping AI enrichment for Arena scrap"));
+          return {
+            summary: null,
+            location: null,
+            latitude: null,
+            longitude: null,
+            relationships: null,
+          };
+        }
+
         const enriched = await enrichScrapWithAI(scrap);
         return {
           summary: enriched.summary,
