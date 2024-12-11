@@ -97,7 +97,7 @@ export const getHumanReadableContent = (scrap) => {
 
 export function generateShortId(uuid) {
   // Take first 8 characters of UUID and ensure they're valid hex
-  return uuid.substring(0, 8).replace(/[^0-9a-f]/g, '0');
+  return uuid.substring(0, 8).replace(/[^0-9a-f]/g, "0");
 }
 
 export function generateScrapId(source, uniqueIdentifier) {
@@ -112,9 +112,8 @@ export function uuidToScrap(uuid, scrapArray) {
     return null;
   }
 
-  const scrap = scrapArray.find(scrap => 
-    scrap.id === uuid || 
-    scrap.metadata?.shortId === uuid
+  const scrap = scrapArray.find(
+    (scrap) => scrap.id === uuid || scrap.metadata?.shortId === uuid
   );
 
   if (!scrap) {
@@ -253,18 +252,18 @@ export function generatePassword(titleSlug) {
 // Function to break content into chunks
 export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
   if (!content) return [];
-  
+
   // Ensure content is a string and handle null/undefined
-  const text = String(content || '');
-  
+  const text = String(content || "");
+
   // Split into sentences more reliably
   const sentences = text
-    .replace(/([.!?])\s+/g, '$1\n')
-    .split('\n')
+    .replace(/([.!?])\s+/g, "$1\n")
+    .split("\n")
     .filter(Boolean);
 
   const chunks = [];
-  let currentChunk = '';
+  let currentChunk = "";
 
   for (const sentence of sentences) {
     const sentenceTokenSize = llamaTokenizer.encode(
@@ -273,10 +272,10 @@ export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
 
     if (sentenceTokenSize > chunkSizeTokens) {
       chunks.push(currentChunk.trim());
-      currentChunk = '';
+      currentChunk = "";
     }
 
-    currentChunk += sentence + ' ';
+    currentChunk += sentence + " ";
   }
 
   if (currentChunk.trim()) {

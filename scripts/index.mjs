@@ -42,7 +42,15 @@ program
   .option("--arena", "Fetch from Are.na")
   .option("--github", "Fetch from GitHub")
   .option("--debug", "Enable debug logging")
-  .option("--test", "Run in test mode (process fewer items)");
+  .option("--test", "Run in test mode (process fewer items)")
+  .option("--fix", "Fix missing data in existing scraps")
+  .option("--fix-dry-run", "Show what would be fixed without making changes")
+  .option("--fix-images", "Only fix missing images")
+  .option("--fix-embeddings", "Only fix missing embeddings")
+  .option("--fix-ai", "Only fix missing AI data")
+  .option("--fix-pinboard", "Fix only Pinboard scraps")
+  .option("--fix-arena", "Fix only Are.na scraps")
+  .option("--fix-mastodon", "Fix only Mastodon scraps");
 
 // Parse arguments (no sync needed!)
 program.parse(process.argv);
@@ -265,111 +273,160 @@ async function enrichScrapWithAI(scrapData) {
   logger.info(`🔍 Starting AI enrichment for ${scrapIdentifier}`);
 
   try {
-    // Get content to process
+    // Get content to process - be more aggressive about collecting content
     const contentToProcess = [
       scrapData.content,
       scrapData.description,
       scrapData.title,
       scrapData.metadata?.description,
       scrapData.metadata?.content,
+      scrapData.metadata?.original_content,
+      scrapData.metadata?.text,
+      // Add any URLs that might contain useful content
+      scrapData.url,
+      scrapData.metadata?.url,
+      scrapData.metadata?.original_url,
     ]
       .filter(Boolean)
       .join("\n\n");
 
     if (!contentToProcess) {
-      logger.info("⚠️ No content to process for AI enrichment");
+      logger.warn("⚠️ No content to process for AI enrichment");
       return scrapData;
     }
 
-    // Generate text embedding
+    // Generate text embedding with retries
     logger.info("📊 Generating text embedding...");
-    const textEmbedding = await limiter.schedule(() =>
-      generateEmbedding(contentToProcess, { type: "text" })
-    );
-    if (textEmbedding) {
-      scrapData.embedding_nomic = textEmbedding;
-      logger.info("✅ Text embedding generated");
-    }
-
-    // Process images and generate image embedding if screenshot exists
-    if (scrapData.screenshot_url) {
-      logger.info("🖼️ Processing image...");
-      const withImageEmbedding = await processImagesForScrap(scrapData);
-      if (withImageEmbedding.image_embedding) {
-        scrapData.image_embedding = withImageEmbedding.image_embedding;
-        logger.info("✅ Image embedding generated");
+    let textEmbedding = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        textEmbedding = await limiter.schedule(() =>
+          generateEmbedding(contentToProcess, { type: "text" })
+        );
+        if (textEmbedding) {
+          scrapData.embedding_nomic = textEmbedding;
+          logger.info("✅ Text embedding generated");
+          break;
+        }
+      } catch (error) {
+        logger.warn(`Embedding attempt ${attempt} failed:`, error.message);
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
 
-    // Generate summary
+    // Process images with retries
+    if (scrapData.screenshot_url || scrapData.metadata?.image_url) {
+      logger.info("🖼️ Processing image...");
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const withImageEmbedding = await processImagesForScrap(scrapData);
+          if (withImageEmbedding.image_embedding) {
+            scrapData.image_embedding = withImageEmbedding.image_embedding;
+            logger.info("✅ Image embedding generated");
+            break;
+          }
+        } catch (error) {
+          logger.warn(
+            `Image processing attempt ${attempt} failed:`,
+            error.message
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        }
+      }
+    }
+
+    // Generate summary with retries
     logger.info(`🤖 Generating summary for ${scrapIdentifier}...`);
-    const summary = await limiter.schedule(() =>
-      summarizeContent(contentToProcess, { metaSummary: true })
-    );
-
-    if (summary) {
-      logger.info(`✅ Generated summary (${summary.length} chars)`);
-      scrapData.summary = summary;
-
-      // Generate tags from summary
-      logger.info(`🏷️ Generating tags from summary...`);
-      const summaryTags = await limiter.schedule(() =>
-        metaSummaryToTags(summary)
-      );
-
-      if (summaryTags?.length) {
-        logger.info(
-          `✅ Generated ${summaryTags.length} tags: ${summaryTags.join(", ")}`
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const summary = await limiter.schedule(() =>
+          summarizeContent(contentToProcess, { metaSummary: true })
         );
-        scrapData.tags = scrapData.tags || [];
-        if (typeof scrapData.tags === "string") {
-          try {
-            scrapData.tags = JSON.parse(scrapData.tags);
-          } catch (error) {
-            logger.error(`Error parsing existing tags: ${error.message}`);
-            scrapData.tags = [];
+
+        if (summary) {
+          logger.info(`✅ Generated summary (${summary.length} chars)`);
+          scrapData.summary = summary;
+
+          // Generate tags from summary
+          const summaryTags = await limiter.schedule(() =>
+            metaSummaryToTags(summary)
+          );
+
+          if (summaryTags?.length) {
+            scrapData.tags = [
+              ...new Set([...(scrapData.tags || []), ...summaryTags]),
+            ];
+            logger.info(`✅ Generated ${summaryTags.length} tags`);
+          }
+          break;
+        }
+      } catch (error) {
+        logger.warn(
+          `Summary generation attempt ${attempt} failed:`,
+          error.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+
+    // Extract location with retries
+    logger.info("🌍 Extracting location information...");
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const locationInfo = await limiter.schedule(() =>
+          extractLocation(contentToProcess)
+        );
+
+        if (locationInfo) {
+          const validatedLocation = validateAIOutput("location", locationInfo);
+          if (validatedLocation) {
+            scrapData.location = validatedLocation.name;
+            scrapData.latitude = validatedLocation.latitude;
+            scrapData.longitude = validatedLocation.longitude;
+            scrapData.metadata = {
+              ...scrapData.metadata,
+              otherLocations: validatedLocation.metadata.otherLocations || [],
+            };
+            logger.info(`✅ Location extracted: ${validatedLocation.name}`);
+            break;
           }
         }
-        scrapData.tags = [...new Set([...scrapData.tags, ...summaryTags])];
-      }
-
-      // Extract location information
-      logger.info("🌍 Extracting location information...");
-      const locationInfo = await limiter.schedule(() =>
-        extractLocation(contentToProcess)
-      );
-
-      if (locationInfo) {
-        const validatedLocation = validateAIOutput("location", locationInfo);
-        if (validatedLocation) {
-          scrapData.location = validatedLocation.name;
-          scrapData.latitude = validatedLocation.latitude;
-          scrapData.longitude = validatedLocation.longitude;
-          scrapData.metadata = {
-            ...scrapData.metadata,
-            otherLocations: validatedLocation.metadata.otherLocations || [],
-          };
-          logger.info(`✅ Location extracted: ${validatedLocation.name}`);
-        }
-      }
-
-      // Extract relationships
-      logger.info("🔗 Extracting relationships...");
-      const relationships = await limiter.schedule(() =>
-        extractRelationships(contentToProcess)
-      );
-
-      if (relationships) {
-        const validatedRelationships = validateAIOutput(
-          "relationships",
-          relationships
+      } catch (error) {
+        logger.warn(
+          `Location extraction attempt ${attempt} failed:`,
+          error.message
         );
-        if (validatedRelationships.length > 0) {
-          scrapData.relationships = validatedRelationships;
-          logger.info(
-            `✅ Found ${validatedRelationships.length} relationships`
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+
+    // Extract relationships with retries
+    logger.info("🔗 Extracting relationships...");
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const relationships = await limiter.schedule(() =>
+          extractRelationships(contentToProcess)
+        );
+
+        if (relationships) {
+          const validatedRelationships = validateAIOutput(
+            "relationships",
+            relationships
           );
+          if (validatedRelationships.length > 0) {
+            scrapData.relationships = validatedRelationships;
+            logger.info(
+              `✅ Found ${validatedRelationships.length} relationships`
+            );
+            break;
+          }
         }
+      } catch (error) {
+        logger.warn(
+          `Relationship extraction attempt ${attempt} failed:`,
+          error.message
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
 
@@ -1033,6 +1090,247 @@ async function checkOpenRouterCredits() {
   }
 }
 
+// Add priority scoring function
+function getPriorityScore(scrap, issues) {
+  let score = 0;
+
+  // Base priority by source
+  const sourcePriority = {
+    pinboard: 3, // Highest - most likely to have useful content
+    arena: 2, // Medium - visual content
+    mastodon: 1, // Lower - shorter content
+  };
+  score += sourcePriority[scrap.source] || 0;
+
+  // Prioritize items with more missing data
+  score += issues.length;
+
+  // Prioritize items with URLs (more likely to have useful content)
+  if (scrap.url) score += 2;
+
+  // Prioritize recent items
+  const ageInDays =
+    (Date.now() - new Date(scrap.created_at).getTime()) / (1000 * 60 * 60 * 24);
+  if (ageInDays < 7) score += 3;
+  else if (ageInDays < 30) score += 2;
+  else if (ageInDays < 90) score += 1;
+
+  return score;
+}
+
+// Update the identifyAndFixMissingData function
+async function identifyAndFixMissingData(options = {}) {
+  const {
+    batchSize = 50,
+    processImages = true,
+    processEmbeddings = true,
+    processAI = true,
+    dryRun = false,
+    source = null,
+  } = options;
+
+  logger.info(chalk.blue("\n🔧 Starting to fix missing data..."));
+  logger.info(chalk.gray("Options:"));
+  logger.info(chalk.gray(`• Process Images: ${processImages}`));
+  logger.info(chalk.gray(`• Process Embeddings: ${processEmbeddings}`));
+  logger.info(chalk.gray(`• Process AI: ${processAI}`));
+  logger.info(chalk.gray(`• Source: ${source || "all"}`));
+  logger.info(chalk.gray(`• Dry Run: ${dryRun}`));
+
+  let processed = 0;
+  let fixed = 0;
+  let hasMore = true;
+  let lastDate = new Date().toISOString();
+
+  // Build query conditions based on what we're fixing
+  const conditions = [];
+
+  if (processImages) {
+    conditions.push("screenshot_url.is.null");
+  }
+
+  if (processEmbeddings) {
+    conditions.push("embedding_nomic.is.null");
+    conditions.push("image_embedding.is.null");
+  }
+
+  if (processAI) {
+    conditions.push("summary.is.null");
+    conditions.push("relationships.is.null");
+    conditions.push("location.is.null");
+  }
+
+  if (conditions.length === 0) {
+    logger.warn("No processing options selected, nothing to fix");
+    return { processed: 0, fixed: 0 };
+  }
+
+  // Process in stages for efficiency
+  const stages = [
+    {
+      name: "Screenshots",
+      enabled: processImages,
+      condition: "screenshot_url.is.null,url.not.is.null",
+      process: async (scrap) => {
+        try {
+          logger.info(chalk.blue(`📸 Generating screenshot for ${scrap.url}`));
+          const screenshot = await browserLimiter.schedule(() =>
+            generateScreenshot(scrap.url)
+          );
+
+          if (screenshot?.url) {
+            logger.info(chalk.green("✅ Screenshot generated"));
+            return { screenshot_url: screenshot.url };
+          } else {
+            logger.warn(chalk.yellow("⚠️ No screenshot URL returned"));
+            return null;
+          }
+        } catch (error) {
+          logger.error(`Screenshot generation failed for ${scrap.url}:`, error);
+          return null;
+        }
+      },
+    },
+    {
+      name: "Text Embeddings",
+      enabled: processEmbeddings,
+      condition: "embedding_nomic.is.null",
+      process: async (scrap) => {
+        if (!scrap.content) return null;
+        const embedding = await limiter.schedule(() =>
+          generateEmbedding(scrap.content, { type: "text" })
+        );
+        return embedding ? { embedding_nomic: embedding } : null;
+      },
+    },
+    {
+      name: "Image Embeddings",
+      enabled: processEmbeddings,
+      condition: "image_embedding.is.null,screenshot_url.not.is.null",
+      process: async (scrap) => {
+        if (!scrap.screenshot_url) return null;
+        const withImageEmbedding = await processImagesForScrap(scrap);
+        return withImageEmbedding.image_embedding
+          ? { image_embedding: withImageEmbedding.image_embedding }
+          : null;
+      },
+    },
+    {
+      name: "AI Enrichment",
+      enabled: processAI,
+      condition: "summary.is.null,location.is.null,relationships.is.null",
+      process: async (scrap) => {
+        const enriched = await enrichScrapWithAI(scrap);
+        return {
+          summary: enriched.summary,
+          location: enriched.location,
+          latitude: enriched.latitude,
+          longitude: enriched.longitude,
+          relationships: enriched.relationships,
+        };
+      },
+    },
+  ];
+
+  // Process each stage
+  for (const stage of stages) {
+    if (!stage.enabled) continue;
+
+    logger.info(chalk.blue(`\n🔄 Starting ${stage.name} stage...`));
+
+    let hasMore = true;
+    let lastDate = new Date().toISOString();
+
+    while (hasMore && !isShuttingDown) {
+      let query = supabase
+        .from("scraps")
+        .select("*")
+        .or(stage.condition)
+        .lt("created_at", lastDate)
+        .order("created_at", { ascending: false })
+        .limit(batchSize);
+
+      if (source) {
+        query = query.eq("source", source);
+      }
+
+      const { data: scraps, error } = await query;
+
+      if (error || !scraps?.length) {
+        hasMore = false;
+        break;
+      }
+
+      lastDate = scraps[scraps.length - 1].created_at;
+
+      for (const scrap of scraps) {
+        processed++;
+
+        if (dryRun) {
+          logger.info(
+            chalk.yellow(
+              `\n📝 Scrap ${scrap.id} (${scrap.source}) needs: ${stage.name}`
+            )
+          );
+          continue;
+        }
+
+        try {
+          const claimed = await claimExistingScrap(scrap.scrap_id);
+          if (!claimed) {
+            logger.info(
+              chalk.gray(`Skipping ${scrap.id} - already being processed`)
+            );
+            continue;
+          }
+
+          logger.info(
+            chalk.blue(`\n🔄 Processing ${scrap.id} (${scrap.source})`)
+          );
+
+          const updates = await stage.process(scrap);
+
+          if (updates) {
+            const { error: updateError } = await supabase
+              .from("scraps")
+              .update({
+                ...updates,
+                updated_at: new Date().toISOString(),
+                metadata: {
+                  ...scrap.metadata,
+                  last_fixed: new Date().toISOString(),
+                },
+              })
+              .eq("id", scrap.id);
+
+            if (updateError) {
+              logger.error(`Failed to update scrap ${scrap.id}:`, updateError);
+            } else {
+              fixed++;
+              logger.info(
+                chalk.green(`✅ Updated ${stage.name} for scrap ${scrap.id}`)
+              );
+            }
+          }
+
+          await releaseScrap(scrap.scrap_id);
+        } catch (error) {
+          logger.error(`Error processing scrap ${scrap.id}:`, error);
+          await releaseScrap(scrap.scrap_id);
+        }
+      }
+
+      logger.info(
+        chalk.blue(
+          `\nProgress: Processed ${processed} scraps, fixed ${fixed} issues`
+        )
+      );
+    }
+  }
+
+  return { processed, fixed };
+}
+
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
@@ -1097,6 +1395,46 @@ async function main() {
             logger.error(chalk.gray("Full error:"), error);
           }
         }
+      }
+    }
+
+    if (options.fix || options.fixDryRun) {
+      logger.info(chalk.blue("\n5️⃣ Fixing Missing Data..."));
+
+      const source = options.fixPinboard
+        ? "pinboard"
+        : options.fixArena
+        ? "arena"
+        : options.fixMastodon
+        ? "mastodon"
+        : null;
+
+      const fixOptions = {
+        dryRun: options.fixDryRun,
+        processImages:
+          options.fixImages || (!options.fixEmbeddings && !options.fixAi),
+        processEmbeddings:
+          options.fixEmbeddings || (!options.fixImages && !options.fixAi),
+        processAI:
+          options.fixAi || (!options.fixImages && !options.fixEmbeddings),
+        source,
+        concurrency: 3,
+      };
+
+      const { processed, fixed } = await identifyAndFixMissingData(fixOptions);
+
+      if (options.fixDryRun) {
+        logger.info(
+          chalk.yellow(
+            `\n🔍 Dry run complete: ${processed} scraps checked, ${fixed} issues identified`
+          )
+        );
+      } else {
+        logger.info(
+          chalk.green(
+            `\n✨ Fix complete: ${processed} scraps processed, ${fixed} issues fixed`
+          )
+        );
       }
     }
 

@@ -659,36 +659,53 @@ async function resizeImageForEmbedding(imageBuffer) {
 
 // Consolidated embedding functions
 export async function generateEmbedding(input, options = {}) {
-  const { type = "text" } = options;
+  const { type = "text", maxRetries = 3 } = options;
 
   if (!process.env.NOMIC_API_KEY) {
     logger.warn("Nomic API key not configured - please set NOMIC_API_KEY");
     return null;
   }
 
-  try {
-    if (type === "image") {
-      return await getImageEmbedding(input);
-    }
-
-    // Text embedding
-    const response = await axios.post(
-      "https://api-atlas.nomic.ai/v1/embedding/text",
-      {
-        model: "nomic-embed-text-v1.5",
-        texts: Array.isArray(input) ? input : [input],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (type === "image") {
+        return await getImageEmbedding(input);
       }
-    );
 
-    return response.data.embeddings[0];
-  } catch (error) {
-    logger.error(`Error generating ${type} embedding:`, error.message);
-    return null;
+      // Text embedding
+      const response = await axios.post(
+        "https://api-atlas.nomic.ai/v1/embedding/text",
+        {
+          model: "nomic-embed-text-v1.5",
+          texts: Array.isArray(input) ? input : [input],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.data?.embeddings?.[0]) {
+        throw new Error("Invalid embedding response");
+      }
+
+      return response.data.embeddings[0];
+    } catch (error) {
+      logger.warn(`Embedding attempt ${attempt} failed:`, error.message);
+
+      if (attempt === maxRetries) {
+        logger.error(
+          `Failed to generate ${type} embedding after ${maxRetries} attempts`
+        );
+        return null;
+      }
+
+      // Exponential backoff
+      await new Promise((resolve) =>
+        setTimeout(resolve, 1000 * Math.pow(2, attempt - 1))
+      );
+    }
   }
 }
