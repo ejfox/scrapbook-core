@@ -6,8 +6,11 @@ import sharp from "sharp";
 import { FormData } from "@web-std/form-data";
 import { File, Blob } from "node:buffer";
 import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
+import winston from "winston";
+import sgMail from "@sendgrid/mail";
 
 dotenv.config();
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Add DEBUG constant
 const DEBUG = process.env.DEBUG === "true";
@@ -707,5 +710,77 @@ export async function generateEmbedding(input, options = {}) {
         setTimeout(resolve, 1000 * Math.pow(2, attempt - 1))
       );
     }
+  }
+}
+
+async function sendCreditAlertEmail(error) {
+  const msg = {
+    to: process.env.ALERT_EMAIL,
+    from: process.env.ALERT_EMAIL_FROM,
+    subject: "⚠️ Scrapbook AI Credits Depleted",
+    text: `OpenRouter credits have been depleted.\n\nError: ${error.message}\n\nProcessing has been halted.`,
+    html: `<h1>⚠️ OpenRouter Credits Depleted</h1>
+          <p>Processing has been halted due to insufficient credits.</p>
+          <pre>${error.message}</pre>`,
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info("📧 Credit alert email sent");
+  } catch (err) {
+    logger.error("Failed to send credit alert email:", err);
+  }
+}
+
+class CreditError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CreditError";
+  }
+}
+
+async function tryCompletion(prompt, options = {}) {
+  try {
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.OPENROUTER_REFERER,
+        },
+        body: JSON.stringify({
+          model: options.model || DEFAULT_COMPLETION_MODEL,
+          messages: Array.isArray(prompt) ? prompt : [prompt],
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      // Check specifically for credit-related errors
+      if (data.error.code === 402 || data.error.message.includes("credits")) {
+        const creditError = new CreditError(data.error.message);
+        await sendCreditAlertEmail(creditError);
+        throw creditError; // Let the caller handle graceful shutdown
+      }
+      throw new Error(
+        `Invalid response format from OpenRouter API: ${JSON.stringify(
+          data,
+          null,
+          2
+        )}`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof CreditError) {
+      throw error; // Let it propagate up
+    }
+    logger.error("Error during completion:", error);
+    throw error;
   }
 }
