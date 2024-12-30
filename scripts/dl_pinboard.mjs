@@ -11,6 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getImageEmbedding } from "./imageEmbedding.mjs";
 import OpenAI from "openai";
 import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
+import puppeteer from "puppeteer";
 
 dotenv.config();
 
@@ -341,12 +342,7 @@ export async function processBookmark(bookmark) {
     // Take screenshot with rate limiting
     try {
       const screenshot_url = await screenshotLimiter.schedule(() =>
-        generateScreenshot({
-          source: "pinboard",
-          shortId: bookmark.hash,
-          url: bookmark.href,
-          timeout: 15000, // Reduce timeout to 15s
-        })
+        generateScreenshot(bookmark.href)
       );
 
       if (screenshot_url) {

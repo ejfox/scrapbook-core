@@ -28,6 +28,66 @@ I also use it in combination with an Alfred Workflow and a local SQLite database
 - `<scripts/search_sqlite_scraps.js>`
 - `<Local Scrap Search.1.1.alfredworkflow.zip>`
 
+## Cron Job Setup
+
+The app is designed to run as a scheduled task using PM2's built-in cron feature. This ensures regular fetching and processing of data from all sources.
+
+### Setting up with PM2
+
+1. First, ensure PM2 is installed globally:
+```bash
+npm install -g pm2
+```
+
+2. Start the app with PM2:
+```bash
+pm2 start ecosystem.config.js --env production
+```
+
+This will:
+- Start the app in production mode
+- Schedule it to run every 4 hours (configurable in `ecosystem.config.js`)
+- Manage logs automatically in the `logs` directory
+
+### Monitoring and Management
+
+Monitor the cron job:
+```bash
+pm2 logs scrapbook-core    # View logs
+pm2 monit                  # Monitor execution
+```
+
+Manual control:
+```bash
+pm2 trigger scrapbook-core # Run manually (outside schedule)
+pm2 stop scrapbook-core    # Stop the scheduled job
+pm2 delete scrapbook-core  # Remove from PM2
+```
+
+### Logs
+
+Logs are stored in the `logs` directory:
+- `logs/out.log` - Standard output
+- `logs/err.log` - Error logs
+
+### Startup Configuration
+
+To ensure the cron job persists across system restarts:
+
+```bash
+pm2 startup    # Generate startup script
+pm2 save       # Save current PM2 configuration
+```
+
+### Customizing the Schedule
+
+The cron schedule can be modified in `ecosystem.config.js`. The default schedule is every 4 hours (`0 */4 * * *`).
+
+Common cron patterns:
+- `0 */6 * * *` - Every 6 hours
+- `0 0 * * *` - Once daily at midnight
+- `0 */12 * * *` - Every 12 hours
+
 ## Deploying
 `flyctl deploy`
 
@@ -121,6 +181,34 @@ graph TD
 - Fetch specific sources: `node index.mjs --[source]` (e.g., `--pinboard`, `--mastodon`)
 - Sync to SQLite: `node sync_supabase_to_sqlite.js`
 - Search scraps using Alfred (keyword: `sc`).
+
+### Maintenance Commands
+
+The following commands help maintain the database by fixing or removing problematic scraps:
+
+#### Cleaning Commands
+- Delete scraps with missing data: `node index.mjs --clean`
+- Delete only completely empty scraps: `node index.mjs --clean-empty`
+- Delete scraps missing some fields: `node index.mjs --clean-partial`
+- Preview what would be deleted: `node index.mjs --clean-dry-run`
+
+#### Fixing Commands
+- Fix missing data in scraps: `node index.mjs --fix`
+- Preview what would be fixed: `node index.mjs --fix-dry-run`
+- Fix specific issues:
+  - Missing images: `node index.mjs --fix-images`
+  - Missing embeddings: `node index.mjs --fix-embeddings`
+  - Missing AI data: `node index.mjs --fix-ai`
+- Fix specific sources:
+  - Pinboard: `node index.mjs --fix-pinboard`
+  - Are.na: `node index.mjs --fix-arena`
+  - Mastodon: `node index.mjs --fix-mastodon`
+
+All cleaning and fixing commands will:
+1. Show you what will be affected before making changes
+2. Display a breakdown by source
+3. Show example scraps that will be modified
+4. Ask for confirmation before proceeding
 
 ## Data Flow
 

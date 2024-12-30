@@ -8,6 +8,7 @@ import { File, Blob } from "node:buffer";
 import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
 import winston from "winston";
 import sgMail from "@sendgrid/mail";
+import puppeteer from "puppeteer";
 
 dotenv.config();
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -434,7 +435,7 @@ const service = {
 
         // Create form data
         const form = new FormData();
-        form.append("model", model || defaultModel);
+        form.append("model", "nomic-embed-vision-v1.5");
 
         // Create a proper Blob from the buffer
         const blob = new Blob([resizedBuffer], { type: "image/jpeg" });
@@ -462,7 +463,7 @@ const service = {
         response = await axios.post(
           "https://api-atlas.nomic.ai/v1/embedding/text",
           {
-            model: model || defaultModel,
+            model: "nomic-embed-text-v1.5",
             texts: Array.isArray(input) ? input : [input],
           },
           {
@@ -675,7 +676,7 @@ export async function generateEmbedding(input, options = {}) {
         return await getImageEmbedding(input);
       }
 
-      // Text embedding
+      // Text embedding with v1.5
       const response = await axios.post(
         "https://api-atlas.nomic.ai/v1/embedding/text",
         {
@@ -782,5 +783,59 @@ async function tryCompletion(prompt, options = {}) {
     }
     logger.error("Error during completion:", error);
     throw error;
+  }
+}
+
+// Add a URL validation and sanitization function
+function sanitizeUrl(url) {
+  try {
+    // Try to construct a URL object to validate
+    const urlObj = new URL(url);
+
+    // Ensure protocol is http or https
+    if (!["http:", "https:"].includes(urlObj.protocol)) {
+      throw new Error("Invalid protocol");
+    }
+
+    // Encode any special characters in the path, query, and hash
+    const sanitizedPath = encodeURI(urlObj.pathname);
+    const sanitizedSearch = urlObj.search.replace(/\s/g, "%20");
+    const sanitizedHash = urlObj.hash.replace(/\s/g, "%20");
+
+    // Reconstruct the URL with encoded components
+    return `${urlObj.protocol}//${urlObj.host}${sanitizedPath}${sanitizedSearch}${sanitizedHash}`;
+  } catch (error) {
+    console.warn(`Invalid URL: ${url}`, error.message);
+    return null;
+  }
+}
+
+// Update the screenshot function with better URL handling
+async function takeScreenshot(url) {
+  try {
+    // Handle URL encoding more carefully
+    const urlObj = new URL(url);
+    const encodedUrl = urlObj.toString();
+
+    const browser = await puppeteer.launch({
+      executablePath: await getChromeExecutablePath(),
+      args: ["--no-sandbox"],
+      headless: "new",
+    });
+
+    const page = await browser.newPage();
+
+    // Add error handling for navigation
+    await page.goto(encodedUrl).catch((e) => {
+      console.warn(`Navigation failed: ${e.message}`);
+      throw e;
+    });
+
+    const screenshot = await page.screenshot({ type: "jpeg" });
+    await browser.close();
+    return screenshot;
+  } catch (error) {
+    console.error(`Screenshot failed for ${url}:`, error.message);
+    return null;
   }
 }

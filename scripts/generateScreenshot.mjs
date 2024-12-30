@@ -154,6 +154,18 @@ export async function generateScreenshot(url) {
     throw new Error("URL is required for screenshot generation");
   }
 
+  // Ensure url is a string and handle URL objects
+  const urlString =
+    typeof url === "object" && url.href ? url.href : String(url);
+
+  // Basic URL validation and normalization
+  try {
+    url = new URL(urlString).toString();
+  } catch (error) {
+    logger.warn(`Invalid URL format: ${urlString}`);
+    throw new Error(`Invalid URL format: ${urlString}`);
+  }
+
   const browser = await puppeteer.launch({
     headless: "new",
     executablePath: getChromePath(),
@@ -169,12 +181,12 @@ export async function generateScreenshot(url) {
 
     // Navigate and wait for network idle
     await page.goto(url, {
-      waitUntil: ["networkidle0", "domcontentloaded"],
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     });
 
-    // Wait a bit for any animations/lazy loading
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Brief wait for critical content
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Take the screenshot
     const screenshot = await page.screenshot({

@@ -226,15 +226,37 @@ export function filterStrongTags(article) {
 }
 
 export function isValidHttpUrl(string) {
-  let url;
+  if (!string) return false;
 
   try {
-    url = new URL(string);
-  } catch (_) {
+    const url = new URL(string);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
     return false;
   }
+}
 
-  return url.protocol === "http:" || url.protocol === "https:";
+// Add a new function to clean URLs
+export function cleanUrl(url) {
+  if (!url) return null;
+
+  try {
+    // Remove any whitespace
+    url = url.trim();
+
+    // Ensure URL has a protocol
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      url = "https://" + url;
+    }
+
+    // Create URL object to validate and normalize
+    const urlObj = new URL(url);
+
+    // Return normalized URL string
+    return urlObj.toString();
+  } catch {
+    return null;
+  }
 }
 
 export function generatePassword(titleSlug) {
