@@ -21,6 +21,7 @@ import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
+import LokiTransport from "winston-loki";
 import { generateScreenshot } from "./generateScreenshot.mjs";
 import { v2 as cloudinary } from "cloudinary";
 import os from "os";
@@ -30,8 +31,146 @@ import sgMail from "@sendgrid/mail";
 import Arena from "are.na";
 import { arenaLimiter, processLimiter } from "./shared/rateLimiters.mjs";
 import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
+import readline from "readline";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
+
+// Debug environment variables immediately
+console.log("DEBUG: Environment variables after dotenv load:");
+console.log(
+  "OPENROUTER_API_KEY:",
+  process.env.OPENROUTER_API_KEY?.substring(0, 10) + "..."
+);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+
+// Ensure logs directory exists
+const logsDir = path.join(process.cwd(), "logs");
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Setup logging with file transport and Loki
+const logger = winston.createLogger({
+  level: process.env.DEBUG === "true" ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({
+      filename: path.join(logsDir, "error.log"),
+      level: "error",
+    }),
+    new winston.transports.File({
+      filename: path.join(logsDir, "combined.log"),
+    }),
+    new LokiTransport({
+      host: "https://loki.tools.ejfox.com",
+      json: true,
+      labels: { service: "scrapbook" },
+      batching: true,
+      interval: 5,
+      gracefulShutdown: true,
+      clearOnError: false,
+      format: winston.format.json(),
+      replaceTimestamp: true,
+      onConnectionError: (err) => {
+        console.error("Loki connection error:", err);
+      },
+    }),
+  ],
+});
+
+// NOW we can validate environment variables
+logger.debug("Checking environment variables...");
+const requiredEnvVars = [
+  "SUPABASE_URL",
+  "SUPABASE_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "OPENROUTER_API_KEY",
+];
+
+const missingEnvVars = requiredEnvVars.filter((v) => !process.env[v]);
+if (missingEnvVars.length > 0) {
+  logger.error(
+    "Missing required environment variables:",
+    missingEnvVars.join(", ")
+  );
+  process.exit(1);
+}
+
+logger.debug("Environment variables loaded:", {
+  OPENROUTER_API_KEY_LENGTH: process.env.OPENROUTER_API_KEY?.length,
+  NODE_ENV: process.env.NODE_ENV,
+});
+
+// Send ready signal to PM2 when app is initialized
+if (process.send) {
+  process.send("ready");
+}
+
+// Environment variables and flags
+let isShuttingDown = false;
+
+// Improve shutdown handling
+async function gracefulShutdown(signal = "unknown") {
+  if (isShuttingDown) {
+    logger.info("Force exiting...");
+    process.exit(1);
+  }
+
+  isShuttingDown = true;
+  logger.info(`Received shutdown signal: ${signal}`);
+
+  // Set a timeout to force exit after 5 seconds
+  const forceExitTimeout = setTimeout(() => {
+    logger.error("Forced exit after timeout");
+    process.exit(1);
+  }, 5000);
+
+  try {
+    // Stop all limiters immediately
+    const limiters = [
+      limiter,
+      upsertLimiter,
+      browserLimiter,
+      arenaLimiter,
+      processLimiter,
+    ].filter(Boolean);
+
+    logger.info("Stopping rate limiters...");
+    await Promise.all(limiters.map((l) => l.stop({ dropWaitingJobs: true })));
+
+    logger.info("Shutdown complete");
+    clearTimeout(forceExitTimeout);
+    process.exit(0);
+  } catch (error) {
+    logger.error("Error during shutdown:", error);
+    clearTimeout(forceExitTimeout);
+    process.exit(1);
+  }
+}
+
+// Handle various shutdown signals
+process.on("SIGINT", () => gracefulShutdown("SIGINT (Ctrl+C)"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGUSR2", () => gracefulShutdown("SIGUSR2"));
+
+// Handle uncaught errors
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception:", error);
+  gracefulShutdown("uncaughtException");
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+  gracefulShutdown("unhandledRejection");
+});
 
 // IMMEDIATELY set up commander before anything else
 program
@@ -50,7 +189,17 @@ program
   .option("--fix-ai", "Only fix missing AI data")
   .option("--fix-pinboard", "Fix only Pinboard scraps")
   .option("--fix-arena", "Fix only Are.na scraps")
-  .option("--fix-mastodon", "Fix only Mastodon scraps");
+  .option("--fix-mastodon", "Fix only Mastodon scraps")
+  .option("--clean", "Delete scraps with missing essential data")
+  .option(
+    "--clean-empty",
+    "Only delete completely empty scraps (all fields NULL)"
+  )
+  .option("--clean-partial", "Only delete scraps missing some but not all data")
+  .option(
+    "--clean-dry-run",
+    "Show what would be cleaned without deleting anything"
+  );
 
 // Parse arguments (no sync needed!)
 program.parse(process.argv);
@@ -62,18 +211,6 @@ console.log("Parsed options:", program.opts());
 // Get options
 const options = program.opts();
 const DEBUG = options.debug || process.env.DEBUG === "true";
-
-// Setup logging
-const logger = winston.createLogger({
-  level: DEBUG ? "debug" : "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
-  ),
-  transports: [new winston.transports.Console()],
-});
 
 // Initialize Arena client
 const USER_SLUG = process.env.USER_SLUG || "ej-fox";
@@ -106,25 +243,6 @@ async function sendEmailNotification(subject, message) {
     logger.error("Error sending email notification:", error);
   }
 }
-
-// Validate required environment variables early
-const requiredEnvVars = [
-  "SUPABASE_URL",
-  "SUPABASE_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-];
-
-const missingEnvVars = requiredEnvVars.filter((v) => !process.env[v]);
-if (missingEnvVars.length > 0) {
-  console.error(
-    "Missing required environment variables:",
-    missingEnvVars.join(", ")
-  );
-  process.exit(1);
-}
-
-// Environment variables and flags
-let isShuttingDown = false;
 
 // Initialize Supabase client with better error handling
 const supabase = createClient(
@@ -160,44 +278,6 @@ const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
 function log(...args) {
   if (DEBUG) logger.debug(args.join(" "));
 }
-
-// Improve shutdown handling
-async function gracefulShutdown() {
-  if (isShuttingDown) {
-    console.log("Shutdown already in progress...");
-    return;
-  }
-
-  isShuttingDown = true;
-  logger.info("Initiating graceful shutdown...");
-
-  try {
-    // Stop all limiters
-    await Promise.all([
-      limiter.stop({ dropWaitingJobs: true }),
-      upsertLimiter.stop({ dropWaitingJobs: true }),
-      browserLimiter.stop({ dropWaitingJobs: true }),
-    ]);
-
-    logger.info("Shutdown complete");
-    process.exit(0);
-  } catch (error) {
-    logger.error("Error during shutdown:", error);
-    process.exit(1);
-  }
-}
-
-// Handle shutdown signals
-process.on("SIGINT", gracefulShutdown);
-process.on("SIGTERM", gracefulShutdown);
-process.on("uncaughtException", (error) => {
-  logger.error("Uncaught Exception:", error);
-  gracefulShutdown();
-});
-process.on("unhandledRejection", (reason, promise) => {
-  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
-  gracefulShutdown();
-});
 
 // Improve the existing scrap check function
 async function getExistingScrap(scrapData) {
@@ -1043,37 +1123,52 @@ async function initializeDatabaseIfNeeded() {
   }
 }
 
-// Add a function to check OpenRouter credits
+// Add this helper function near the top with other helper functions
 async function checkOpenRouterCredits() {
   if (!process.env.OPENROUTER_API_KEY) {
     logger.info(
-      "Skipping OpenRouter credit check - OpenRouter API key not configured"
+      "OpenRouter API key not configured - AI features will be disabled"
     );
-    return true; // Assume sufficient credits if key is not set
+    return { enabled: false, reason: "No API key configured" };
   }
 
   try {
-    const response = await axios.get(`${OPENROUTER_API_URL}/auth/key`, {
+    logger.debug(
+      `Checking OpenRouter API with key starting with: ${process.env.OPENROUTER_API_KEY.substring(
+        0,
+        10
+      )}...`
+    );
+
+    const response = await axios.get("https://openrouter.ai/api/v1/auth/key", {
       headers: {
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://github.com/ejfox/scrapbook-core",
+        "X-Title": "Scrapbook Core",
         "Content-Type": "application/json",
         Accept: "application/json",
       },
     });
 
+    logger.debug(
+      "OpenRouter API Response:",
+      JSON.stringify(response.data, null, 2)
+    );
+
     if (!response.data?.data) {
-      throw new Error("Invalid response format from OpenRouter API");
+      logger.warn(
+        "Invalid response format from OpenRouter API - AI features may be limited"
+      );
+      return { enabled: false, reason: "Invalid API response" };
     }
 
     const { usage, limit, is_free_tier, rate_limit } = response.data.data;
 
     if (usage >= limit) {
-      logger.error(
-        chalk.redBright(
-          `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. Processing stopped.`
-        )
+      logger.warn(
+        `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. AI features will be disabled.`
       );
-      return false;
+      return { enabled: false, reason: "Credit limit exceeded" };
     }
 
     logger.info(
@@ -1081,12 +1176,17 @@ async function checkOpenRouterCredits() {
         is_free_tier ? "Free" : "Paid"
       }, Rate Limit: ${rate_limit?.requests}/${rate_limit?.interval}`
     );
-    return true;
+    return { enabled: true, usage, limit, is_free_tier };
   } catch (error) {
-    logger.error(
-      `Error checking OpenRouter credits: ${error.message}. Processing stopped.`
-    );
-    return false;
+    logger.error("OpenRouter API Error Details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+      requestHeaders: error.config?.headers,
+      apiKey: process.env.OPENROUTER_API_KEY ? "Present" : "Missing",
+    });
+    return { enabled: false, reason: error.message };
   }
 }
 
@@ -1343,45 +1443,169 @@ async function identifyAndFixMissingData(options = {}) {
   return { processed, fixed };
 }
 
+// Add near other helper functions
+async function cleanEmptyScraps(options = {}) {
+  const { onlyEmpty = false, onlyPartial = false, dryRun = false } = options;
+  logger.info(chalk.blue("\n🧹 Starting cleanup of scraps..."));
+
+  try {
+    // Build the query conditions based on options
+    let conditions = [];
+
+    if (onlyEmpty) {
+      // Only completely empty scraps
+      conditions = ["title.is.null", "content.is.null", "summary.is.null"];
+    } else if (onlyPartial) {
+      // Scraps that have some content but are missing important fields
+      conditions = ["title.is.null", "content.is.null", "summary.is.null"];
+    } else {
+      // Default: both empty and partial
+      conditions = [
+        "title.is.null",
+        "title.eq.EMPTY",
+        "content.is.null",
+        "content.eq.EMPTY",
+        "summary.is.null",
+      ];
+    }
+
+    // First get the scraps to show the user
+    const { data: scrapsToDelete, error: findError } = await supabase
+      .from("scraps")
+      .select("*")
+      .or(conditions.join(","))
+      .not("source", "eq", "lock");
+
+    if (findError) {
+      logger.error("Error finding scraps:", findError);
+      return;
+    }
+
+    const count = scrapsToDelete?.length || 0;
+    const type = onlyEmpty
+      ? "completely empty"
+      : onlyPartial
+      ? "partially empty"
+      : "empty/incomplete";
+    logger.info(chalk.yellow(`Found ${count} ${type} scraps`));
+
+    if (count === 0) {
+      logger.info(chalk.green("No matching scraps found!"));
+      return;
+    }
+
+    // Group by source for reporting
+    const bySource = scrapsToDelete.reduce((acc, scrap) => {
+      acc[scrap.source] = (acc[scrap.source] || 0) + 1;
+      return acc;
+    }, {});
+
+    logger.info(chalk.gray("\nBreakdown by source:"));
+    Object.entries(bySource).forEach(([source, count]) => {
+      logger.info(chalk.gray(`• ${source || "unknown"}: ${count} scraps`));
+    });
+
+    // Show some examples
+    logger.info(chalk.gray("\nExample scraps to be deleted:"));
+    scrapsToDelete.slice(0, 5).forEach((scrap) => {
+      logger.info(chalk.gray(`• ID: ${scrap.id}`));
+      logger.info(chalk.gray(`  Source: ${scrap.source}`));
+      logger.info(chalk.gray(`  Title: ${scrap.title || "NULL"}`));
+      logger.info(
+        chalk.gray(`  Content: ${scrap.content ? "Has content" : "NULL"}`)
+      );
+      logger.info(chalk.gray(`  Summary: ${scrap.summary || "NULL"}`));
+      if (scrap.url) {
+        logger.info(chalk.gray(`  URL: ${scrap.url}`));
+      }
+      logger.info("");
+    });
+
+    if (dryRun) {
+      logger.info(chalk.yellow("\nDRY RUN - No scraps will be deleted"));
+      return;
+    }
+
+    // Ask for confirmation
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    const confirmed = await new Promise((resolve) => {
+      rl.question(
+        chalk.yellow(
+          `\nAre you sure you want to delete these ${count} scraps? (yes/no) `
+        ),
+        (answer) => {
+          rl.close();
+          resolve(answer.toLowerCase() === "yes");
+        }
+      );
+    });
+
+    if (!confirmed) {
+      logger.info(chalk.gray("Cleanup cancelled"));
+      return;
+    }
+
+    // Delete the scraps - using a fresh delete query with the same conditions
+    const { error: deleteError } = await supabase
+      .from("scraps")
+      .delete()
+      .or(conditions.join(","))
+      .not("source", "eq", "lock");
+
+    if (deleteError) {
+      logger.error("Error deleting scraps:", deleteError);
+      return;
+    }
+
+    logger.info(chalk.green(`\n✨ Cleanup complete! Deleted ${count} scraps`));
+  } catch (error) {
+    logger.error("Error during cleanup:", error);
+  }
+}
+
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
-  +(+logger.info(chalk.blue("\n🗺️ Processing Plan:")));
-  +logger.info(chalk.gray("1. Check OpenRouter credits (for AI features)"));
-  +logger.info(chalk.gray("2. Initialize database if needed"));
-  +logger.info(
+  logger.info(chalk.blue("\n🗺️ Processing Plan:"));
+  logger.info(chalk.gray("1. Check OpenRouter credits (optional AI features)"));
+  logger.info(chalk.gray("2. Initialize database if needed"));
+  logger.info(
     chalk.gray("3. Clear any stuck processing from crashed instances")
   );
-  +logger.info(chalk.gray("4. Process each source in sequence:"));
-  +logger.info(chalk.gray("   • Pinboard: Fetch bookmarks & process"));
-  +logger.info(chalk.gray("   • GitHub: Fetch repos/PRs/issues & process"));
-  +logger.info(chalk.gray("   • Mastodon: Fetch statuses & process"));
-  +logger.info(chalk.gray("   • Are.na: Fetch channels -> blocks & process"));
-  +logger.info(chalk.gray("\nFor each item:"));
-  +logger.info(chalk.gray("1. Try to claim it for processing"));
-  +logger.info(chalk.gray("2. Process content & generate embeddings"));
-  +logger.info(chalk.gray("3. Upload images to Cloudinary if needed"));
-  +logger.info(chalk.gray("4. Save to database"));
-  +logger.info(chalk.gray("5. Release claim\n"));
+  logger.info(chalk.gray("4. Process each source in sequence:"));
+  logger.info(chalk.gray("   • Pinboard: Fetch bookmarks & process"));
+  logger.info(chalk.gray("   • GitHub: Fetch repos/PRs/issues & process"));
+  logger.info(chalk.gray("   • Mastodon: Fetch statuses & process"));
+  logger.info(chalk.gray("   • Are.na: Fetch channels -> blocks & process"));
+  logger.info(chalk.gray("\nFor each item:"));
+  logger.info(chalk.gray("1. Try to claim it for processing"));
+  logger.info(chalk.gray("2. Process content & generate embeddings"));
+  logger.info(chalk.gray("3. Upload images to Cloudinary if needed"));
+  logger.info(chalk.gray("4. Save to database"));
+  logger.info(chalk.gray("5. Release claim\n"));
 
   try {
-    // Check OpenRouter credits before starting processing
-    +logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
-    const sufficientCredits = await checkOpenRouterCredits();
-    if (!sufficientCredits) {
-      return; // Stop processing if credits are insufficient
+    // Check OpenRouter credits but don't stop processing if check fails
+    logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
+    const aiStatus = await checkOpenRouterCredits();
+    if (!aiStatus.enabled) {
+      logger.warn(chalk.yellow(`AI features disabled: ${aiStatus.reason}`));
     }
 
     // Initialize database if needed
-    +logger.info(chalk.blue("\n2️⃣ Initializing Database..."));
+    logger.info(chalk.blue("\n2️⃣ Initializing Database..."));
     await initializeDatabaseIfNeeded();
 
     // Clear any stuck processing before starting
-    +logger.info(chalk.blue("\n3️⃣ Cleaning Up Stuck Processing..."));
+    logger.info(chalk.blue("\n3️⃣ Cleaning Up Stuck Processing..."));
     await clearStuckProcessing();
 
     // Process each source
-    +logger.info(chalk.blue("\n4️⃣ Processing Sources..."));
+    logger.info(chalk.blue("\n4️⃣ Processing Sources..."));
     for (const source of ["pinboard", "github", "mastodon", "arena"]) {
       if (options.all || options[source]) {
         logger.info(
@@ -1448,6 +1672,20 @@ async function main() {
           )
         );
       }
+    }
+
+    if (
+      options.clean ||
+      options.cleanEmpty ||
+      options.cleanPartial ||
+      options.cleanDryRun
+    ) {
+      await cleanEmptyScraps({
+        onlyEmpty: options.cleanEmpty,
+        onlyPartial: options.cleanPartial,
+        dryRun: options.cleanDryRun,
+      });
+      return;
     }
 
     logger.info("\nProcessing completed successfully");
