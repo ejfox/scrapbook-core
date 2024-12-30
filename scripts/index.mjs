@@ -56,12 +56,24 @@ const logger = winston.createLogger({
   level: process.env.DEBUG === "true" ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    winston.format.json()
   ),
   transports: [
-    new winston.transports.Console(),
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.printf(
+          ({ timestamp, level, message, type, ...rest }) => {
+            // Status logs get pretty formatting
+            if (!type || type === "status") {
+              return `${timestamp} [${level}]: ${message}`;
+            }
+            // Metric logs stay as JSON
+            return JSON.stringify({ timestamp, level, message, type, ...rest });
+          }
+        )
+      ),
+    }),
     new winston.transports.File({
       filename: path.join(logsDir, "error.log"),
       level: "error",
@@ -72,12 +84,21 @@ const logger = winston.createLogger({
     new LokiTransport({
       host: "https://loki.tools.ejfox.com",
       json: true,
-      labels: { service: "scrapbook" },
+      labels: {
+        job: "scrapbook",
+        service: "scrapbook-core",
+        instance: process.env.INSTANCE_NAME || "default",
+        version: process.env.npm_package_version || "unknown",
+        environment: process.env.NODE_ENV || "development",
+      },
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      ),
       batching: true,
       interval: 5,
       gracefulShutdown: true,
       clearOnError: false,
-      format: winston.format.json(),
       replaceTimestamp: true,
       onConnectionError: (err) => {
         console.error("Loki connection error:", err);
@@ -85,6 +106,168 @@ const logger = winston.createLogger({
     }),
   ],
 });
+
+// Helper functions for different log types
+function logStatus(level, message, data = {}) {
+  logger.log(level, message, {
+    type: "status",
+    ...data,
+    // Add standard labels for better querying
+    source: data.source || "core",
+    function: data.function || "unknown",
+    phase: data.phase || "unknown",
+  });
+}
+
+function logMetric(name, data = {}) {
+  logger.info(name, {
+    type: "metric",
+    metric: name,
+    ...data,
+    // Add standard metric labels
+    source: data.source || "core",
+    function: data.function || "unknown",
+    duration_ms: data.duration_ms,
+    success: data.success !== false, // default to true
+    // Add memory metrics by default
+    memory_usage_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    memory_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+  });
+}
+
+function logError(message, error, context = {}) {
+  logger.error(message, {
+    type: "error",
+    error: error.message,
+    stack: error.stack,
+    code: error.code,
+    ...context,
+    // Add standard error labels
+    source: context.source || "core",
+    function: context.function || "unknown",
+    phase: context.phase || "unknown",
+    severity: context.severity || "error",
+    // Add memory state on errors
+    memory_usage_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    memory_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+  });
+}
+
+// Bottleneck limiters for rate-limiting async tasks
+const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
+const upsertLimiter = new Bottleneck({ maxConcurrent: 3, minTime: 1500 });
+const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
+
+// Add metrics tracking
+const metrics = {
+  startTime: Date.now(),
+  processed: { total: 0, bySource: {} },
+  skipped: { total: 0, bySource: {} },
+  errors: { total: 0, bySource: {} },
+  processingTimes: { total: 0, bySource: {} },
+  memory: { initial: process.memoryUsage() },
+};
+
+// Initialize last metrics state
+const lastMetrics = {
+  memory: process.memoryUsage(),
+  limiters: {},
+};
+
+// Enhance the existing rate limiters with metrics
+function enhanceRateLimiter(limiter, name) {
+  const originalSchedule = limiter.schedule.bind(limiter);
+  limiter.schedule = async function (...args) {
+    const start = Date.now();
+    try {
+      const result = await originalSchedule(...args);
+      const duration = Date.now() - start;
+      logMetric("rate_limiter", {
+        name,
+        status: "success",
+        duration_ms: duration,
+        queued: limiter.queued(),
+        running: limiter.running(),
+        function: "rate_limiter",
+        source: name,
+      });
+      return result;
+    } catch (error) {
+      const duration = Date.now() - start;
+      logError("Rate limiter error", error, {
+        name,
+        duration_ms: duration,
+        queued: limiter.queued(),
+        running: limiter.running(),
+        function: "rate_limiter",
+        source: name,
+        severity: error.code === 429 ? "warn" : "error",
+      });
+      throw error;
+    }
+  };
+  return limiter;
+}
+
+// Enhance all limiters
+[limiter, upsertLimiter, browserLimiter, arenaLimiter, processLimiter].forEach(
+  (l, i) => {
+    if (l) enhanceRateLimiter(l, `limiter_${i}`);
+  }
+);
+
+// Add process metrics
+function startPeriodicMetricLogging() {
+  const interval = setInterval(() => {
+    if (isShuttingDown) {
+      clearInterval(interval);
+      return;
+    }
+
+    const memory = process.memoryUsage();
+    logMetric("process_stats", {
+      source: "core",
+      function: "metrics",
+      heap_used_mb: Math.round(memory.heapUsed / 1024 / 1024),
+      rss_mb: Math.round(memory.rss / 1024 / 1024),
+      external_mb: Math.round(memory.external / 1024 / 1024),
+      uptime_minutes: Math.round(process.uptime() / 60),
+      active_handles: process._getActiveHandles().length,
+      active_requests: process._getActiveRequests().length,
+    });
+
+    // Log rate limiter states
+    const limiters = {
+      main: limiter,
+      upsert: upsertLimiter,
+      browser: browserLimiter,
+      arena: arenaLimiter,
+      process: processLimiter,
+    };
+
+    for (const [name, l] of Object.entries(limiters)) {
+      if (!l) continue;
+      logMetric("limiter_state", {
+        source: "rate_limiter",
+        function: name,
+        queued: l.queued(),
+        running: l.running(),
+        capacity: l.running() / (l.running() + l.queued()),
+      });
+    }
+  }, 60 * 1000); // Every minute
+
+  process.on("exit", () => {
+    clearInterval(interval);
+    logMetric("process_exit", {
+      source: "core",
+      function: "exit",
+      heap_used_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      uptime_minutes: Math.round(process.uptime() / 60),
+    });
+  });
+}
 
 // NOW we can validate environment variables
 logger.debug("Checking environment variables...");
@@ -269,11 +452,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Bottleneck limiters for rate-limiting async tasks
-const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
-const upsertLimiter = new Bottleneck({ maxConcurrent: 3, minTime: 1500 });
-const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
-
 // Replace console.log with logger
 function log(...args) {
   if (DEBUG) logger.debug(args.join(" "));
@@ -344,16 +522,17 @@ function validateAIOutput(type, data) {
 // Simplify enrichScrapWithAI to handle tags more directly
 async function enrichScrapWithAI(scrapData) {
   if (!process.env.OPENROUTER_API_KEY || !process.env.NOMIC_API_KEY) {
-    logger.info("Skipping AI enrichment - API keys not configured");
+    logStatus("info", "Skipping AI enrichment - API keys not configured");
     return scrapData;
   }
 
   const scrapIdentifier =
     scrapData.scrap_id || scrapData.id || `${scrapData.source}-${Date.now()}`;
-  logger.info(`🔍 Starting AI enrichment for ${scrapIdentifier}`);
+  const startTime = Date.now();
+
+  logStatus("info", `Starting AI enrichment for ${scrapIdentifier}`);
 
   try {
-    // Get content to process - be more aggressive about collecting content
     const contentToProcess = [
       scrapData.content,
       scrapData.description,
@@ -362,7 +541,6 @@ async function enrichScrapWithAI(scrapData) {
       scrapData.metadata?.content,
       scrapData.metadata?.original_content,
       scrapData.metadata?.text,
-      // Add any URLs that might contain useful content
       scrapData.url,
       scrapData.metadata?.url,
       scrapData.metadata?.original_url,
@@ -371,12 +549,16 @@ async function enrichScrapWithAI(scrapData) {
       .join("\n\n");
 
     if (!contentToProcess) {
-      logger.warn("⚠️ No content to process for AI enrichment");
+      logStatus("warn", "No content to process for AI enrichment", {
+        scrap_id: scrapIdentifier,
+      });
       return scrapData;
     }
 
     // Generate text embedding with retries
-    logger.info("📊 Generating text embedding...");
+    logStatus("info", "Generating text embedding...", {
+      scrap_id: scrapIdentifier,
+    });
     let textEmbedding = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -385,134 +567,70 @@ async function enrichScrapWithAI(scrapData) {
         );
         if (textEmbedding) {
           scrapData.embedding_nomic = textEmbedding;
-          logger.info("✅ Text embedding generated");
+          logMetric("embedding_generated", {
+            scrap_id: scrapIdentifier,
+            type: "text",
+            attempt,
+            duration_ms: Date.now() - startTime,
+          });
           break;
         }
       } catch (error) {
-        logger.warn(`Embedding attempt ${attempt} failed:`, error.message);
+        logError("Embedding generation failed", error, {
+          scrap_id: scrapIdentifier,
+          attempt,
+          type: "text",
+        });
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
 
-    // Process images with retries
+    // Process images
     if (scrapData.screenshot_url || scrapData.metadata?.image_url) {
-      logger.info("🖼️ Processing image...");
+      logStatus("info", "Processing image...", { scrap_id: scrapIdentifier });
+      const imageStartTime = Date.now();
+
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           const withImageEmbedding = await processImagesForScrap(scrapData);
           if (withImageEmbedding.image_embedding) {
             scrapData.image_embedding = withImageEmbedding.image_embedding;
-            logger.info("✅ Image embedding generated");
+            logMetric("embedding_generated", {
+              scrap_id: scrapIdentifier,
+              type: "image",
+              attempt,
+              duration_ms: Date.now() - imageStartTime,
+            });
             break;
           }
         } catch (error) {
-          logger.warn(
-            `Image processing attempt ${attempt} failed:`,
-            error.message
-          );
+          logError("Image processing failed", error, {
+            scrap_id: scrapIdentifier,
+            attempt,
+            type: "image",
+          });
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         }
       }
     }
 
-    // Generate summary with retries
-    logger.info(`🤖 Generating summary for ${scrapIdentifier}...`);
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const summary = await limiter.schedule(() =>
-          summarizeContent(contentToProcess, { metaSummary: true })
-        );
-
-        if (summary) {
-          logger.info(`✅ Generated summary (${summary.length} chars)`);
-          scrapData.summary = summary;
-
-          // Generate tags from summary
-          const summaryTags = await limiter.schedule(() =>
-            metaSummaryToTags(summary)
-          );
-
-          if (summaryTags?.length) {
-            scrapData.tags = [
-              ...new Set([...(scrapData.tags || []), ...summaryTags]),
-            ];
-            logger.info(`✅ Generated ${summaryTags.length} tags`);
-          }
-          break;
-        }
-      } catch (error) {
-        logger.warn(
-          `Summary generation attempt ${attempt} failed:`,
-          error.message
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-
-    // Extract location with retries
-    logger.info("🌍 Extracting location information...");
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const locationInfo = await limiter.schedule(() =>
-          extractLocation(contentToProcess)
-        );
-
-        if (locationInfo) {
-          const validatedLocation = validateAIOutput("location", locationInfo);
-          if (validatedLocation) {
-            scrapData.location = validatedLocation.name;
-            scrapData.latitude = validatedLocation.latitude;
-            scrapData.longitude = validatedLocation.longitude;
-            scrapData.metadata = {
-              ...scrapData.metadata,
-              otherLocations: validatedLocation.metadata.otherLocations || [],
-            };
-            logger.info(`✅ Location extracted: ${validatedLocation.name}`);
-            break;
-          }
-        }
-      } catch (error) {
-        logger.warn(
-          `Location extraction attempt ${attempt} failed:`,
-          error.message
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-
-    // Extract relationships with retries
-    logger.info("🔗 Extracting relationships...");
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const relationships = await limiter.schedule(() =>
-          extractRelationships(contentToProcess)
-        );
-
-        if (relationships) {
-          const validatedRelationships = validateAIOutput(
-            "relationships",
-            relationships
-          );
-          if (validatedRelationships.length > 0) {
-            scrapData.relationships = validatedRelationships;
-            logger.info(
-              `✅ Found ${validatedRelationships.length} relationships`
-            );
-            break;
-          }
-        }
-      } catch (error) {
-        logger.warn(
-          `Relationship extraction attempt ${attempt} failed:`,
-          error.message
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-      }
-    }
+    const totalDuration = Date.now() - startTime;
+    logMetric("ai_enrichment_completed", {
+      scrap_id: scrapIdentifier,
+      total_duration_ms: totalDuration,
+      has_text_embedding: !!scrapData.embedding_nomic,
+      has_image_embedding: !!scrapData.image_embedding,
+      has_summary: !!scrapData.summary,
+      has_location: !!scrapData.location,
+      has_relationships: !!(scrapData.relationships?.length > 0),
+    });
 
     return scrapData;
   } catch (error) {
-    logger.error("Error during AI enrichment:", error);
+    logError("AI enrichment failed", error, {
+      scrap_id: scrapIdentifier,
+      duration_ms: Date.now() - startTime,
+    });
     return scrapData;
   }
 }
@@ -931,127 +1049,277 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1";
 
 // Then define the functions
 async function fetchAndUpsertPinboardBookmarks() {
-  const bookmarks = await fetchBookmarksWithCache();
-  logger.info(`Found ${bookmarks.length} bookmarks`);
+  const startTime = Date.now();
+  const source = "pinboard";
 
-  for (const bookmark of bookmarks) {
-    if (isShuttingDown) break;
+  try {
+    logStatus("info", "🔄 Checking for Pinboard updates...");
+    const bookmarks = await fetchBookmarksWithCache();
 
-    const scrapId = `pinboard-${bookmark.hash}`;
+    logMetric("source_processing_started", {
+      source,
+      total_items: bookmarks.length,
+      cache_used: true,
+    });
 
-    try {
-      if (
-        !(await claimProcessAndUpsert(
-          scrapId,
-          "pinboard",
-          bookmark,
-          processBookmark
-        ))
-      ) {
-        logger.info(
-          `Skipping bookmark ${bookmark.href} - already being processed`
-        );
-        continue;
-      }
-    } catch (error) {
-      logger.error(`Failed to process bookmark: ${bookmark.href}`, error);
-      await releaseScrap(scrapId);
-    }
-  }
-}
-
-async function fetchAndUpsertMastodonStatuses() {
-  const userId = await fetchUserId();
-  const statuses = await fetchStatuses(userId);
-
-  for (const status of statuses) {
-    if (isShuttingDown) break;
-
-    const scrapId = `mastodon-${status.id}`;
-
-    try {
-      if (
-        !(await claimProcessAndUpsert(
-          scrapId,
-          "mastodon",
-          status,
-          processStatus
-        ))
-      ) {
-        logger.info(`Skipping status ${status.id} - already being processed`);
-        continue;
-      }
-    } catch (error) {
-      logger.error(`Failed to process status: ${status.id}`, error);
-      await releaseScrap(scrapId);
-    }
-  }
-}
-
-async function fetchAndUpsertArenaBlocks() {
-  const channels = await arena.user(USER_SLUG).channels();
-  logger.info(chalk.green(`📚 Found ${channels.length} channels`));
-
-  for (const channel of channels) {
-    if (isShuttingDown) break;
-
-    logger.info(chalk.blue(`\n📂 Processing channel: ${channel.title}`));
-
-    const blocks = await arenaLimiter.schedule(() =>
-      arena.channel(channel.id).contents({
-        page: 1,
-        per: 100,
-        sort: "updated_at",
-        direction: "desc",
-      })
-    );
-
-    if (!blocks?.length) {
-      logger.warn(chalk.yellow(`No blocks found in channel: ${channel.title}`));
-      continue;
-    }
-
-    logger.info(chalk.green(`📦 Found ${blocks.length} blocks`));
-
-    // Process blocks in this channel
-    for (const block of blocks) {
+    for (const bookmark of bookmarks) {
       if (isShuttingDown) break;
 
-      const enrichedBlock = {
-        ...block,
-        channel: channel.title,
-        connected_to_channels: [
-          {
-            id: channel.id,
-            title: channel.title,
-          },
-          ...(block.connected_to_channels || []),
-        ],
-      };
-
-      const scrapId = `arena-${block.id}`;
+      const scrapId = `pinboard-${bookmark.hash}`;
+      const itemStart = Date.now();
 
       try {
         if (
           !(await claimProcessAndUpsert(
             scrapId,
-            "arena",
-            enrichedBlock,
-            processBlock
+            source,
+            bookmark,
+            processBookmark
           ))
         ) {
-          logger.info(`Skipping block ${block.id} - already being processed`);
+          logMetric("item_skipped", {
+            source,
+            scrap_id: scrapId,
+            reason: "already_processing",
+            url: bookmark.href,
+          });
+          metrics.skipped.total++;
+          metrics.skipped.bySource[source] =
+            (metrics.skipped.bySource[source] || 0) + 1;
           continue;
         }
+
+        metrics.processed.total++;
+        metrics.processed.bySource[source] =
+          (metrics.processed.bySource[source] || 0) + 1;
+
+        const itemDuration = Date.now() - itemStart;
+        metrics.processingTimes.total += itemDuration;
+        metrics.processingTimes.bySource[source] =
+          (metrics.processingTimes.bySource[source] || 0) + itemDuration;
+
+        logMetric("item_processed", {
+          source,
+          scrap_id: scrapId,
+          duration_ms: itemDuration,
+          url: bookmark.href,
+        });
       } catch (error) {
-        logger.error(`Failed to process block: ${block.id}`, error);
+        logError("Item processing failed", error, {
+          source,
+          scrap_id: scrapId,
+          url: bookmark.href,
+        });
+
+        metrics.errors.total++;
+        metrics.errors.bySource[source] =
+          (metrics.errors.bySource[source] || 0) + 1;
         await releaseScrap(scrapId);
       }
     }
 
-    logger.info(
-      chalk.green(`✅ Finished processing channel: ${channel.title}`)
-    );
+    const totalDuration = Date.now() - startTime;
+    logMetric("source_processing_completed", {
+      source,
+      total_duration_ms: totalDuration,
+      items_processed: metrics.processed.bySource[source] || 0,
+      items_skipped: metrics.skipped.bySource[source] || 0,
+      items_errored: metrics.errors.bySource[source] || 0,
+      avg_item_duration_ms:
+        metrics.processingTimes.bySource[source] /
+        (metrics.processed.bySource[source] || 1),
+    });
+  } catch (error) {
+    logError("Source processing failed", error, { source });
+    metrics.errors.total++;
+    metrics.errors.bySource[source] =
+      (metrics.errors.bySource[source] || 0) + 1;
+  }
+}
+
+async function fetchAndUpsertMastodonStatuses() {
+  const startTime = Date.now();
+  const source = "mastodon";
+  try {
+    const userId = await fetchUserId();
+    const statuses = await fetchStatuses(userId);
+    logger.info(`Found ${statuses.length} statuses`, {
+      source,
+      total_statuses: statuses.length,
+    });
+
+    for (const status of statuses) {
+      if (isShuttingDown) break;
+
+      const scrapId = `mastodon-${status.id}`;
+      const itemStart = Date.now();
+
+      try {
+        if (
+          !(await claimProcessAndUpsert(scrapId, source, status, processStatus))
+        ) {
+          logger.info(
+            `Skipping status ${status.id} - already being processed`,
+            {
+              source,
+              status_id: status.id,
+              reason: "already_processing",
+            }
+          );
+          metrics.skipped.total++;
+          metrics.skipped.bySource[source] =
+            (metrics.skipped.bySource[source] || 0) + 1;
+          continue;
+        }
+
+        metrics.processed.total++;
+        metrics.processed.bySource[source] =
+          (metrics.processed.bySource[source] || 0) + 1;
+
+        const itemDuration = Date.now() - itemStart;
+        metrics.processingTimes.total += itemDuration;
+        metrics.processingTimes.bySource[source] =
+          (metrics.processingTimes.bySource[source] || 0) + itemDuration;
+      } catch (error) {
+        logger.error(`Failed to process status: ${status.id}`, {
+          source,
+          status_id: status.id,
+          error: error.message,
+          stack: error.stack,
+        });
+        metrics.errors.total++;
+        metrics.errors.bySource[source] =
+          (metrics.errors.bySource[source] || 0) + 1;
+        await releaseScrap(scrapId);
+      }
+    }
+
+    const totalDuration = Date.now() - startTime;
+    logMetrics(source, {
+      total_duration_ms: totalDuration,
+      items_processed: metrics.processed.bySource[source] || 0,
+      items_skipped: metrics.skipped.bySource[source] || 0,
+      items_errored: metrics.errors.bySource[source] || 0,
+    });
+  } catch (error) {
+    logger.error(`Error in Mastodon processing`, {
+      source,
+      error: error.message,
+      stack: error.stack,
+    });
+    metrics.errors.total++;
+    metrics.errors.bySource[source] =
+      (metrics.errors.bySource[source] || 0) + 1;
+  }
+}
+
+async function fetchAndUpsertArenaBlocks() {
+  const startTime = Date.now();
+  const source = "arena";
+  try {
+    const channels = await arena.user(USER_SLUG).channels();
+    logger.info(`Found ${channels.length} channels`, {
+      source,
+      total_channels: channels.length,
+    });
+
+    for (const channel of channels) {
+      if (isShuttingDown) break;
+
+      logger.info(`Processing channel: ${channel.title}`, {
+        source,
+        channel_id: channel.id,
+        channel_title: channel.title,
+      });
+
+      const blocks = await arenaLimiter.schedule(() =>
+        arena.channel(channel.id).contents({
+          page: 1,
+          per: 100,
+          sort: "updated_at",
+          direction: "desc",
+        })
+      );
+
+      if (!blocks?.length) {
+        logger.warn(`No blocks found in channel: ${channel.title}`, {
+          source,
+          channel_id: channel.id,
+          channel_title: channel.title,
+        });
+        continue;
+      }
+
+      logger.info(`Found ${blocks.length} blocks in channel ${channel.title}`, {
+        source,
+        channel_id: channel.id,
+        channel_title: channel.title,
+        blocks_count: blocks.length,
+      });
+
+      for (const block of blocks) {
+        if (isShuttingDown) break;
+
+        const scrapId = `arena-${block.id}`;
+        const itemStart = Date.now();
+
+        try {
+          if (
+            !(await claimProcessAndUpsert(scrapId, source, block, processBlock))
+          ) {
+            logger.info(
+              `Skipping block ${block.id} - already being processed`,
+              {
+                source,
+                block_id: block.id,
+                reason: "already_processing",
+              }
+            );
+            metrics.skipped.total++;
+            metrics.skipped.bySource[source] =
+              (metrics.skipped.bySource[source] || 0) + 1;
+            continue;
+          }
+
+          metrics.processed.total++;
+          metrics.processed.bySource[source] =
+            (metrics.processed.bySource[source] || 0) + 1;
+
+          const itemDuration = Date.now() - itemStart;
+          metrics.processingTimes.total += itemDuration;
+          metrics.processingTimes.bySource[source] =
+            (metrics.processingTimes.bySource[source] || 0) + itemDuration;
+        } catch (error) {
+          logger.error(`Failed to process block: ${block.id}`, {
+            source,
+            block_id: block.id,
+            error: error.message,
+            stack: error.stack,
+          });
+          metrics.errors.total++;
+          metrics.errors.bySource[source] =
+            (metrics.errors.bySource[source] || 0) + 1;
+          await releaseScrap(scrapId);
+        }
+      }
+    }
+
+    const totalDuration = Date.now() - startTime;
+    logMetrics(source, {
+      total_duration_ms: totalDuration,
+      items_processed: metrics.processed.bySource[source] || 0,
+      items_skipped: metrics.skipped.bySource[source] || 0,
+      items_errored: metrics.errors.bySource[source] || 0,
+    });
+  } catch (error) {
+    logger.error(`Error in Arena processing`, {
+      source,
+      error: error.message,
+      stack: error.stack,
+    });
+    metrics.errors.total++;
+    metrics.errors.bySource[source] =
+      (metrics.errors.bySource[source] || 0) + 1;
   }
 }
 
@@ -1126,20 +1394,23 @@ async function initializeDatabaseIfNeeded() {
 // Add this helper function near the top with other helper functions
 async function checkOpenRouterCredits() {
   if (!process.env.OPENROUTER_API_KEY) {
-    logger.info(
+    logStatus(
+      "info",
       "OpenRouter API key not configured - AI features will be disabled"
     );
     return { enabled: false, reason: "No API key configured" };
   }
 
   try {
-    logger.debug(
+    logStatus(
+      "debug",
       `Checking OpenRouter API with key starting with: ${process.env.OPENROUTER_API_KEY.substring(
         0,
         10
       )}...`
     );
 
+    const startTime = Date.now();
     const response = await axios.get("https://openrouter.ai/api/v1/auth/key", {
       headers: {
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -1150,41 +1421,43 @@ async function checkOpenRouterCredits() {
       },
     });
 
-    logger.debug(
-      "OpenRouter API Response:",
-      JSON.stringify(response.data, null, 2)
-    );
+    const duration = Date.now() - startTime;
 
     if (!response.data?.data) {
-      logger.warn(
-        "Invalid response format from OpenRouter API - AI features may be limited"
+      logError(
+        "Invalid OpenRouter API response",
+        new Error("Invalid response format"),
+        {
+          duration_ms: duration,
+          response_data: response.data,
+        }
       );
       return { enabled: false, reason: "Invalid API response" };
     }
 
     const { usage, limit, is_free_tier, rate_limit } = response.data.data;
 
+    logMetric("openrouter_credits", {
+      usage,
+      limit,
+      is_free_tier,
+      rate_limit_requests: rate_limit?.requests,
+      rate_limit_interval: rate_limit?.interval,
+      duration_ms: duration,
+    });
+
     if (usage >= limit) {
-      logger.warn(
+      logStatus(
+        "warn",
         `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. AI features will be disabled.`
       );
       return { enabled: false, reason: "Credit limit exceeded" };
     }
 
-    logger.info(
-      `OpenRouter credits - Usage: ${usage}, Limit: ${limit}, Type: ${
-        is_free_tier ? "Free" : "Paid"
-      }, Rate Limit: ${rate_limit?.requests}/${rate_limit?.interval}`
-    );
     return { enabled: true, usage, limit, is_free_tier };
   } catch (error) {
-    logger.error("OpenRouter API Error Details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-      requestHeaders: error.config?.headers,
-      apiKey: process.env.OPENROUTER_API_KEY ? "Present" : "Missing",
+    logError("OpenRouter API check failed", error, {
+      api_key_present: !!process.env.OPENROUTER_API_KEY,
     });
     return { enabled: false, reason: error.message };
   }
@@ -1589,6 +1862,9 @@ async function main() {
   logger.info(chalk.gray("5. Release claim\n"));
 
   try {
+    // Start periodic metric logging
+    startPeriodicMetricLogging();
+
     // Check OpenRouter credits but don't stop processing if check fails
     logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
     const aiStatus = await checkOpenRouterCredits();
