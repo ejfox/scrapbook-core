@@ -70,6 +70,34 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
+// Setup logging helpers
+function logMetric(name, data = {}) {
+  logger.info(name, {
+    type: "metric",
+    metric: name,
+    source: "pinboard",
+    ...data,
+  });
+}
+
+function logStatus(level, message, data = {}) {
+  logger.log(level, message, {
+    type: "status",
+    source: "pinboard",
+    ...data,
+  });
+}
+
+function logError(message, error, context = {}) {
+  logger.error(message, {
+    type: "error",
+    source: "pinboard",
+    error: error.message,
+    stack: error.stack,
+    ...context,
+  });
+}
+
 // Cache management
 const cache = {
   async ensureDir() {
@@ -79,16 +107,38 @@ const cache = {
   async read() {
     try {
       await this.ensureDir();
+      const startTime = Date.now();
       const data = await fs.readFile(CACHE_FILE, "utf-8");
-      return JSON.parse(data);
+      const bookmarks = JSON.parse(data);
+
+      logMetric("cache_read", {
+        duration_ms: Date.now() - startTime,
+        cache_size_bytes: data.length,
+        bookmarks_count: bookmarks.length,
+      });
+
+      return bookmarks;
     } catch (error) {
+      logError("Cache read failed", error);
       return [];
     }
   },
 
   async write(bookmarks) {
-    await this.ensureDir();
-    await fs.writeFile(CACHE_FILE, JSON.stringify(bookmarks, null, 2));
+    try {
+      await this.ensureDir();
+      const startTime = Date.now();
+      const data = JSON.stringify(bookmarks);
+      await fs.writeFile(CACHE_FILE, data);
+
+      logMetric("cache_write", {
+        duration_ms: Date.now() - startTime,
+        cache_size_bytes: data.length,
+        bookmarks_count: bookmarks.length,
+      });
+    } catch (error) {
+      logError("Cache write failed", error);
+    }
   },
 
   async readMeta() {
@@ -320,43 +370,69 @@ const screenshotLimiter = new Bottleneck({
 
 // Main processing function
 export async function processBookmark(bookmark) {
+  const startTime = Date.now();
+  const bookmarkId = bookmark.hash;
+
   try {
-    // Process all data first
-    const processedData = {
-      title: bookmark.description,
-      content: bookmark.extended || bookmark.description,
-      url: bookmark.href,
+    // Process the bookmark
+    const processed = {
+      scrap_id: `pinboard-${bookmark.hash}`,
+      source: "pinboard",
       type: "bookmark",
-      tags: bookmark.tags.split(" ").filter(Boolean),
+      url: bookmark.href,
+      title: bookmark.description,
+      content: bookmark.extended,
+      tags: bookmark.tags ? bookmark.tags.split(" ") : [],
       published_at: bookmark.time,
-      created_at: new Date().toISOString(),
+      created_at: bookmark.time,
       updated_at: new Date().toISOString(),
-      shared: false,
       metadata: {
-        hash: bookmark.hash,
-        toread: bookmark.toread === "yes",
+        original: bookmark,
         shared: bookmark.shared === "yes",
+        toread: bookmark.toread === "yes",
+        processed_at: new Date().toISOString(),
       },
     };
 
-    // Take screenshot with rate limiting
-    try {
-      const screenshot_url = await screenshotLimiter.schedule(() =>
-        generateScreenshot(bookmark.href)
-      );
+    // Try to get a screenshot if we have a URL
+    if (bookmark.href) {
+      try {
+        const screenshotStartTime = Date.now();
+        const screenshot = await screenshotLimiter.schedule(() =>
+          generateScreenshot(bookmark.href)
+        );
 
-      if (screenshot_url) {
-        processedData.screenshot_url = screenshot_url;
+        if (screenshot?.url) {
+          processed.screenshot_url = screenshot.url;
+          logMetric("screenshot_generated", {
+            bookmark_id: bookmarkId,
+            duration_ms: Date.now() - screenshotStartTime,
+            url: bookmark.href,
+          });
+        }
+      } catch (error) {
+        logError("Screenshot generation failed", error, {
+          bookmark_id: bookmarkId,
+          url: bookmark.href,
+        });
       }
-    } catch (error) {
-      logger.warn(`Screenshot failed for ${bookmark.href}: ${error.message}`);
-      // Continue without screenshot
     }
 
-    return processedData;
+    logMetric("bookmark_processed", {
+      bookmark_id: bookmarkId,
+      duration_ms: Date.now() - startTime,
+      has_content: !!processed.content,
+      has_screenshot: !!processed.screenshot_url,
+      tags_count: processed.tags.length,
+    });
+
+    return processed;
   } catch (error) {
-    logger.error(`Error processing bookmark ${bookmark.href}:`, error);
-    return null;
+    logError("Bookmark processing failed", error, {
+      bookmark_id: bookmarkId,
+      duration_ms: Date.now() - startTime,
+    });
+    throw error;
   }
 }
 
@@ -408,7 +484,8 @@ async function handleInitialFetch(lastPinboardUpdate) {
 
 // Main fetch function
 export async function fetchBookmarksWithCache(testMode = false) {
-  logger.info("🔄 Checking for Pinboard updates...");
+  const startTime = Date.now();
+  logStatus("info", "🔄 Checking for Pinboard updates...");
 
   try {
     const lastPinboardUpdate = await checkForUpdates();
@@ -440,9 +517,20 @@ export async function fetchBookmarksWithCache(testMode = false) {
     // Initial full fetch
     return await handleInitialFetch(lastPinboardUpdate);
   } catch (error) {
-    logger.error("❌ Error fetching bookmarks, falling back to cache");
-    logger.error(error);
-    return await cache.read();
+    logError("Bookmark fetch failed", error, {
+      duration_ms: Date.now() - startTime,
+    });
+
+    // Try to return cached data on error
+    const cachedBookmarks = await cache.read();
+    if (cachedBookmarks.length) {
+      logStatus(
+        "warn",
+        `⚠️ Fetch failed, using ${cachedBookmarks.length} cached bookmarks`
+      );
+      return cachedBookmarks;
+    }
+    throw error;
   }
 }
 

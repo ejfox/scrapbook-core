@@ -31,25 +31,52 @@ const supabase = createClient(
   }
 );
 
-// Add logger setup at the top after imports
+// Improve logger setup
 const logger = winston.createLogger({
   level: process.env.DEBUG === "true" ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    winston.format.json()
   ),
   transports: [new winston.transports.Console()],
 });
 
+// Setup logging helpers
+function logMetric(name, data = {}) {
+  logger.info(name, {
+    type: "metric",
+    metric: name,
+    source: "github",
+    ...data,
+  });
+}
+
+function logStatus(level, message, data = {}) {
+  logger.log(level, message, {
+    type: "status",
+    source: "github",
+    ...data,
+  });
+}
+
+function logError(message, error, context = {}) {
+  logger.error(message, {
+    type: "error",
+    source: "github",
+    error: error.message,
+    stack: error.stack,
+    ...context,
+  });
+}
+
 // Process different GitHub item types
 export async function processGithubItem(item, type) {
   if (!item || !item.id) {
-    logger.error("Invalid GitHub item:", type);
+    logError("Invalid GitHub item", new Error("Invalid item"), { type });
     return null;
   }
 
+  const startTime = Date.now();
   const scrapId = `github-${item.id}`;
 
   try {
@@ -66,7 +93,10 @@ export async function processGithubItem(item, type) {
       .single();
 
     if (!claim) {
-      logger.info(`Skipping GitHub item ${item.id} - already being processed`);
+      logStatus("info", "Item already being processed", {
+        item_id: item.id,
+        type,
+      });
       return null;
     }
 
@@ -95,23 +125,17 @@ export async function processGithubItem(item, type) {
 
       // Combine all possible tags
       const tags = [
-        // Repository topics (if available)
         ...(item.topics || []),
-        // Language as a tag
         item.language?.toLowerCase(),
-        // Item type
         type,
-        // Status tags for PRs/Issues
         ...(type === "pr" || type === "issue" ? [item.state] : []),
-        // Visibility
         ...(type === "repo" || type === "gist"
           ? [item.private ? "private" : "public"]
           : []),
-        // Fork status
         ...(type === "repo" && item.fork ? ["fork"] : []),
       ].filter(Boolean);
 
-      return {
+      const processed = {
         scrap_id: scrapId,
         id: generateScrapId("github", item.id),
         source: "github",
@@ -119,17 +143,15 @@ export async function processGithubItem(item, type) {
         url,
         title: item.title || item.name || "Untitled",
         content,
-        screenshot_url: null, // GitHub items don't need screenshots
+        screenshot_url: null,
         published_at: item.created_at,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        shared: false, // Default to false
-        tags: [...new Set(tags)], // Deduplicate tags
+        shared: false,
+        tags: [...new Set(tags)],
         metadata: {
-          // Store original topics separately
           topics: item.topics || [],
           language: item.language,
-          // Type-specific metadata
           ...(type === "repo" && {
             stargazers_count: item.stargazers_count,
             forks_count: item.forks_count,
@@ -166,8 +188,32 @@ export async function processGithubItem(item, type) {
           }),
         },
       };
+
+      const duration = Date.now() - startTime;
+      logMetric("item_processed", {
+        item_id: item.id,
+        type,
+        duration_ms: duration,
+        has_content: !!content,
+        tags_count: tags.length,
+        topics_count: item.topics?.length || 0,
+        ...(type === "repo" && {
+          stars: item.stargazers_count,
+          forks: item.forks_count,
+          is_fork: item.fork,
+        }),
+        ...(type === "pr" && {
+          comments: item.comments,
+          changed_files: item.changedFiles,
+        }),
+        ...(type === "issue" && {
+          comments: item.comments,
+          labels: item.labels?.length,
+        }),
+      });
+
+      return processed;
     } finally {
-      // Release claim
       await supabase
         .from("scraps")
         .update({
@@ -177,8 +223,12 @@ export async function processGithubItem(item, type) {
         .eq("scrap_id", scrapId);
     }
   } catch (error) {
-    logger.error(`Error processing GitHub ${type}:`, error);
-    // Release claim on error
+    logError("Item processing failed", error, {
+      item_id: item.id,
+      type,
+      duration_ms: Date.now() - startTime,
+    });
+
     await supabase
       .from("scraps")
       .update({
@@ -191,11 +241,14 @@ export async function processGithubItem(item, type) {
 }
 
 export const fetchGithubData = async (testMode = false) => {
-  console.log("Initializing GitHub data download...");
+  const startTime = Date.now();
+  logStatus("info", "Starting GitHub data sync", { test_mode: testMode });
+
   const sinceDate = subDays(new Date(), testMode ? 7 : 60).toISOString();
 
   try {
     // Fetch all data types
+    const fetchStartTime = Date.now();
     const [
       userGists,
       userRepos,
@@ -231,8 +284,19 @@ export const fetchGithubData = async (testMode = false) => {
       }),
     ]);
 
+    logMetric("github_api_fetch", {
+      duration_ms: Date.now() - fetchStartTime,
+      gists_count: userGists.data.length,
+      repos_count: userRepos.data.length,
+      releases_count: userReleases.data.items.length,
+      prs_count: userPRs.data.items.length,
+      starred_count: starredRepos.data.length,
+      issues_count: userIssues.data.items.length,
+    });
+
     // Process each type
-    return {
+    const processStartTime = Date.now();
+    const processed = {
       userGists: await Promise.all(
         userGists.data.map((g) => processGithubItem(g, "gist"))
       ),
@@ -252,12 +316,30 @@ export const fetchGithubData = async (testMode = false) => {
         userIssues.data.items.map((i) => processGithubItem(i, "issue"))
       ),
     };
+
+    const totalDuration = Date.now() - startTime;
+    logMetric("github_sync_completed", {
+      total_duration_ms: totalDuration,
+      fetch_duration_ms: Date.now() - fetchStartTime,
+      process_duration_ms: Date.now() - processStartTime,
+      processed_counts: {
+        gists: processed.userGists.filter(Boolean).length,
+        repos: processed.userRepos.filter(Boolean).length,
+        releases: processed.userReleases.filter(Boolean).length,
+        prs: processed.userPRs.filter(Boolean).length,
+        starred: processed.starredRepos.filter(Boolean).length,
+        issues: processed.userIssues.filter(Boolean).length,
+      },
+      test_mode: testMode,
+    });
+
+    return processed;
   } catch (error) {
-    console.error("Error fetching GitHub data:", error.message);
-    if (error.response) {
-      console.error("Response status:", error.response.status);
-      console.error("Response data:", error.response.data);
-    }
+    logError("GitHub sync failed", error, {
+      duration_ms: Date.now() - startTime,
+      test_mode: testMode,
+    });
+
     return {
       userGists: [],
       userRepos: [],

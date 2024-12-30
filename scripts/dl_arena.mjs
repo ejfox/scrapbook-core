@@ -22,12 +22,38 @@ const logger = winston.createLogger({
   level: DEBUG ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    winston.format.json()
   ),
   transports: [new winston.transports.Console()],
 });
+
+// Setup logging helpers
+function logMetric(name, data = {}) {
+  logger.info(name, {
+    type: "metric",
+    metric: name,
+    source: "arena",
+    ...data,
+  });
+}
+
+function logStatus(level, message, data = {}) {
+  logger.log(level, message, {
+    type: "status",
+    source: "arena",
+    ...data,
+  });
+}
+
+function logError(message, error, context = {}) {
+  logger.error(message, {
+    type: "error",
+    source: "arena",
+    error: error.message,
+    stack: error.stack,
+    ...context,
+  });
+}
 
 // Environment checks
 const USER_SLUG = process.env.USER_SLUG || "ej-fox";
@@ -120,16 +146,21 @@ async function mergeExistingScrap(newScrap) {
   }
 }
 
-// Update processBlock to use merging and better logging
+// Update processBlock with metrics
 export const processBlock = async (block) => {
   if (!block || !block.id) {
-    logger.error("Invalid block:", block);
+    logError("Invalid block provided", new Error("Invalid block"), { block });
     return null;
   }
 
   const blockId = block.id;
-  logger.info(`\n📦 Processing Arena block: ${blockId}`);
-  logger.info(`Type: ${block.class} | Channel: ${block.channel}`);
+  const startTime = Date.now();
+
+  logStatus("info", `Processing Arena block: ${blockId}`, {
+    block_id: blockId,
+    block_type: block.class,
+    channel: block.channel,
+  });
 
   try {
     // Handle different block classes (Image, Text, Media, Link, etc)
@@ -181,43 +212,37 @@ export const processBlock = async (block) => {
     let screenshot_url = null;
 
     if (originalImageUrl) {
-      // Check if we already have a Cloudinary version
-      const existingCloudinaryUrl = block.metadata?.image_data?.cloudinary_url;
-      if (existingCloudinaryUrl) {
-        logger.debug(`Using existing Cloudinary URL: ${existingCloudinaryUrl}`);
-        screenshot_url = existingCloudinaryUrl;
-      } else {
-        try {
-          // Upload to Cloudinary
-          const result = await cloudinary.uploader.upload(originalImageUrl, {
-            folder: "arena",
-            public_id: `arena-${block.id}`,
-            overwrite: true,
-            resource_type: "auto",
-            transformation: [
-              { quality: "auto" },
-              { fetch_format: "auto" },
-              { dpr: "auto" },
-            ],
-          });
+      const imageStartTime = Date.now();
+      try {
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(originalImageUrl, {
+          folder: "arena",
+          public_id: `arena-${block.id}`,
+          overwrite: true,
+          resource_type: "auto",
+          transformation: [
+            { quality: "auto" },
+            { fetch_format: "auto" },
+            { dpr: "auto" },
+          ],
+        });
 
-          screenshot_url = result.secure_url;
-          logger.debug("Cloudinary upload result:", {
-            original_url: originalImageUrl,
-            cloudinary_url: screenshot_url,
-            public_id: result.public_id,
-            bytes: result.bytes,
-            format: result.format,
-          });
+        screenshot_url = result.secure_url;
 
-          logger.info(`✅ Uploaded image to Cloudinary: ${screenshot_url}`);
-        } catch (error) {
-          logger.error(
-            `Failed to upload image to Cloudinary: ${error.message}`
-          );
-          // Fallback to original URL if Cloudinary upload fails
-          screenshot_url = originalImageUrl;
-        }
+        logMetric("image_processed", {
+          block_id: blockId,
+          duration_ms: Date.now() - imageStartTime,
+          original_size: result.bytes,
+          format: result.format,
+          width: result.width,
+          height: result.height,
+        });
+      } catch (error) {
+        logError("Image processing failed", error, {
+          block_id: blockId,
+          original_url: originalImageUrl,
+        });
+        screenshot_url = originalImageUrl;
       }
     }
 
@@ -236,7 +261,7 @@ export const processBlock = async (block) => {
       published_at: created.toISOString(),
       created_at: created.toISOString(),
       updated_at: updated.toISOString(),
-      shared: false, // Always false by default
+      shared: false,
       tags: [
         block.class?.toLowerCase(),
         block.base_class?.toLowerCase(),
@@ -277,45 +302,38 @@ export const processBlock = async (block) => {
       },
     };
 
-    logger.debug("Image data available:", {
-      "metadata.image_data": scrap.metadata.image_data,
-      screenshot_url: scrap.screenshot_url,
-      class: scrap.metadata.class,
-    });
-
     // Process images and get embeddings
-    logger.info(`🖼️ Processing images for block ${blockId}`);
+    logStatus("info", "Processing images for block", { block_id: blockId });
+    const embeddingStartTime = Date.now();
     const scrapWithImages = await processImagesForScrap(scrap);
 
     if (scrapWithImages.image_embedding) {
-      logger.info(
-        `✅ Generated image embedding for ${blockId} (${scrapWithImages.image_embedding.length} dimensions)`
-      );
-    } else {
-      logger.info(
-        `ℹ No image embedding generated for ${blockId}. Available image data:`,
-        {
-          "metadata.image_urls": scrapWithImages.metadata?.image_urls,
-          "metadata.primary_image_url":
-            scrapWithImages.metadata?.primary_image_url,
-        }
-      );
+      logMetric("embedding_generated", {
+        block_id: blockId,
+        duration_ms: Date.now() - embeddingStartTime,
+        dimensions: scrapWithImages.image_embedding.length,
+      });
     }
 
-    // Return processed scrap
-    logger.info(`📊 Final scrap state for ${blockId}:`);
-
-    // Log the final state
-    logger.info(`📊 Final scrap state for ${blockId}:
-      • Title: ${scrapWithImages.title.substring(0, 50)}...
-      • Channel: ${scrapWithImages.metadata.channel}
-      • Has image embedding: ${Boolean(scrapWithImages.image_embedding)}
-      • Tags: ${scrapWithImages.tags.join(", ")}
-    `);
+    const totalDuration = Date.now() - startTime;
+    logMetric("block_processed", {
+      block_id: blockId,
+      duration_ms: totalDuration,
+      block_type: block.class,
+      has_content: !!content,
+      has_image: !!screenshot_url,
+      has_embedding: !!scrapWithImages.image_embedding,
+      tags_count: scrap.tags.length,
+      connected_channels: block.connected_to_channels?.length || 0,
+    });
 
     return scrapWithImages;
   } catch (error) {
-    logger.error(`❌ Error processing block ${blockId}:`, error);
+    logError("Block processing failed", error, {
+      block_id: blockId,
+      duration_ms: Date.now() - startTime,
+      block_type: block.class,
+    });
     return null;
   }
 };
@@ -328,88 +346,94 @@ export function setShuttingDown(value) {
   isShuttingDown = value;
 }
 
-// Update fetchAllBlocks to accept options
+// Update fetchAllBlocks with metrics
 export const fetchAllBlocks = async (testMode = false, options = {}) => {
-  if (options.isShuttingDown) {
-    isShuttingDown = options.isShuttingDown;
-  }
-  let allBlocks = [];
+  const startTime = Date.now();
   let processedCount = 0;
+  let errorCount = 0;
   let totalChannels = 0;
   let currentChannel = 0;
 
+  if (options.isShuttingDown) {
+    isShuttingDown = options.isShuttingDown;
+  }
+
   try {
-    logger.info("\n🔍 Fetching Are.na channels...");
+    logStatus("info", "Fetching Are.na channels...");
     const userChannels = await arena.user(USER_SLUG).channels();
+
     if (!userChannels?.length) {
       throw new Error("No channels found for user");
     }
+
     totalChannels = userChannels.length;
-    logger.info(chalk.green(`📚 Found ${totalChannels} channels`));
-    logger.debug("Channels:", userChannels.map((c) => c.title).join(", "));
+    logMetric("channels_found", {
+      total_channels: totalChannels,
+      channels: userChannels.map((c) => c.title),
+    });
 
     const channelsToProcess = testMode ? [userChannels[0]] : userChannels;
 
     for (const channel of channelsToProcess) {
+      if (isShuttingDown) break;
+
       currentChannel++;
-      logger.info(
-        `\n📂 Processing channel ${currentChannel}/${totalChannels}: ${channel.title}`
-      );
+      const channelStartTime = Date.now();
 
-      const response = await arenaLimiter.schedule(() =>
-        arena.channel(channel.id).contents({
-          page: 1,
-          per: testMode ? 5 : 100,
-          sort: "updated_at",
-          direction: "desc",
-        })
-      );
+      logStatus("info", `Processing channel: ${channel.title}`, {
+        channel_id: channel.id,
+        progress: `${currentChannel}/${totalChannels}`,
+      });
 
-      const blocks = response || [];
-      if (!blocks.length) {
-        logger.warn(
-          chalk.yellow(`No blocks found in channel: ${channel.title}`)
+      try {
+        const response = await arenaLimiter.schedule(() =>
+          arena.channel(channel.id).contents({
+            page: 1,
+            per: testMode ? 5 : 100,
+            sort: "updated_at",
+            direction: "desc",
+          })
         );
-        continue;
+
+        const blocks = response || [];
+
+        logMetric("channel_processed", {
+          channel_id: channel.id,
+          channel_title: channel.title,
+          blocks_count: blocks.length,
+          duration_ms: Date.now() - channelStartTime,
+        });
+
+        for (const block of blocks) {
+          if (isShuttingDown) break;
+          processedCount++;
+        }
+      } catch (error) {
+        errorCount++;
+        logError("Channel processing failed", error, {
+          channel_id: channel.id,
+          channel_title: channel.title,
+        });
       }
-      logger.info(
-        chalk.green(`📦 Found ${blocks.length} blocks in ${channel.title}`)
-      );
-      processedCount += blocks.length;
-
-      for (const block of blocks) {
-        if (isShuttingDown) break;
-        // Enrich block with channel info before passing to index.mjs
-        const enrichedBlock = {
-          ...block,
-          channel: channel.title,
-          connected_to_channels: [
-            {
-              id: channel.id,
-              title: channel.title,
-            },
-            ...(block.connected_to_channels || []),
-          ],
-        };
-
-        allBlocks.push(enrichedBlock);
-      }
-
-      // Update progress
-      logger.info(`Progress: ${processedCount} blocks processed`);
-      logger.info(`Channel progress: ${currentChannel}/${totalChannels}`);
     }
 
-    logger.info(`\n✅ Processing complete!
-      • Total channels processed: ${currentChannel}
-      • Total blocks processed: ${processedCount}
-      • Successful blocks: ${allBlocks.length}
-      • Failed/skipped: ${processedCount - allBlocks.length}
-    `);
+    const totalDuration = Date.now() - startTime;
+    logMetric("arena_sync_completed", {
+      total_duration_ms: totalDuration,
+      channels_processed: currentChannel,
+      total_channels: totalChannels,
+      blocks_processed: processedCount,
+      errors: errorCount,
+      test_mode: testMode,
+    });
 
     return allBlocks;
   } catch (error) {
-    logger.error("\n❌ Error fetching blocks:", error);
+    logError("Arena sync failed", error, {
+      duration_ms: Date.now() - startTime,
+      channels_processed: currentChannel,
+      blocks_processed: processedCount,
+    });
     throw error;
   }
 };

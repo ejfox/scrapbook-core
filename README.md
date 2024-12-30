@@ -39,7 +39,28 @@ The app is designed to run as a scheduled task using PM2's built-in cron feature
 npm install -g pm2
 ```
 
-2. Start the app with PM2:
+2. Create an `ecosystem.config.js` file in your project root:
+```javascript
+module.exports = {
+  apps: [{
+    name: 'scrapbook-core',
+    script: 'scripts/index.mjs',
+    args: '--all',
+    cron_restart: '0 */4 * * *',  // Every 4 hours
+    autorestart: false,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'development'
+    },
+    env_production: {
+      NODE_ENV: 'production'
+    }
+  }]
+};
+```
+
+3. Start the app with PM2:
 ```bash
 pm2 start ecosystem.config.js --env production
 ```
@@ -84,18 +105,184 @@ pm2 save       # Save current PM2 configuration
 The cron schedule can be modified in `ecosystem.config.js`. The default schedule is every 4 hours (`0 */4 * * *`).
 
 Common cron patterns:
-- `0 */6 * * *` - Every 6 hours
-- `0 0 * * *` - Once daily at midnight
-- `0 */12 * * *` - Every 12 hours
+```
+0 */4 * * *    # Every 4 hours (default)
+0 */6 * * *    # Every 6 hours
+0 0 * * *      # Once daily at midnight
+0 */12 * * *   # Every 12 hours
+*/30 * * * *   # Every 30 minutes (not recommended)
+0 3,15 * * *   # Twice daily at 3am and 3pm
+```
 
-## Deploying
-`flyctl deploy`
+## Environment Setup
 
-### Running
-`flyctl ssh console -C "node scripts/index.mjs --all"`
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
 
-### Get logs
-`flyctl logs`
+2. Fill in your credentials in `.env`:
+```bash
+# Required API Keys
+GITHUB_TOKEN=your_github_token
+PINBOARD_TOKEN=your_pinboard_token
+ARENA_ACCESS_TOKEN=your_arena_token
+MASTODON_ACCESS_TOKEN=your_mastodon_token
+
+# Database Configuration
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Image Storage (Cloudinary)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# AI Services
+OPENROUTER_API_KEY=your_openrouter_key
+NOMIC_API_KEY=your_nomic_key
+
+# Optional Configuration
+DEBUG=false
+INSTANCE_NAME=local-dev
+```
+
+3. Test your configuration:
+```bash
+node scripts/validate_env.mjs
+```
+
+## Deployment
+
+### Fly.io Deployment
+
+1. Install the Flyctl CLI:
+```bash
+curl -L https://fly.io/install.sh | sh
+```
+
+2. Login to Fly:
+```bash
+flyctl auth login
+```
+
+3. Create a new app (first time only):
+```bash
+flyctl launch
+```
+
+4. Set environment variables:
+```bash
+flyctl secrets set GITHUB_TOKEN=your_token
+flyctl secrets set PINBOARD_TOKEN=your_token
+# ... set all required environment variables
+```
+
+5. Deploy:
+```bash
+flyctl deploy
+```
+
+### Monitoring & Maintenance
+
+View logs:
+```bash
+flyctl logs
+```
+
+Access the console:
+```bash
+flyctl ssh console
+```
+
+Run a one-time sync:
+```bash
+flyctl ssh console -C "node scripts/index.mjs --all"
+```
+
+### Health Checks
+
+The application includes built-in health checks that Fly.io uses to monitor its status. You can view the health check status in the Fly.io dashboard or via:
+
+```bash
+flyctl status
+```
+
+### Multi-Region Setup
+
+By default, the app deploys to a single region. To deploy to multiple regions:
+
+1. Add regions in `fly.toml`:
+```toml
+[regions]
+primary = ["sjc", "lax"]
+```
+
+2. Scale the app:
+```bash
+flyctl scale count 2
+```
+
+## Local Development
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/scrapbook-core.git
+cd scrapbook-core
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables (see Environment Setup above)
+
+4. Run the development server:
+```bash
+npm run dev
+```
+
+5. Run tests:
+```bash
+npm test
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Rate Limiting**: If you hit API rate limits, the app will back off automatically. You can adjust rate limits in `scripts/shared/rateLimiters.mjs`.
+
+2. **Database Connection**: If you can't connect to Supabase:
+   - Check your environment variables
+   - Ensure your IP is whitelisted
+   - Verify database permissions
+
+3. **Memory Issues**: If you see out-of-memory errors:
+   - Adjust `max_memory_restart` in `ecosystem.config.js`
+   - Consider reducing batch sizes in the fetchers
+
+### Getting Help
+
+- Check the logs in `logs/` directory
+- Run with DEBUG=true for verbose logging
+- Open an issue on GitHub
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
+
+Please follow the existing code style and include tests for new features.
+
+## License
+
+MIT License - see LICENSE file for details
 
 ## Database Schema
 
