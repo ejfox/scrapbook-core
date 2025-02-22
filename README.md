@@ -18,6 +18,46 @@ Scrapbook Core is a comprehensive data management system designed to accumulate 
 - Syncs data with both Supabase and SQLite databases
 - Includes an Alfred Workflow for quick local database searches
 
+## Quick VPS Deployment
+
+This project is designed to run easily on any VPS using Docker. Here's how to deploy:
+
+1. **Prepare Your VPS**
+   - SSH into your VPS
+   - Install Docker and Docker Compose if not already installed
+   - Create a directory for the project: `mkdir scrapbook && cd scrapbook`
+
+2. **Set Up the Project**
+   ```bash
+   # Clone the repository
+   git clone https://github.com/yourusername/scrapbook-core.git .
+   
+   # Copy and edit environment variables
+   cp .env.example .env
+   nano .env  # Add your API keys and credentials
+   ```
+
+3. **Deploy with Docker**
+   ```bash
+   # Start the container in the background
+   docker-compose up -d
+   
+   # Check the logs
+   docker-compose logs -f
+   ```
+
+The container will:
+- Start automatically on system boot
+- Restart on failure
+- Log to both files and Loki/Grafana
+- Persist data between restarts
+
+**Maintenance Commands:**
+- Update: `git pull && docker-compose up -d --build`
+- Stop: `docker-compose down`
+- View logs: `docker-compose logs -f`
+- Check status: `docker-compose ps`
+
 Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) tool.
 
 Also visible on [my website's scrapbook](https://ejfox.com/scrapbook/)
