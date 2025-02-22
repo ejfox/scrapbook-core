@@ -46,6 +46,41 @@ This project is designed to run easily on any VPS using Docker. Here's how to de
    docker-compose logs -f
    ```
 
+4. **Choose Your Scheduling Method:**
+
+   A. **Docker's Built-in Cron** (Recommended)
+   - Edit docker-compose.yml to add cron schedule:
+     ```yaml
+     services:
+       scrapbook:
+         # ... existing config ...
+         command: crond -f -d 8 && node scripts/index.mjs --all
+     ```
+
+   B. **System Cron**
+   - Add to your system crontab:
+     ```bash
+     0 */4 * * * docker-compose -f /path/to/scrapbook/docker-compose.yml exec scrapbook node scripts/index.mjs --all
+     ```
+
+   C. **Manual Webhook** (For on-demand updates)
+   - Set up a simple webhook endpoint:
+     ```bash
+     # Install webhook
+     apt-get install webhook
+     
+     # Create webhook config
+     echo '[{"id": "scrapbook-update","execute-command": "/path/to/scrapbook/update.sh"}]' > hooks.json
+     
+     # Create update script
+     echo 'cd /path/to/scrapbook && docker-compose exec -T scrapbook node scripts/index.mjs --all' > update.sh
+     chmod +x update.sh
+     
+     # Run webhook server
+     webhook -hooks hooks.json -verbose
+     ```
+   - Trigger update: `curl http://your-server:9000/hooks/scrapbook-update`
+
 The container will:
 - Start automatically on system boot
 - Restart on failure
@@ -211,9 +246,19 @@ The project includes Docker support for easy deployment. You can run the entire 
 docker-compose up -d
 ```
 
+The container will automatically:
+- Run the scrapbook update every hour at :20 minutes past
+- Log cron output to `logs/cron.log`
+- Restart on failure
+- Persist data between restarts
+
 3. View logs:
 ```bash
+# View all logs
 docker-compose logs -f
+
+# View only cron job logs
+tail -f logs/cron.log
 ```
 
 4. Stop the container:
@@ -228,6 +273,35 @@ The Docker setup includes two persistent volumes:
 - `./logs`: Contains application logs
 
 These directories will be created automatically and persist data between container restarts.
+
+### Customizing the Update Schedule
+
+The default schedule runs updates every hour at :20 minutes past. To change this:
+
+1. Edit the cron schedule in `docker-compose.yml`:
+```yaml
+entrypoint: |
+  sh -c '
+  # Change "20 * * * *" to your desired schedule
+  echo "20 * * * * cd /usr/src/app && node scripts/index.mjs --all >> /usr/src/app/logs/cron.log 2>&1" > /etc/cron.d/scrapbook
+  chmod 0644 /etc/cron.d/scrapbook
+  crontab /etc/cron.d/scrapbook
+  crond -f -d 8
+  '
+```
+
+Common cron patterns:
+```
+20 * * * *     # Every hour at :20 (default)
+*/30 * * * *   # Every 30 minutes
+0 */4 * * *    # Every 4 hours
+0 0 * * *      # Once daily at midnight
+```
+
+2. Restart the container to apply changes:
+```bash
+docker-compose down && docker-compose up -d
+```
 
 ### Docker Commands Reference
 
