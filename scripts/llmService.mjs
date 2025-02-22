@@ -268,9 +268,12 @@ const service = {
             {
               headers: {
                 Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                "HTTP-Referer": process.env.SITE_URL || "http://localhost:3000",
+                "HTTP-Referer": "https://github.com/ejfox/scrapbook-core",
                 "X-Title": "Scrapbook Core",
                 "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-Custom-Auth": "scrapbook-core",
+                "X-Custom-Model": currentModel,
               },
             }
           );
@@ -505,8 +508,11 @@ const service = {
       const response = await axios.get(`${OPENROUTER_API_URL}/auth/key`, {
         headers: {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://github.com/ejfox/scrapbook-core",
+          "X-Title": "Scrapbook Core",
           "Content-Type": "application/json",
           Accept: "application/json",
+          "X-Custom-Auth": "scrapbook-core",
         },
       });
 

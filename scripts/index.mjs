@@ -522,7 +522,7 @@ function validateAIOutput(type, data) {
 // Simplify enrichScrapWithAI to handle tags more directly
 async function enrichScrapWithAI(scrapData) {
   if (!process.env.OPENROUTER_API_KEY || !process.env.NOMIC_API_KEY) {
-    logStatus("info", "Skipping AI enrichment - API keys not configured");
+    logStatus("warn", "⚠️  Skipping AI enrichment - API keys not configured");
     return scrapData;
   }
 
@@ -530,7 +530,22 @@ async function enrichScrapWithAI(scrapData) {
     scrapData.scrap_id || scrapData.id || `${scrapData.source}-${Date.now()}`;
   const startTime = Date.now();
 
-  logStatus("info", `Starting AI enrichment for ${scrapIdentifier}`);
+  logger.info(
+    chalk.blue(
+      `\n📝 Processing ${chalk.bold(scrapData.source)} scrap: ${chalk.gray(
+        scrapIdentifier
+      )}`
+    )
+  );
+  if (scrapData.title) {
+    logger.info(
+      chalk.gray(
+        `Title: ${scrapData.title.substring(0, 60)}${
+          scrapData.title.length > 60 ? "..." : ""
+        }`
+      )
+    );
+  }
 
   try {
     const contentToProcess = [
@@ -549,16 +564,12 @@ async function enrichScrapWithAI(scrapData) {
       .join("\n\n");
 
     if (!contentToProcess) {
-      logStatus("warn", "No content to process for AI enrichment", {
-        scrap_id: scrapIdentifier,
-      });
+      logger.info(chalk.yellow("⚠️  No content available to process"));
       return scrapData;
     }
 
     // Generate text embedding with retries
-    logStatus("info", "Generating text embedding...", {
-      scrap_id: scrapIdentifier,
-    });
+    logger.info(chalk.blue("\n1️⃣  Generating text embedding..."));
     let textEmbedding = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -567,27 +578,72 @@ async function enrichScrapWithAI(scrapData) {
         );
         if (textEmbedding) {
           scrapData.embedding_nomic = textEmbedding;
-          logMetric("embedding_generated", {
-            scrap_id: scrapIdentifier,
-            type: "text",
-            attempt,
-            duration_ms: Date.now() - startTime,
-          });
+          logger.info(chalk.green("✅ Text embedding generated successfully"));
           break;
         }
       } catch (error) {
-        logError("Embedding generation failed", error, {
-          scrap_id: scrapIdentifier,
-          attempt,
-          type: "text",
-        });
+        logger.error(
+          chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`)
+        );
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
 
+    // Generate summary and tags
+    logger.info(chalk.blue("\n2️⃣  Generating summary and tags..."));
+    const enrichedWithSummary = await generateSummaryAndTags(scrapData);
+    if (enrichedWithSummary.summary) {
+      scrapData.summary = enrichedWithSummary.summary;
+      scrapData.tags = enrichedWithSummary.tags;
+      logger.info(
+        chalk.green(`✅ Generated summary (${scrapData.summary.length} chars)`)
+      );
+      logger.info(
+        chalk.green(
+          `✅ Generated ${scrapData.tags.length} tags: ${chalk.gray(
+            scrapData.tags.join(", ")
+          )}`
+        )
+      );
+
+      // Extract relationships from the summary
+      logger.info(chalk.blue("\n3️⃣  Extracting relationships..."));
+      const enrichedWithRelationships = await extractAndAddRelationships(
+        scrapData
+      );
+      if (enrichedWithRelationships.relationships) {
+        scrapData.relationships = enrichedWithRelationships.relationships;
+        logger.info(
+          chalk.green(
+            `✅ Found ${scrapData.relationships.length} relationships`
+          )
+        );
+      } else {
+        logger.info(chalk.yellow("ℹ️  No relationships found"));
+      }
+
+      // Extract location from the summary
+      logger.info(chalk.blue("\n4️⃣  Extracting location..."));
+      const location = await limiter.schedule(() =>
+        extractLocation(scrapData.summary)
+      );
+      if (location) {
+        scrapData.location = location.name;
+        scrapData.latitude = location.latitude;
+        scrapData.longitude = location.longitude;
+        logger.info(
+          chalk.green(`✅ Found location: ${chalk.gray(location.name)}`)
+        );
+      } else {
+        logger.info(chalk.yellow("ℹ️  No location found"));
+      }
+    } else {
+      logger.info(chalk.yellow("⚠️  Failed to generate summary"));
+    }
+
     // Process images
     if (scrapData.screenshot_url || scrapData.metadata?.image_url) {
-      logStatus("info", "Processing image...", { scrap_id: scrapIdentifier });
+      logger.info(chalk.blue("\n5️⃣  Processing image..."));
       const imageStartTime = Date.now();
 
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -595,42 +651,48 @@ async function enrichScrapWithAI(scrapData) {
           const withImageEmbedding = await processImagesForScrap(scrapData);
           if (withImageEmbedding.image_embedding) {
             scrapData.image_embedding = withImageEmbedding.image_embedding;
-            logMetric("embedding_generated", {
-              scrap_id: scrapIdentifier,
-              type: "image",
-              attempt,
-              duration_ms: Date.now() - imageStartTime,
-            });
+            logger.info(chalk.green("✅ Image embedding generated"));
             break;
           }
         } catch (error) {
-          logError("Image processing failed", error, {
-            scrap_id: scrapIdentifier,
-            attempt,
-            type: "image",
-          });
+          logger.error(
+            chalk.red(`❌ Image processing failed (attempt ${attempt}/3)`)
+          );
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         }
       }
     }
 
     const totalDuration = Date.now() - startTime;
-    logMetric("ai_enrichment_completed", {
-      scrap_id: scrapIdentifier,
-      total_duration_ms: totalDuration,
-      has_text_embedding: !!scrapData.embedding_nomic,
-      has_image_embedding: !!scrapData.image_embedding,
-      has_summary: !!scrapData.summary,
-      has_location: !!scrapData.location,
-      has_relationships: !!(scrapData.relationships?.length > 0),
-    });
+    logger.info(
+      chalk.blue(
+        `\n✨ Processing completed in ${chalk.bold(
+          (totalDuration / 1000).toFixed(1)
+        )}s`
+      )
+    );
+    logger.info(chalk.gray("Results:"));
+    logger.info(
+      chalk.gray(`• Text Embedding: ${scrapData.embedding_nomic ? "✅" : "❌"}`)
+    );
+    logger.info(chalk.gray(`• Summary: ${scrapData.summary ? "✅" : "❌"}`));
+    logger.info(chalk.gray(`• Tags: ${scrapData.tags?.length || 0}`));
+    logger.info(
+      chalk.gray(`• Relationships: ${scrapData.relationships?.length || 0}`)
+    );
+    logger.info(chalk.gray(`• Location: ${scrapData.location ? "✅" : "❌"}`));
+    logger.info(
+      chalk.gray(
+        `• Image Embedding: ${scrapData.image_embedding ? "✅" : "❌"}`
+      )
+    );
 
     return scrapData;
   } catch (error) {
-    logError("AI enrichment failed", error, {
-      scrap_id: scrapIdentifier,
-      duration_ms: Date.now() - startTime,
-    });
+    logger.error(
+      chalk.red(`\n❌ AI enrichment failed for ${scrapIdentifier}:`),
+      error
+    );
     return scrapData;
   }
 }
@@ -861,23 +923,47 @@ async function extractAndAddRelationships(scrapObj) {
 
 // Add this helper function near the top with other helper functions
 async function generateSummaryAndTags(scrapObj) {
-  if (!scrapObj.content) return scrapObj;
+  // Gather all possible content sources
+  const contentToProcess = [
+    scrapObj.content,
+    scrapObj.description,
+    scrapObj.title,
+    scrapObj.metadata?.description,
+    scrapObj.metadata?.content,
+    scrapObj.metadata?.original_content,
+    scrapObj.metadata?.text,
+    scrapObj.url,
+    scrapObj.metadata?.url,
+    scrapObj.metadata?.original_url,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  if (!contentToProcess) {
+    logger.warn("No content to summarize");
+    return scrapObj;
+  }
 
   try {
     if (process.env.OPENROUTER_API_KEY) {
       // Generate summary
+      logger.info("Generating summary...");
       scrapObj.summary = await limiter.schedule(() =>
-        summarizeContent(scrapObj.content, { metaSummary: true })
+        summarizeContent(contentToProcess, { metaSummary: true })
       );
 
       // Generate tags from summary if we have one
       if (scrapObj.summary) {
+        logger.info("Generating tags from summary...");
         const summaryTags = await limiter.schedule(() =>
           metaSummaryToTags(scrapObj.summary)
         );
         scrapObj.tags = [
           ...new Set([...(scrapObj.tags || []), ...summaryTags]),
         ];
+        logger.info(`Generated ${summaryTags.length} tags`);
+      } else {
+        logger.warn("No summary generated, skipping tag generation");
       }
     } else {
       logger.info(
@@ -1513,7 +1599,7 @@ async function identifyAndFixMissingData(options = {}) {
   let processed = 0;
   let fixed = 0;
   let hasMore = true;
-  let lastDate = new Date().toISOString();
+  let lastUpdated = new Date().toISOString();
 
   // Build query conditions based on what we're fixing
   const conditions = [];
@@ -1540,7 +1626,35 @@ async function identifyAndFixMissingData(options = {}) {
 
   // Process in stages for efficiency
   const stages = [
-    {
+    // If processAI is true, put AI Enrichment first
+    processAI && {
+      name: "AI Enrichment",
+      enabled: processAI,
+      condition: "summary.is.null,location.is.null,relationships.is.null",
+      process: async (scrap) => {
+        // Skip AI enrichment for Arena scraps
+        if (scrap.source === "arena") {
+          logger.info(chalk.gray("⏭️ Skipping AI enrichment for Arena scrap"));
+          return {
+            summary: null,
+            location: null,
+            latitude: null,
+            longitude: null,
+            relationships: null,
+          };
+        }
+
+        const enriched = await enrichScrapWithAI(scrap);
+        return {
+          summary: enriched.summary,
+          location: enriched.location,
+          latitude: enriched.latitude,
+          longitude: enriched.longitude,
+          relationships: enriched.relationships,
+        };
+      },
+    },
+    processImages && {
       name: "Screenshots",
       enabled: processImages,
       condition: "screenshot_url.is.null,url.not.is.null",
@@ -1588,34 +1702,7 @@ async function identifyAndFixMissingData(options = {}) {
           : null;
       },
     },
-    {
-      name: "AI Enrichment",
-      enabled: processAI,
-      condition: "summary.is.null,location.is.null,relationships.is.null",
-      process: async (scrap) => {
-        // Skip AI enrichment for Arena scraps
-        if (scrap.source === "arena") {
-          logger.info(chalk.gray("⏭️ Skipping AI enrichment for Arena scrap"));
-          return {
-            summary: null,
-            location: null,
-            latitude: null,
-            longitude: null,
-            relationships: null,
-          };
-        }
-
-        const enriched = await enrichScrapWithAI(scrap);
-        return {
-          summary: enriched.summary,
-          location: enriched.location,
-          latitude: enriched.latitude,
-          longitude: enriched.longitude,
-          relationships: enriched.relationships,
-        };
-      },
-    },
-  ];
+  ].filter(Boolean); // Filter out any falsy stages
 
   // Process each stage
   for (const stage of stages) {
@@ -1624,15 +1711,15 @@ async function identifyAndFixMissingData(options = {}) {
     logger.info(chalk.blue(`\n🔄 Starting ${stage.name} stage...`));
 
     let hasMore = true;
-    let lastDate = new Date().toISOString();
+    let lastUpdated = new Date().toISOString();
 
     while (hasMore && !isShuttingDown) {
       let query = supabase
         .from("scraps")
         .select("*")
         .or(stage.condition)
-        .lt("created_at", lastDate)
-        .order("created_at", { ascending: false })
+        .lt("updated_at", lastUpdated)
+        .order("updated_at", { ascending: false })
         .limit(batchSize);
 
       if (source) {
@@ -1646,7 +1733,8 @@ async function identifyAndFixMissingData(options = {}) {
         break;
       }
 
-      lastDate = scraps[scraps.length - 1].created_at;
+      // Update lastUpdated for next batch
+      lastUpdated = scraps[scraps.length - 1].updated_at;
 
       for (const scrap of scraps) {
         processed++;
@@ -1910,7 +1998,13 @@ async function main() {
       }
     }
 
-    if (options.fix || options.fixDryRun) {
+    if (
+      options.fix ||
+      options.fixDryRun ||
+      options.fixAi ||
+      options.fixImages ||
+      options.fixEmbeddings
+    ) {
       logger.info(chalk.blue("\n5️⃣ Fixing Missing Data..."));
 
       const source = options.fixPinboard

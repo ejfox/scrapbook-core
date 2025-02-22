@@ -153,6 +153,69 @@ INSTANCE_NAME=local-dev
 node scripts/validate_env.mjs
 ```
 
+## Docker Setup
+
+The project includes Docker support for easy deployment. You can run the entire application using Docker Compose.
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### Running with Docker Compose
+
+1. Make sure you have your `.env` file configured (see Environment Setup above)
+
+2. Build and start the container:
+```bash
+docker-compose up -d
+```
+
+3. View logs:
+```bash
+docker-compose logs -f
+```
+
+4. Stop the container:
+```bash
+docker-compose down
+```
+
+### Docker Volume Persistence
+
+The Docker setup includes two persistent volumes:
+- `./data`: Contains the SQLite database and cache files
+- `./logs`: Contains application logs
+
+These directories will be created automatically and persist data between container restarts.
+
+### Docker Commands Reference
+
+```bash
+# Rebuild the container (after code changes)
+docker-compose up -d --build
+
+# View container status
+docker-compose ps
+
+# View resource usage
+docker stats scrapbook-core
+
+# Restart the container
+docker-compose restart
+
+# Remove containers and volumes
+docker-compose down -v
+```
+
+### Environment Variables in Docker
+
+All environment variables from your `.env` file are automatically passed to the container. You can override any variable when running docker-compose:
+
+```bash
+DEBUG=true docker-compose up -d
+```
+
 ## Deployment
 
 ### Fly.io Deployment

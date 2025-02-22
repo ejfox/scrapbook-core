@@ -22,7 +22,7 @@ export async function summarizeContent(content, options = {}) {
   }
 
   try {
-    log(` Original content length: ${content.length}`);
+    log(`🔍 Original content length: ${content.length}`);
 
     // Clean up HTML content if present
     const cleanContent = content
@@ -51,21 +51,39 @@ export async function summarizeContent(content, options = {}) {
 
     // Process chunks
     log("🤖 Generating summaries...");
-    const summaries = await Promise.all(
-      chunks.map((chunk, i) =>
-        limiter.schedule(async () => {
-          log(`Processing chunk ${i + 1}/${chunks.length}`);
-          const summary = await summarizeChunk(chunk, options);
-          log(`Chunk ${i + 1} summary length: ${summary?.length || 0}`);
-          return summary;
-        })
-      )
-    );
+    const summaries = [];
+    for (const [i, chunk] of chunks.entries()) {
+      try {
+        log(`Processing chunk ${i + 1}/${chunks.length}`);
+        const summary = await limiter.schedule(async () => {
+          log(`🔄 Starting chunk ${i + 1} summarization...`);
+          const result = await summarizeChunk(chunk, options);
+          log(
+            `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`
+          );
+          return result;
+        });
+        if (summary) {
+          summaries.push(summary);
+          log(`✅ Chunk ${i + 1} summary added to results`);
+        } else {
+          log(`⚠️ Chunk ${i + 1} summary was null, skipping`);
+        }
+      } catch (error) {
+        console.error(`❌ Error processing chunk ${i + 1}:`, error);
+        log(`⚠️ Continuing with remaining chunks...`);
+      }
+    }
+
+    if (summaries.length === 0) {
+      log("❌ No summaries were generated");
+      return null;
+    }
 
     // Combine summaries
     const summary = summaries.join("\n").trim();
-    log(`✅ Final summary length: ${summary.length}`);
-    log(`First line: ${summary.split("\n")[0]}`);
+    log(`✅ Final summary generated (${summary.length} chars)`);
+    log(`📝 First line: ${summary.split("\n")[0]}`);
 
     return summary;
   } catch (error) {
@@ -104,6 +122,7 @@ ${chunk}`,
 
   while (summary === null && retries < 3) {
     try {
+      log(`🔄 Attempt ${retries + 1}/3 to generate summary...`);
       const response = await completion({
         messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
@@ -111,15 +130,25 @@ ${chunk}`,
         model: MODELS.CLAUDE_3_SONNET,
       });
 
+      if (!response) {
+        log(`⚠️ Attempt ${retries + 1} failed - no response from API`);
+        retries++;
+        continue;
+      }
+
       summary = response;
+      log(`✅ Got response of ${summary.length} chars`);
 
       if (blacklistPhrases.some((phrase) => summary?.trim().includes(phrase))) {
         log(
-          `❌ Summary contains blacklisted phrase. Retrying... (Attempt ${
+          `⚠️ Summary contains blacklisted phrase. Retrying... (Attempt ${
             retries + 1
           })`
         );
-        messages.push(userMessage);
+        messages.push({
+          role: "user",
+          content: userMessage.content,
+        });
         messages.push({
           role: "assistant",
           content:
@@ -130,17 +159,40 @@ ${chunk}`,
         retries++;
       }
     } catch (error) {
-      console.error("❌ Error during completion:", error);
+      log(
+        `❌ Error during completion (Attempt ${retries + 1}): ${error.message}`
+      );
+      if (error.response?.data) {
+        log(
+          `API Response Data: ${JSON.stringify(error.response.data, null, 2)}`
+        );
+      }
       messages.push({
         role: "assistant",
         content: `Error: ${error.message}`,
       });
       retries++;
+
+      // Add delay between retries
+      if (retries < 3) {
+        const delay = retries * 1000;
+        log(`⏳ Waiting ${delay}ms before next attempt...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
   }
 
   const endTime = performance.now();
-  log(`✅ Chunk summarized in ${endTime - startTime}ms`);
+  const duration = Math.round(endTime - startTime);
+
+  if (summary) {
+    log(`✅ Successfully generated summary in ${duration}ms`);
+  } else {
+    log(
+      `❌ Failed to generate summary after ${retries} attempts (${duration}ms)`
+    );
+  }
+
   return summary;
 }
 
