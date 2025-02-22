@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  scrapbook:
+    build: .
+    container_name: scrapbook-core
+    environment:
+      - NODE_ENV=production
+      - DEBUG=${DEBUG:-false}
+      # API Keys - override these with .env file
+      - GITHUB_TOKEN
+      - GITHUB_USERNAME
+      - PINBOARD_TOKEN
+      - ARENA_ACCESS_TOKEN
+      - USER_SLUG
+      - MASTODON_ACCESS_TOKEN
+      - MASTODON_API_URL
+      - SUPABASE_URL
+      - SUPABASE_KEY
+      - SUPABASE_SERVICE_ROLE_KEY
+      - CLOUDINARY_CLOUD_NAME
+      - CLOUDINARY_API_KEY
+      - CLOUDINARY_API_SECRET
+      - OPENROUTER_API_KEY
+      - OPENCAGE_API_KEY
+    volumes:
+      # Persist SQLite database and cache
+      - ./data:/usr/src/app/data
+      # Persist logs
+      - ./logs:/usr/src/app/logs
+    restart: unless-stopped 
