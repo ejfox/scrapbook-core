@@ -6,8 +6,6 @@ services:
     container_name: scrapbook-core
     environment:
       - NODE_ENV=production
-      - DEBUG=${DEBUG:-false}
-      - INSTANCE_NAME=docker-${HOSTNAME:-unknown}
       # API Keys - override these with .env file
       - GITHUB_TOKEN
       - GITHUB_USERNAME
@@ -29,28 +27,11 @@ services:
       - ./data:/usr/src/app/data
       # Persist logs
       - ./logs:/usr/src/app/logs
-      # Mount cron directory
-      - ./cron:/etc/cron.d
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD", "node", "-e", "require('fs').accessSync('/usr/src/app/logs/cron.log')"]
       interval: 1m
       timeout: 10s
       retries: 3
-      start_period: 30s
-    # Add cron schedule to run every hour at :20
-    entrypoint: |
-      sh -c '
-      echo "# Scrapbook Core cron jobs" > /etc/cron.d/scrapbook
-      echo "20 * * * * cd /usr/src/app && node scripts/index.mjs --all >> /usr/src/app/logs/cron.log 2>&1" >> /etc/cron.d/scrapbook
-      echo "0 0 * * * cd /usr/src/app && find /usr/src/app/logs -name \"*.log\" -mtime +7 -delete >> /usr/src/app/logs/cleanup.log 2>&1" >> /etc/cron.d/scrapbook
-      chmod 0644 /etc/cron.d/scrapbook
-      crontab /etc/cron.d/scrapbook
-      
-      # Create log files with correct permissions
-      touch /usr/src/app/logs/cron.log /usr/src/app/logs/cleanup.log
-      chown node:node /usr/src/app/logs/cron.log /usr/src/app/logs/cleanup.log
-      
-      # Start cron daemon in foreground with debug
-      crond -f -d 8
-      ' 
+    # Start both cron and the main application
+    command: sh -c "cron && node scripts/index.mjs --all" 
