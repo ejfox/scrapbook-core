@@ -1,8 +1,9 @@
 FROM node:18.17.1-slim
 
-# Install only essential dependencies
+# Install essential dependencies including cron
 RUN apt-get update && apt-get install -y \
     chromium \
+    cron \
     --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -14,18 +15,22 @@ ENV NODE_ENV=production \
 
 WORKDIR /usr/src/app
 
-# Create data directory with correct permissions
-RUN mkdir -p data && chown -R node:node .
+# Create directories and set up cron
+RUN mkdir -p data logs \
+    && echo "20 * * * * cd /usr/src/app && node scripts/index.mjs --all >> /usr/src/app/logs/cron.log 2>&1" > /etc/cron.d/scrapbook \
+    && chmod 0644 /etc/cron.d/scrapbook \
+    && crontab /etc/cron.d/scrapbook
 
 # Install dependencies first to leverage Docker caching
-COPY --chown=node:node package*.json ./
+COPY package*.json ./
 RUN npm ci
 
 # Copy app files with correct ownership
-COPY --chown=node:node . .
+COPY . .
+RUN chown -R node:node .
 
-# Switch to non-root user
+# Switch to non-root user for running the application
 USER node
 
-# Run the script
+# The entrypoint script will be handled by docker-compose
 CMD ["node", "scripts/index.mjs", "--all"]
