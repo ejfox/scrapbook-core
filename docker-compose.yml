@@ -29,7 +29,7 @@ services:
       - ./logs:/usr/src/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('fs').accessSync('/usr/src/app/logs/cron.log')"]
+      test: ["CMD", "node", "-e", "process.exit(require('fs').existsSync('/usr/src/app/logs/app.log') ? 0 : 1)"]
       interval: 1m
       timeout: 10s
       retries: 3

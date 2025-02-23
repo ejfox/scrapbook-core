@@ -34,6 +34,7 @@ import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
 import readline from "readline";
 import fs from "fs";
 import path from "path";
+import cron from "node-cron";
 
 dotenv.config();
 
@@ -1953,122 +1954,74 @@ async function main() {
     // Start periodic metric logging
     startPeriodicMetricLogging();
 
-    // Check OpenRouter credits but don't stop processing if check fails
-    logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
-    const aiStatus = await checkOpenRouterCredits();
-    if (!aiStatus.enabled) {
-      logger.warn(chalk.yellow(`AI features disabled: ${aiStatus.reason}`));
-    }
+    // Run initial processing
+    await runProcessing();
 
-    // Initialize database if needed
-    logger.info(chalk.blue("\n2️⃣ Initializing Database..."));
-    await initializeDatabaseIfNeeded();
-
-    // Clear any stuck processing before starting
-    logger.info(chalk.blue("\n3️⃣ Cleaning Up Stuck Processing..."));
-    await clearStuckProcessing();
-
-    // Process each source
-    logger.info(chalk.blue("\n4️⃣ Processing Sources..."));
-    for (const source of ["pinboard", "github", "mastodon", "arena"]) {
-      if (options.all || options[source]) {
-        logger.info(
-          chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`)
-        );
-
-        // Map source names to their functions
-        const sourceFunctions = {
-          pinboard: fetchAndUpsertPinboardBookmarks,
-          github: fetchAndUpsertGithubData,
-          mastodon: fetchAndUpsertMastodonStatuses,
-          arena: fetchAndUpsertArenaBlocks,
-        };
-
+    // Set up scheduled processing
+    if (!options.test) {
+      logger.info("Setting up scheduled processing for every hour at :20");
+      cron.schedule("20 * * * *", async () => {
+        logger.info("Running scheduled processing");
         try {
-          await sourceFunctions[source]();
+          await runProcessing();
         } catch (error) {
-          logger.error(
-            chalk.red(`❌ Error processing ${source}:`),
-            error.message
-          );
-          if (DEBUG) {
-            logger.error(chalk.gray("Full error:"), error);
-          }
+          logger.error("Error in scheduled processing:", error);
         }
-      }
-    }
-
-    if (
-      options.fix ||
-      options.fixDryRun ||
-      options.fixAi ||
-      options.fixImages ||
-      options.fixEmbeddings
-    ) {
-      logger.info(chalk.blue("\n5️⃣ Fixing Missing Data..."));
-
-      const source = options.fixPinboard
-        ? "pinboard"
-        : options.fixArena
-        ? "arena"
-        : options.fixMastodon
-        ? "mastodon"
-        : null;
-
-      const fixOptions = {
-        dryRun: options.fixDryRun,
-        processImages:
-          options.fixImages || (!options.fixEmbeddings && !options.fixAi),
-        processEmbeddings:
-          options.fixEmbeddings || (!options.fixImages && !options.fixAi),
-        processAI:
-          options.fixAi || (!options.fixImages && !options.fixEmbeddings),
-        source,
-        concurrency: 3,
-      };
-
-      const { processed, fixed } = await identifyAndFixMissingData(fixOptions);
-
-      if (options.fixDryRun) {
-        logger.info(
-          chalk.yellow(
-            `\n🔍 Dry run complete: ${processed} scraps checked, ${fixed} issues identified`
-          )
-        );
-      } else {
-        logger.info(
-          chalk.green(
-            `\n✨ Fix complete: ${processed} scraps processed, ${fixed} issues fixed`
-          )
-        );
-      }
-    }
-
-    if (
-      options.clean ||
-      options.cleanEmpty ||
-      options.cleanPartial ||
-      options.cleanDryRun
-    ) {
-      await cleanEmptyScraps({
-        onlyEmpty: options.cleanEmpty,
-        onlyPartial: options.cleanPartial,
-        dryRun: options.cleanDryRun,
       });
-      return;
-    }
 
-    logger.info("\nProcessing completed successfully");
-    process.exit(0);
+      // Keep the process alive
+      process.stdin.resume();
+    }
   } catch (error) {
     logger.error("Fatal error in main process:", error);
     process.exit(1);
   }
+}
 
-  if (options.all) {
-    // Run claim cleanup every minute when doing full processing
-    const cleanupInterval = setInterval(clearStuckProcessing, 60 * 1000);
-    process.on("exit", () => clearInterval(cleanupInterval));
+// Extract processing logic to reusable function
+async function runProcessing() {
+  // Check OpenRouter credits but don't stop processing if check fails
+  logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
+  const aiStatus = await checkOpenRouterCredits();
+  if (!aiStatus.enabled) {
+    logger.warn(chalk.yellow(`AI features disabled: ${aiStatus.reason}`));
+  }
+
+  // Initialize database if needed
+  logger.info(chalk.blue("\n2️⃣ Initializing Database..."));
+  await initializeDatabaseIfNeeded();
+
+  // Clear any stuck processing before starting
+  logger.info(chalk.blue("\n3️⃣ Cleaning Up Stuck Processing..."));
+  await clearStuckProcessing();
+
+  // Process each source
+  logger.info(chalk.blue("\n4️⃣ Processing Sources..."));
+  for (const source of ["pinboard", "github", "mastodon", "arena"]) {
+    if (options.all || options[source]) {
+      logger.info(
+        chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`)
+      );
+
+      const sourceFunctions = {
+        pinboard: fetchAndUpsertPinboardBookmarks,
+        github: fetchAndUpsertGithubData,
+        mastodon: fetchAndUpsertMastodonStatuses,
+        arena: fetchAndUpsertArenaBlocks,
+      };
+
+      try {
+        await sourceFunctions[source]();
+      } catch (error) {
+        logger.error(
+          chalk.red(`❌ Error processing ${source}:`),
+          error.message
+        );
+        if (DEBUG) {
+          logger.error(chalk.gray("Full error:"), error);
+        }
+      }
+    }
   }
 }
 
