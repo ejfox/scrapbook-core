@@ -2,6 +2,7 @@ import puppeteer from "puppeteer-core";
 import dotenv from "dotenv";
 import path from "path";
 import os from "os";
+import fs from "fs/promises";
 import winston from "winston";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -13,6 +14,41 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Create temp directory for screenshots if it doesn't exist
+const TEMP_DIR = path.join(os.tmpdir(), "scrapbook-screenshots");
+async function ensureTempDir() {
+  try {
+    await fs.mkdir(TEMP_DIR, { recursive: true });
+  } catch (error) {
+    logger.error("Failed to create temp directory:", error);
+  }
+}
+
+// Cleanup temp files older than 1 hour
+export async function cleanupTempFiles() {
+  try {
+    const files = await fs.readdir(TEMP_DIR);
+    const now = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+
+    for (const file of files) {
+      const filePath = path.join(TEMP_DIR, file);
+      const stats = await fs.stat(filePath);
+
+      if (now - stats.mtime.getTime() > ONE_HOUR) {
+        try {
+          await fs.unlink(filePath);
+          logger.debug(`Cleaned up old temp file: ${file}`);
+        } catch (error) {
+          logger.error(`Failed to delete temp file ${file}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    logger.error("Error during temp file cleanup:", error);
+  }
+}
 
 // Helper function to upload to Cloudinary
 async function uploadToCloudinary(buffer) {
@@ -149,6 +185,7 @@ async function takeScreenshotWithRetry(page, retries = 2) {
   }
 }
 
+// Update the screenshot function with better cleanup
 export async function generateScreenshot(url) {
   if (!url) {
     throw new Error("URL is required for screenshot generation");
@@ -166,13 +203,25 @@ export async function generateScreenshot(url) {
     throw new Error(`Invalid URL format: ${urlString}`);
   }
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    executablePath: getChromePath(),
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  let browser;
+  let tempFilePath;
 
   try {
+    // Ensure temp directory exists
+    await ensureTempDir();
+
+    // Create a unique temp file name
+    const tempFileName = `screenshot-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(7)}.jpg`;
+    tempFilePath = path.join(TEMP_DIR, tempFileName);
+
+    browser = await puppeteer.launch({
+      headless: "new",
+      executablePath: getChromePath(),
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
     const page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 800 });
 
@@ -188,32 +237,53 @@ export async function generateScreenshot(url) {
     // Brief wait for critical content
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Take the screenshot
-    const screenshot = await page.screenshot({
+    // Take the screenshot and save to temp file
+    await page.screenshot({
+      path: tempFilePath,
       type: "jpeg",
       quality: 80,
       fullPage: true,
     });
 
-    // Upload to Cloudinary using the imported function
+    // Read the file and upload to Cloudinary
+    const screenshot = await fs.readFile(tempFilePath);
     const result = await uploadToCloudinary(screenshot);
+
+    // Trigger temp file cleanup
+    cleanupTempFiles().catch((error) =>
+      logger.error("Background cleanup failed:", error)
+    );
+
     return { url: result.secure_url };
   } catch (error) {
     throw error;
   } finally {
-    await browser.close();
+    // Cleanup resources
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (error) {
+        logger.error("Failed to close browser:", error);
+      }
+    }
+
+    if (tempFilePath) {
+      try {
+        await fs.unlink(tempFilePath);
+        logger.debug("Cleaned up temp screenshot file");
+      } catch (error) {
+        logger.error("Failed to cleanup temp file:", error);
+      }
+    }
   }
 }
 
 // Add cleanup on process exit
 process.on("SIGTERM", async () => {
-  if (browserWSEndpoint) {
-    try {
-      const browser = await puppeteer.connect({ browserWSEndpoint });
-      await browser.close();
-    } catch (error) {
-      logger.error("Error cleaning up browser:", error);
-    }
+  try {
+    await cleanupTempFiles();
+  } catch (error) {
+    logger.error("Error cleaning up on exit:", error);
   }
 });
 

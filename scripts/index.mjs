@@ -22,7 +22,7 @@ import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
 import LokiTransport from "winston-loki";
-import { generateScreenshot } from "./generateScreenshot.mjs";
+import { generateScreenshot, cleanupTempFiles } from "./generateScreenshot.mjs";
 import { v2 as cloudinary } from "cloudinary";
 import os from "os";
 import axios from "axios";
@@ -35,6 +35,7 @@ import readline from "readline";
 import fs from "fs";
 import path from "path";
 import cron from "node-cron";
+import { run_terminal_cmd } from "./utils.mjs";
 
 dotenv.config();
 
@@ -1929,6 +1930,53 @@ async function cleanEmptyScraps(options = {}) {
   }
 }
 
+// Add cleanup job near the runProcessing function
+async function runCleanupJob(dryRun = false) {
+  logger.info(
+    chalk.blue(`\n🧹 Running cleanup job${dryRun ? " (DRY RUN)" : ""}...`)
+  );
+
+  try {
+    // Clean up temporary files
+    if (dryRun) {
+      logger.info(
+        chalk.yellow("Would clean up temporary files (skipped in dry run)")
+      );
+    } else {
+      await cleanupTempFiles();
+    }
+
+    // Clean up Docker volumes if needed
+    if (process.env.NODE_ENV === "production") {
+      if (dryRun) {
+        // Use docker system df to show space usage without cleaning
+        await run_terminal_cmd({
+          command: "docker system df",
+          require_user_approval: false,
+          is_background: false,
+        });
+        logger.info(
+          chalk.yellow("Would run docker system prune (skipped in dry run)")
+        );
+      } else {
+        await run_terminal_cmd({
+          command: "docker system prune -f --volumes",
+          require_user_approval: false,
+          is_background: false,
+        });
+      }
+    }
+
+    logger.info(
+      chalk.green(
+        `✨ Cleanup ${dryRun ? "dry run" : ""} completed successfully`
+      )
+    );
+  } catch (error) {
+    logger.error("Error during cleanup:", error);
+  }
+}
+
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
@@ -1954,18 +2002,37 @@ async function main() {
     // Start periodic metric logging
     startPeriodicMetricLogging();
 
+    // Add dry run test if requested
+    if (options.test) {
+      logger.info(chalk.blue("\n🧪 Running cleanup dry run test..."));
+      await runCleanupJob(true);
+      return;
+    }
+
     // Run initial processing
     await runProcessing();
 
     // Set up scheduled processing
     if (!options.test) {
-      logger.info("Setting up scheduled processing for every hour at :20");
+      logger.info("Setting up scheduled jobs");
+
+      // Schedule main processing
       cron.schedule("20 * * * *", async () => {
         logger.info("Running scheduled processing");
         try {
           await runProcessing();
         } catch (error) {
           logger.error("Error in scheduled processing:", error);
+        }
+      });
+
+      // Schedule cleanup job every 6 hours
+      cron.schedule("0 */6 * * *", async () => {
+        logger.info("Running scheduled cleanup");
+        try {
+          await runCleanupJob();
+        } catch (error) {
+          logger.error("Error in scheduled cleanup:", error);
         }
       });
 
@@ -1995,8 +2062,12 @@ async function runProcessing() {
   logger.info(chalk.blue("\n3️⃣ Cleaning Up Stuck Processing..."));
   await clearStuckProcessing();
 
+  // Run cleanup job
+  logger.info(chalk.blue("\n4️⃣ Running Cleanup Job..."));
+  await runCleanupJob();
+
   // Process each source
-  logger.info(chalk.blue("\n4️⃣ Processing Sources..."));
+  logger.info(chalk.blue("\n5️⃣ Processing Sources..."));
   for (const source of ["pinboard", "github", "mastodon", "arena"]) {
     if (options.all || options[source]) {
       logger.info(
