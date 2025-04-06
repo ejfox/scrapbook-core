@@ -1,0 +1,5 @@
+# Run main processing every hour at 20 minutes past the hour
+20 * * * * cd /usr/src/app && node scripts/index.mjs --all >> /usr/src/app/logs/cron.log 2>&1
+
+# Run cleanup job every 6 hours
+0 */6 * * * cd /usr/src/app && node scripts/index.mjs --clean >> /usr/src/app/logs/cleanup.log 2>&1

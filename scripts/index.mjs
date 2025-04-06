@@ -2118,25 +2118,30 @@ async function main() {
     if (!options.test) {
       logger.info("Setting up scheduled jobs");
 
-      // Schedule main processing
-      cron.schedule("20 * * * *", async () => {
-        logger.info("Running scheduled processing");
-        try {
-          await runProcessing();
-        } catch (error) {
-          logger.error("Error in scheduled processing:", error);
-        }
-      });
+      // Use node-cron for local development, but in Docker we'll use system cron
+      if (process.env.NODE_ENV !== 'production') {
+        // Schedule main processing
+        cron.schedule("20 * * * *", async () => {
+          logger.info("Running scheduled processing");
+          try {
+            await runProcessing();
+          } catch (error) {
+            logger.error("Error in scheduled processing:", error);
+          }
+        });
 
-      // Schedule cleanup job every 6 hours
-      cron.schedule("0 */6 * * *", async () => {
-        logger.info("Running scheduled cleanup");
-        try {
-          await runCleanupJob();
-        } catch (error) {
-          logger.error("Error in scheduled cleanup:", error);
-        }
-      });
+        // Schedule cleanup job every 6 hours
+        cron.schedule("0 */6 * * *", async () => {
+          logger.info("Running scheduled cleanup");
+          try {
+            await runCleanupJob();
+          } catch (error) {
+            logger.error("Error in scheduled cleanup:", error);
+          }
+        });
+      } else {
+        logger.info("Running in production mode - using system cron instead of node-cron");
+      }
 
       // Keep the process alive
       process.stdin.resume();
