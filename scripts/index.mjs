@@ -23,6 +23,8 @@ import {
   validateRelationships,
 } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 import winston from "winston";
 import LokiTransport from "winston-loki";
 import { generateScreenshot, cleanupTempFiles } from "./generateScreenshot.mjs";
@@ -40,15 +42,23 @@ import path from "path";
 import cron from "node-cron";
 import { run_terminal_cmd } from "./utils.mjs";
 
-dotenv.config();
+// Load environment variables from .env file
+const envPath = path.resolve(process.cwd(), '.env');
+if (fs.existsSync(envPath)) {
+  console.log(`Loading environment variables from ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.log('No .env file found, using environment variables from system');
+  dotenv.config();
+}
 
 // Debug environment variables immediately
 console.log("DEBUG: Environment variables after dotenv load:");
 console.log(
   "OPENROUTER_API_KEY:",
-  process.env.OPENROUTER_API_KEY?.substring(0, 10) + "..."
+  process.env.OPENROUTER_API_KEY ? process.env.OPENROUTER_API_KEY.substring(0, 10) + "..." : "not set"
 );
-console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("NODE_ENV:", process.env.NODE_ENV || "not set");
 
 // Ensure logs directory exists
 const logsDir = path.join(process.cwd(), "logs");
