@@ -18,7 +18,10 @@ import {
 import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import { generateEmbedding } from "./llmService.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
-import { extractRelationships } from "./aiRelationshipExtraction.mjs";
+import {
+  extractRelationships,
+  validateRelationships,
+} from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import winston from "winston";
 import LokiTransport from "winston-loki";
@@ -367,6 +370,10 @@ program
   .option("--github", "Fetch from GitHub")
   .option("--debug", "Enable debug logging")
   .option("--test", "Run in test mode (process fewer items)")
+  .option(
+    "--limit <number>",
+    "Limit the number of items to process from each source"
+  )
   .option("--fix", "Fix missing data in existing scraps")
   .option("--fix-dry-run", "Show what would be fixed without making changes")
   .option("--fix-images", "Only fix missing images")
@@ -630,11 +637,11 @@ async function enrichScrapWithAI(scrapData) {
         extractLocation(scrapData.summary)
       );
       if (location) {
-        scrapData.location = location.name;
+        scrapData.location = location.location;
         scrapData.latitude = location.latitude;
         scrapData.longitude = location.longitude;
         logger.info(
-          chalk.green(`✅ Found location: ${chalk.gray(location.name)}`)
+          chalk.green(`✅ Found location: ${chalk.gray(location.location)}`)
         );
       } else {
         logger.info(chalk.yellow("ℹ️  No location found"));
@@ -902,9 +909,32 @@ async function extractAndAddRelationships(scrapObj) {
 
   try {
     if (process.env.OPENROUTER_API_KEY) {
-      scrapObj.relationships = await limiter.schedule(() =>
-        extractRelationships(content, { isRawText: !scrapObj.summary })
+      // Use the improved relationship extraction with retries
+      const extractedRelationships = await limiter.schedule(() =>
+        extractRelationships(content, {
+          isRawText: !scrapObj.summary,
+          url: scrapObj.url,
+          maxRetries: 2,
+        })
       );
+
+      // Validate the relationships before assigning
+      const validatedRelationships = validateRelationships(
+        extractedRelationships
+      );
+
+      scrapObj.relationships = validatedRelationships;
+
+      // Log success or failure
+      if (validatedRelationships && validatedRelationships.length > 0) {
+        logger.info(
+          chalk.green(
+            `✅ Extracted ${validatedRelationships.length} relationships`
+          )
+        );
+      } else {
+        logger.info(chalk.yellow("ℹ️ No relationships found in content"));
+      }
     } else {
       logger.info(
         "Skipping relationship extraction - OpenRouter API key not configured"
@@ -914,7 +944,9 @@ async function extractAndAddRelationships(scrapObj) {
     }
   } catch (error) {
     logger.error(
-      `Failed to extract relationships for ${scrapObj.id}:`,
+      `Failed to extract relationships for ${
+        scrapObj.id || scrapObj.scrap_id
+      }:`,
       error.message
     );
     scrapObj.relationships = [];
@@ -1150,7 +1182,21 @@ async function fetchAndUpsertPinboardBookmarks() {
       cache_used: true,
     });
 
-    for (const bookmark of bookmarks) {
+    // Apply limit if specified
+    let bookmarksToProcess = bookmarks;
+    if (options.limit) {
+      const limit = parseInt(options.limit, 10);
+      if (!isNaN(limit) && limit > 0) {
+        bookmarksToProcess = bookmarks.slice(0, limit);
+        logger.info(
+          chalk.blue(
+            `Limiting to ${limit} bookmarks (out of ${bookmarks.length} total)`
+          )
+        );
+      }
+    }
+
+    for (const bookmark of bookmarksToProcess) {
       if (isShuttingDown) break;
 
       const scrapId = `pinboard-${bookmark.hash}`;
@@ -1236,7 +1282,21 @@ async function fetchAndUpsertMastodonStatuses() {
       total_statuses: statuses.length,
     });
 
-    for (const status of statuses) {
+    // Apply limit if specified
+    let statusesToProcess = statuses;
+    if (options.limit) {
+      const limit = parseInt(options.limit, 10);
+      if (!isNaN(limit) && limit > 0) {
+        statusesToProcess = statuses.slice(0, limit);
+        logger.info(
+          chalk.blue(
+            `Limiting to ${limit} statuses (out of ${statuses.length} total)`
+          )
+        );
+      }
+    }
+
+    for (const status of statusesToProcess) {
       if (isShuttingDown) break;
 
       const scrapId = `mastodon-${status.id}`;
@@ -1311,7 +1371,21 @@ async function fetchAndUpsertArenaBlocks() {
       total_channels: channels.length,
     });
 
-    for (const channel of channels) {
+    // Apply limit to channels if specified
+    let channelsToProcess = channels;
+    if (options.limit) {
+      const limit = parseInt(options.limit, 10);
+      if (!isNaN(limit) && limit > 0 && limit < channels.length) {
+        channelsToProcess = channels.slice(0, limit);
+        logger.info(
+          chalk.blue(
+            `Limiting to ${limit} channels (out of ${channels.length} total)`
+          )
+        );
+      }
+    }
+
+    for (const channel of channelsToProcess) {
       if (isShuttingDown) break;
 
       logger.info(`Processing channel: ${channel.title}`, {
@@ -1345,7 +1419,21 @@ async function fetchAndUpsertArenaBlocks() {
         blocks_count: blocks.length,
       });
 
-      for (const block of blocks) {
+      // Apply limit to blocks if specified
+      let blocksToProcess = blocks;
+      if (options.limit) {
+        const limit = parseInt(options.limit, 10);
+        if (!isNaN(limit) && limit > 0 && limit < blocks.length) {
+          blocksToProcess = blocks.slice(0, limit);
+          logger.info(
+            chalk.blue(
+              `Limiting to ${limit} blocks (out of ${blocks.length} total) in channel ${channel.title}`
+            )
+          );
+        }
+      }
+
+      for (const block of blocksToProcess) {
         if (isShuttingDown) break;
 
         const scrapId = `arena-${block.id}`;
@@ -1424,7 +1512,21 @@ async function fetchAndUpsertGithubData() {
     ...githubData.starredRepos,
   ];
 
-  for (const scrap of allScraps) {
+  // Apply limit if specified
+  let scrapsToProcess = allScraps;
+  if (options.limit) {
+    const limit = parseInt(options.limit, 10);
+    if (!isNaN(limit) && limit > 0) {
+      scrapsToProcess = allScraps.slice(0, limit);
+      logger.info(
+        chalk.blue(
+          `Limiting to ${limit} GitHub items (out of ${allScraps.length} total)`
+        )
+      );
+    }
+  }
+
+  for (const scrap of scrapsToProcess) {
     if (isShuttingDown) break;
 
     const scrapId = `github-${scrap.id}`;
