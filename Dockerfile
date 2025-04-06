@@ -22,6 +22,9 @@ RUN npm ci
 
 # Copy app files with correct ownership
 COPY . .
+
+# Create a default .env file if none exists
+RUN touch .env
 RUN chown -R node:node .
 
 # Switch to non-root user

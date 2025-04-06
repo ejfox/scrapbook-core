@@ -4,9 +4,10 @@ services:
   scrapbook:
     build: .
     container_name: scrapbook-core
+    env_file: .env
     environment:
       - NODE_ENV=production
-      # API Keys - override these with .env file
+      # API Keys - these will be overridden by .env file if present
       - GITHUB_TOKEN
       - GITHUB_USERNAME
       - PINBOARD_TOKEN
@@ -22,11 +23,19 @@ services:
       - CLOUDINARY_API_SECRET
       - OPENROUTER_API_KEY
       - OPENCAGE_API_KEY
+      - NOMIC_API_KEY
+      - SENDGRID_API_KEY
+      - SENDGRID_FROM_EMAIL
+      - ALERT_EMAIL
+      - ALERT_EMAIL_FROM
+      - INSTANCE_NAME
     volumes:
       # Persist SQLite database and cache
       - ./data:/usr/src/app/data
       # Persist logs
       - ./logs:/usr/src/app/logs
+      # Mount .env file directly
+      - ./.env:/usr/src/app/.env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "process.exit(require('fs').existsSync('/usr/src/app/logs/app.log') ? 0 : 1)"]
