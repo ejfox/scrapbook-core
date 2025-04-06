@@ -34,4 +34,4 @@ services:
       timeout: 10s
       retries: 3
     # Start both cron and the main application
-    command: sh -c "cron && node scripts/index.mjs --all" 
+    command: sh -c "service cron start && node scripts/index.mjs --all"
