@@ -18,10 +18,7 @@ import {
 import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import { generateEmbedding } from "./llmService.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
-import {
-  extractRelationships,
-  validateRelationships,
-} from "./aiRelationshipExtraction.mjs";
+import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -37,18 +34,16 @@ import Arena from "are.na";
 import { arenaLimiter, processLimiter } from "./shared/rateLimiters.mjs";
 import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
 import readline from "readline";
-import fs from "fs";
-import path from "path";
 import cron from "node-cron";
 import { run_terminal_cmd } from "./utils.mjs";
 
 // Load environment variables from .env file
-const envPath = path.resolve(process.cwd(), '.env');
+const envPath = path.resolve(process.cwd(), ".env");
 if (fs.existsSync(envPath)) {
   console.log(`Loading environment variables from ${envPath}`);
   dotenv.config({ path: envPath });
 } else {
-  console.log('No .env file found, using environment variables from system');
+  console.log("No .env file found, using environment variables from system");
   dotenv.config();
 }
 
@@ -56,7 +51,9 @@ if (fs.existsSync(envPath)) {
 console.log("DEBUG: Environment variables after dotenv load:");
 console.log(
   "OPENROUTER_API_KEY:",
-  process.env.OPENROUTER_API_KEY ? process.env.OPENROUTER_API_KEY.substring(0, 10) + "..." : "not set"
+  process.env.OPENROUTER_API_KEY
+    ? process.env.OPENROUTER_API_KEY.substring(0, 10) + "..."
+    : "not set",
 );
 console.log("NODE_ENV:", process.env.NODE_ENV || "not set");
 
@@ -71,7 +68,7 @@ const logger = winston.createLogger({
   level: process.env.DEBUG === "true" ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
   ),
   transports: [
     new winston.transports.Console({
@@ -85,8 +82,8 @@ const logger = winston.createLogger({
             }
             // Metric logs stay as JSON
             return JSON.stringify({ timestamp, level, message, type, ...rest });
-          }
-        )
+          },
+        ),
       ),
     }),
     new winston.transports.File({
@@ -108,7 +105,7 @@ const logger = winston.createLogger({
       },
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json()
+        winston.format.json(),
       ),
       batching: true,
       interval: 5,
@@ -228,7 +225,7 @@ function enhanceRateLimiter(limiter, name) {
 [limiter, upsertLimiter, browserLimiter, arenaLimiter, processLimiter].forEach(
   (l, i) => {
     if (l) enhanceRateLimiter(l, `limiter_${i}`);
-  }
+  },
 );
 
 // Add process metrics
@@ -297,7 +294,7 @@ const missingEnvVars = requiredEnvVars.filter((v) => !process.env[v]);
 if (missingEnvVars.length > 0) {
   logger.error(
     "Missing required environment variables:",
-    missingEnvVars.join(", ")
+    missingEnvVars.join(", "),
   );
   process.exit(1);
 }
@@ -382,7 +379,7 @@ program
   .option("--test", "Run in test mode (process fewer items)")
   .option(
     "--limit <number>",
-    "Limit the number of items to process from each source"
+    "Limit the number of items to process from each source",
   )
   .option("--fix", "Fix missing data in existing scraps")
   .option("--fix-dry-run", "Show what would be fixed without making changes")
@@ -395,12 +392,12 @@ program
   .option("--clean", "Delete scraps with missing essential data")
   .option(
     "--clean-empty",
-    "Only delete completely empty scraps (all fields NULL)"
+    "Only delete completely empty scraps (all fields NULL)",
   )
   .option("--clean-partial", "Only delete scraps missing some but not all data")
   .option(
     "--clean-dry-run",
-    "Show what would be cleaned without deleting anything"
+    "Show what would be cleaned without deleting anything",
   );
 
 // Parse arguments (no sync needed!)
@@ -461,7 +458,7 @@ const supabase = createClient(
     global: {
       headers: { "x-my-custom-header": "scrapbook-core" },
     },
-  }
+  },
 );
 
 // Initialize Cloudinary client
@@ -484,7 +481,7 @@ async function getExistingScrap(scrapData) {
     .or(
       `id.eq."${scrapData.id}",` +
         `scrap_id.eq."${scrapData.scrap_id}",` +
-        `url.eq."${scrapData.url}"`
+        `url.eq."${scrapData.url}"`,
     )
     .limit(1);
 
@@ -516,7 +513,7 @@ function validateAIOutput(type, data) {
             typeof r === "object" &&
             typeof r.source === "string" &&
             typeof r.relationship === "string" &&
-            typeof r.target === "string"
+            typeof r.target === "string",
         );
 
       case "location":
@@ -552,17 +549,17 @@ async function enrichScrapWithAI(scrapData) {
   logger.info(
     chalk.blue(
       `\n📝 Processing ${chalk.bold(scrapData.source)} scrap: ${chalk.gray(
-        scrapIdentifier
-      )}`
-    )
+        scrapIdentifier,
+      )}`,
+    ),
   );
   if (scrapData.title) {
     logger.info(
       chalk.gray(
         `Title: ${scrapData.title.substring(0, 60)}${
           scrapData.title.length > 60 ? "..." : ""
-        }`
-      )
+        }`,
+      ),
     );
   }
 
@@ -593,7 +590,7 @@ async function enrichScrapWithAI(scrapData) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         textEmbedding = await limiter.schedule(() =>
-          generateEmbedding(contentToProcess, { type: "text" })
+          generateEmbedding(contentToProcess, { type: "text" }),
         );
         if (textEmbedding) {
           scrapData.embedding_nomic = textEmbedding;
@@ -602,7 +599,7 @@ async function enrichScrapWithAI(scrapData) {
         }
       } catch (error) {
         logger.error(
-          chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`)
+          chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`),
         );
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
@@ -615,27 +612,26 @@ async function enrichScrapWithAI(scrapData) {
       scrapData.summary = enrichedWithSummary.summary;
       scrapData.tags = enrichedWithSummary.tags;
       logger.info(
-        chalk.green(`✅ Generated summary (${scrapData.summary.length} chars)`)
+        chalk.green(`✅ Generated summary (${scrapData.summary.length} chars)`),
       );
       logger.info(
         chalk.green(
           `✅ Generated ${scrapData.tags.length} tags: ${chalk.gray(
-            scrapData.tags.join(", ")
-          )}`
-        )
+            scrapData.tags.join(", "),
+          )}`,
+        ),
       );
 
       // Extract relationships from the summary
       logger.info(chalk.blue("\n3️⃣  Extracting relationships..."));
-      const enrichedWithRelationships = await extractAndAddRelationships(
-        scrapData
-      );
+      const enrichedWithRelationships =
+        await extractAndAddRelationships(scrapData);
       if (enrichedWithRelationships.relationships) {
         scrapData.relationships = enrichedWithRelationships.relationships;
         logger.info(
           chalk.green(
-            `✅ Found ${scrapData.relationships.length} relationships`
-          )
+            `✅ Found ${scrapData.relationships.length} relationships`,
+          ),
         );
       } else {
         logger.info(chalk.yellow("ℹ️  No relationships found"));
@@ -644,14 +640,14 @@ async function enrichScrapWithAI(scrapData) {
       // Extract location from the summary
       logger.info(chalk.blue("\n4️⃣  Extracting location..."));
       const location = await limiter.schedule(() =>
-        extractLocation(scrapData.summary)
+        extractLocation(scrapData.summary),
       );
       if (location) {
         scrapData.location = location.location;
         scrapData.latitude = location.latitude;
         scrapData.longitude = location.longitude;
         logger.info(
-          chalk.green(`✅ Found location: ${chalk.gray(location.location)}`)
+          chalk.green(`✅ Found location: ${chalk.gray(location.location)}`),
         );
       } else {
         logger.info(chalk.yellow("ℹ️  No location found"));
@@ -675,7 +671,7 @@ async function enrichScrapWithAI(scrapData) {
           }
         } catch (error) {
           logger.error(
-            chalk.red(`❌ Image processing failed (attempt ${attempt}/3)`)
+            chalk.red(`❌ Image processing failed (attempt ${attempt}/3)`),
           );
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         }
@@ -686,31 +682,33 @@ async function enrichScrapWithAI(scrapData) {
     logger.info(
       chalk.blue(
         `\n✨ Processing completed in ${chalk.bold(
-          (totalDuration / 1000).toFixed(1)
-        )}s`
-      )
+          (totalDuration / 1000).toFixed(1),
+        )}s`,
+      ),
     );
     logger.info(chalk.gray("Results:"));
     logger.info(
-      chalk.gray(`• Text Embedding: ${scrapData.embedding_nomic ? "✅" : "❌"}`)
+      chalk.gray(
+        `• Text Embedding: ${scrapData.embedding_nomic ? "✅" : "❌"}`,
+      ),
     );
     logger.info(chalk.gray(`• Summary: ${scrapData.summary ? "✅" : "❌"}`));
     logger.info(chalk.gray(`• Tags: ${scrapData.tags?.length || 0}`));
     logger.info(
-      chalk.gray(`• Relationships: ${scrapData.relationships?.length || 0}`)
+      chalk.gray(`• Relationships: ${scrapData.relationships?.length || 0}`),
     );
     logger.info(chalk.gray(`• Location: ${scrapData.location ? "✅" : "❌"}`));
     logger.info(
       chalk.gray(
-        `• Image Embedding: ${scrapData.image_embedding ? "✅" : "❌"}`
-      )
+        `• Image Embedding: ${scrapData.image_embedding ? "✅" : "❌"}`,
+      ),
     );
 
     return scrapData;
   } catch (error) {
     logger.error(
       chalk.red(`\n❌ AI enrichment failed for ${scrapIdentifier}:`),
-      error
+      error,
     );
     return scrapData;
   }
@@ -745,7 +743,7 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
     const { data: existing } = await supabase
       .from("scraps")
       .select(
-        "processing_instance_id, processing_started_at, screenshot_url, metadata"
+        "processing_instance_id, processing_started_at, screenshot_url, metadata",
       )
       .eq("scrap_id", scrapId)
       .single();
@@ -758,7 +756,7 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
 
       if (hasValidImage) {
         logger.debug(
-          `Skipping image processing for ${scrapId} - already has image`
+          `Skipping image processing for ${scrapId} - already has image`,
         );
         data.screenshot_url = existing.screenshot_url;
         data.metadata = {
@@ -840,7 +838,7 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
           {
             onConflict: "scrap_id",
             returning: "minimal",
-          }
+          },
         );
 
         if (upsertError) {
@@ -849,7 +847,7 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
         }
 
         logger.info(
-          chalk.green(`✅ Successfully upserted ${scrapId} to database`)
+          chalk.green(`✅ Successfully upserted ${scrapId} to database`),
         );
       }
 
@@ -925,12 +923,21 @@ async function extractAndAddRelationships(scrapObj) {
           isRawText: !scrapObj.summary,
           url: scrapObj.url,
           maxRetries: 2,
-        })
+        }),
       );
+
+      function validateRelationships(relationships) {
+        if (!Array.isArray(relationships)) return [];
+        return relationships.map((relationship) => {
+          // make sure they are in cypher format
+          const validated = validateAIOutput("relationships", relationship);
+          return validated || null;
+        });
+      }
 
       // Validate the relationships before assigning
       const validatedRelationships = validateRelationships(
-        extractedRelationships
+        extractedRelationships,
       );
 
       scrapObj.relationships = validatedRelationships;
@@ -939,15 +946,15 @@ async function extractAndAddRelationships(scrapObj) {
       if (validatedRelationships && validatedRelationships.length > 0) {
         logger.info(
           chalk.green(
-            `✅ Extracted ${validatedRelationships.length} relationships`
-          )
+            `✅ Extracted ${validatedRelationships.length} relationships`,
+          ),
         );
       } else {
         logger.info(chalk.yellow("ℹ️ No relationships found in content"));
       }
     } else {
       logger.info(
-        "Skipping relationship extraction - OpenRouter API key not configured"
+        "Skipping relationship extraction - OpenRouter API key not configured",
       );
       logger.info("Please set OPENROUTER_API_KEY to enable AI features");
       scrapObj.relationships = [];
@@ -957,7 +964,7 @@ async function extractAndAddRelationships(scrapObj) {
       `Failed to extract relationships for ${
         scrapObj.id || scrapObj.scrap_id
       }:`,
-      error.message
+      error.message,
     );
     scrapObj.relationships = [];
   }
@@ -993,14 +1000,14 @@ async function generateSummaryAndTags(scrapObj) {
       // Generate summary
       logger.info("Generating summary...");
       scrapObj.summary = await limiter.schedule(() =>
-        summarizeContent(contentToProcess, { metaSummary: true })
+        summarizeContent(contentToProcess, { metaSummary: true }),
       );
 
       // Generate tags from summary if we have one
       if (scrapObj.summary) {
         logger.info("Generating tags from summary...");
         const summaryTags = await limiter.schedule(() =>
-          metaSummaryToTags(scrapObj.summary)
+          metaSummaryToTags(scrapObj.summary),
         );
         scrapObj.tags = [
           ...new Set([...(scrapObj.tags || []), ...summaryTags]),
@@ -1011,14 +1018,14 @@ async function generateSummaryAndTags(scrapObj) {
       }
     } else {
       logger.info(
-        "Skipping summary generation - OpenRouter API key not configured"
+        "Skipping summary generation - OpenRouter API key not configured",
       );
       logger.info("Please set OPENROUTER_API_KEY to enable AI features");
     }
   } catch (error) {
     logger.error(
       `Failed to generate summary for ${scrapObj.id}:`,
-      error.message
+      error.message,
     );
   }
 
@@ -1149,7 +1156,7 @@ async function clearStuckProcessing() {
       .not("processing_instance_id", "is", null)
       .lt(
         "processing_started_at",
-        new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+        new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString(),
       );
 
     if (stuckScraps?.length) {
@@ -1162,7 +1169,7 @@ async function clearStuckProcessing() {
         })
         .in(
           "scrap_id",
-          stuckScraps.map((s) => s.scrap_id)
+          stuckScraps.map((s) => s.scrap_id),
         );
 
       if (error) {
@@ -1200,8 +1207,8 @@ async function fetchAndUpsertPinboardBookmarks() {
         bookmarksToProcess = bookmarks.slice(0, limit);
         logger.info(
           chalk.blue(
-            `Limiting to ${limit} bookmarks (out of ${bookmarks.length} total)`
-          )
+            `Limiting to ${limit} bookmarks (out of ${bookmarks.length} total)`,
+          ),
         );
       }
     }
@@ -1218,7 +1225,7 @@ async function fetchAndUpsertPinboardBookmarks() {
             scrapId,
             source,
             bookmark,
-            processBookmark
+            processBookmark,
           ))
         ) {
           logMetric("item_skipped", {
@@ -1300,8 +1307,8 @@ async function fetchAndUpsertMastodonStatuses() {
         statusesToProcess = statuses.slice(0, limit);
         logger.info(
           chalk.blue(
-            `Limiting to ${limit} statuses (out of ${statuses.length} total)`
-          )
+            `Limiting to ${limit} statuses (out of ${statuses.length} total)`,
+          ),
         );
       }
     }
@@ -1322,7 +1329,7 @@ async function fetchAndUpsertMastodonStatuses() {
               source,
               status_id: status.id,
               reason: "already_processing",
-            }
+            },
           );
           metrics.skipped.total++;
           metrics.skipped.bySource[source] =
@@ -1389,8 +1396,8 @@ async function fetchAndUpsertArenaBlocks() {
         channelsToProcess = channels.slice(0, limit);
         logger.info(
           chalk.blue(
-            `Limiting to ${limit} channels (out of ${channels.length} total)`
-          )
+            `Limiting to ${limit} channels (out of ${channels.length} total)`,
+          ),
         );
       }
     }
@@ -1410,7 +1417,7 @@ async function fetchAndUpsertArenaBlocks() {
           per: 100,
           sort: "updated_at",
           direction: "desc",
-        })
+        }),
       );
 
       if (!blocks?.length) {
@@ -1437,8 +1444,8 @@ async function fetchAndUpsertArenaBlocks() {
           blocksToProcess = blocks.slice(0, limit);
           logger.info(
             chalk.blue(
-              `Limiting to ${limit} blocks (out of ${blocks.length} total) in channel ${channel.title}`
-            )
+              `Limiting to ${limit} blocks (out of ${blocks.length} total) in channel ${channel.title}`,
+            ),
           );
         }
       }
@@ -1459,7 +1466,7 @@ async function fetchAndUpsertArenaBlocks() {
                 source,
                 block_id: block.id,
                 reason: "already_processing",
-              }
+              },
             );
             metrics.skipped.total++;
             metrics.skipped.bySource[source] =
@@ -1530,8 +1537,8 @@ async function fetchAndUpsertGithubData() {
       scrapsToProcess = allScraps.slice(0, limit);
       logger.info(
         chalk.blue(
-          `Limiting to ${limit} GitHub items (out of ${allScraps.length} total)`
-        )
+          `Limiting to ${limit} GitHub items (out of ${allScraps.length} total)`,
+        ),
       );
     }
   }
@@ -1546,7 +1553,7 @@ async function fetchAndUpsertGithubData() {
         !(await claimProcessAndUpsert(scrapId, "github", scrap, (data) => data))
       ) {
         logger.info(
-          `Skipping GitHub item ${scrap.id} - already being processed`
+          `Skipping GitHub item ${scrap.id} - already being processed`,
         );
         continue;
       }
@@ -1596,7 +1603,7 @@ async function checkOpenRouterCredits() {
   if (!process.env.OPENROUTER_API_KEY) {
     logStatus(
       "info",
-      "OpenRouter API key not configured - AI features will be disabled"
+      "OpenRouter API key not configured - AI features will be disabled",
     );
     return { enabled: false, reason: "No API key configured" };
   }
@@ -1606,8 +1613,8 @@ async function checkOpenRouterCredits() {
       "debug",
       `Checking OpenRouter API with key starting with: ${process.env.OPENROUTER_API_KEY.substring(
         0,
-        10
-      )}...`
+        10,
+      )}...`,
     );
 
     const startTime = Date.now();
@@ -1630,7 +1637,7 @@ async function checkOpenRouterCredits() {
         {
           duration_ms: duration,
           response_data: response.data,
-        }
+        },
       );
       return { enabled: false, reason: "Invalid API response" };
     }
@@ -1649,7 +1656,7 @@ async function checkOpenRouterCredits() {
     if (usage >= limit) {
       logStatus(
         "warn",
-        `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. AI features will be disabled.`
+        `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. AI features will be disabled.`,
       );
       return { enabled: false, reason: "Credit limit exceeded" };
     }
@@ -1776,7 +1783,7 @@ async function identifyAndFixMissingData(options = {}) {
         try {
           logger.info(chalk.blue(`📸 Generating screenshot for ${scrap.url}`));
           const screenshot = await browserLimiter.schedule(() =>
-            generateScreenshot(scrap.url)
+            generateScreenshot(scrap.url),
           );
 
           if (screenshot?.url) {
@@ -1799,7 +1806,7 @@ async function identifyAndFixMissingData(options = {}) {
       process: async (scrap) => {
         if (!scrap.content) return null;
         const embedding = await limiter.schedule(() =>
-          generateEmbedding(scrap.content, { type: "text" })
+          generateEmbedding(scrap.content, { type: "text" }),
         );
         return embedding ? { embedding_nomic: embedding } : null;
       },
@@ -1856,8 +1863,8 @@ async function identifyAndFixMissingData(options = {}) {
         if (dryRun) {
           logger.info(
             chalk.yellow(
-              `\n📝 Scrap ${scrap.id} (${scrap.source}) needs: ${stage.name}`
-            )
+              `\n📝 Scrap ${scrap.id} (${scrap.source}) needs: ${stage.name}`,
+            ),
           );
           continue;
         }
@@ -1866,13 +1873,13 @@ async function identifyAndFixMissingData(options = {}) {
           const claimed = await claimExistingScrap(scrap.scrap_id);
           if (!claimed) {
             logger.info(
-              chalk.gray(`Skipping ${scrap.id} - already being processed`)
+              chalk.gray(`Skipping ${scrap.id} - already being processed`),
             );
             continue;
           }
 
           logger.info(
-            chalk.blue(`\n🔄 Processing ${scrap.id} (${scrap.source})`)
+            chalk.blue(`\n🔄 Processing ${scrap.id} (${scrap.source})`),
           );
 
           const updates = await stage.process(scrap);
@@ -1895,7 +1902,7 @@ async function identifyAndFixMissingData(options = {}) {
             } else {
               fixed++;
               logger.info(
-                chalk.green(`✅ Updated ${stage.name} for scrap ${scrap.id}`)
+                chalk.green(`✅ Updated ${stage.name} for scrap ${scrap.id}`),
               );
             }
           }
@@ -1909,8 +1916,8 @@ async function identifyAndFixMissingData(options = {}) {
 
       logger.info(
         chalk.blue(
-          `\nProgress: Processed ${processed} scraps, fixed ${fixed} issues`
-        )
+          `\nProgress: Processed ${processed} scraps, fixed ${fixed} issues`,
+        ),
       );
     }
   }
@@ -1960,8 +1967,8 @@ async function cleanEmptyScraps(options = {}) {
     const type = onlyEmpty
       ? "completely empty"
       : onlyPartial
-      ? "partially empty"
-      : "empty/incomplete";
+        ? "partially empty"
+        : "empty/incomplete";
     logger.info(chalk.yellow(`Found ${count} ${type} scraps`));
 
     if (count === 0) {
@@ -1987,7 +1994,7 @@ async function cleanEmptyScraps(options = {}) {
       logger.info(chalk.gray(`  Source: ${scrap.source}`));
       logger.info(chalk.gray(`  Title: ${scrap.title || "NULL"}`));
       logger.info(
-        chalk.gray(`  Content: ${scrap.content ? "Has content" : "NULL"}`)
+        chalk.gray(`  Content: ${scrap.content ? "Has content" : "NULL"}`),
       );
       logger.info(chalk.gray(`  Summary: ${scrap.summary || "NULL"}`));
       if (scrap.url) {
@@ -2010,12 +2017,12 @@ async function cleanEmptyScraps(options = {}) {
     const confirmed = await new Promise((resolve) => {
       rl.question(
         chalk.yellow(
-          `\nAre you sure you want to delete these ${count} scraps? (yes/no) `
+          `\nAre you sure you want to delete these ${count} scraps? (yes/no) `,
         ),
         (answer) => {
           rl.close();
           resolve(answer.toLowerCase() === "yes");
-        }
+        },
       );
     });
 
@@ -2045,14 +2052,14 @@ async function cleanEmptyScraps(options = {}) {
 // Add cleanup job near the runProcessing function
 async function runCleanupJob(dryRun = false) {
   logger.info(
-    chalk.blue(`\n🧹 Running cleanup job${dryRun ? " (DRY RUN)" : ""}...`)
+    chalk.blue(`\n🧹 Running cleanup job${dryRun ? " (DRY RUN)" : ""}...`),
   );
 
   try {
     // Clean up temporary files
     if (dryRun) {
       logger.info(
-        chalk.yellow("Would clean up temporary files (skipped in dry run)")
+        chalk.yellow("Would clean up temporary files (skipped in dry run)"),
       );
     } else {
       await cleanupTempFiles();
@@ -2068,7 +2075,7 @@ async function runCleanupJob(dryRun = false) {
           is_background: false,
         });
         logger.info(
-          chalk.yellow("Would run docker system prune (skipped in dry run)")
+          chalk.yellow("Would run docker system prune (skipped in dry run)"),
         );
       } else {
         await run_terminal_cmd({
@@ -2081,8 +2088,8 @@ async function runCleanupJob(dryRun = false) {
 
     logger.info(
       chalk.green(
-        `✨ Cleanup ${dryRun ? "dry run" : ""} completed successfully`
-      )
+        `✨ Cleanup ${dryRun ? "dry run" : ""} completed successfully`,
+      ),
     );
   } catch (error) {
     logger.error("Error during cleanup:", error);
@@ -2096,7 +2103,7 @@ async function main() {
   logger.info(chalk.gray("1. Check OpenRouter credits (optional AI features)"));
   logger.info(chalk.gray("2. Initialize database if needed"));
   logger.info(
-    chalk.gray("3. Clear any stuck processing from crashed instances")
+    chalk.gray("3. Clear any stuck processing from crashed instances"),
   );
   logger.info(chalk.gray("4. Process each source in sequence:"));
   logger.info(chalk.gray("   • Pinboard: Fetch bookmarks & process"));
@@ -2129,7 +2136,7 @@ async function main() {
       logger.info("Setting up scheduled jobs");
 
       // Use node-cron for local development, but in Docker we'll use system cron
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         // Schedule main processing
         cron.schedule("20 * * * *", async () => {
           logger.info("Running scheduled processing");
@@ -2150,7 +2157,9 @@ async function main() {
           }
         });
       } else {
-        logger.info("Running in production mode - using system cron instead of node-cron");
+        logger.info(
+          "Running in production mode - using system cron instead of node-cron",
+        );
       }
 
       // Keep the process alive
@@ -2188,7 +2197,7 @@ async function runProcessing() {
   for (const source of ["pinboard", "github", "mastodon", "arena"]) {
     if (options.all || options[source]) {
       logger.info(
-        chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`)
+        chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`),
       );
 
       const sourceFunctions = {
@@ -2203,7 +2212,7 @@ async function runProcessing() {
       } catch (error) {
         logger.error(
           chalk.red(`❌ Error processing ${source}:`),
-          error.message
+          error.message,
         );
         if (DEBUG) {
           logger.error(chalk.gray("Full error:"), error);
