@@ -121,6 +121,7 @@ async function validateScrap(scrap) {
     url: "string",
     title: "string",
     content: "string",
+    screenshot_url: "string_or_null",
     published_at: "string",
     created_at: "string",
     updated_at: "string",
@@ -134,12 +135,19 @@ async function validateScrap(scrap) {
     process.stdout.write(`  ${field.padEnd(12)} `);
 
     if (scrap[field] === undefined || scrap[field] === null) {
-      process.stdout.write(chalk.red("[MISSING]\n"));
-      errors.push(`Missing required field: ${field}`);
+      if (type === "string_or_null") {
+        process.stdout.write(chalk.green("[OK]\n"));
+      } else {
+        process.stdout.write(chalk.red("[MISSING]\n"));
+        errors.push(`Missing required field: ${field}`);
+      }
     } else if (type === "array" && !Array.isArray(scrap[field])) {
       process.stdout.write(chalk.red("[NOT ARRAY]\n"));
       errors.push(`${field} must be an array`);
-    } else if (type !== "array" && typeof scrap[field] !== type) {
+    } else if (type === "string_or_null" && (typeof scrap[field] !== "string" && scrap[field] !== null)) {
+      process.stdout.write(chalk.red("[NOT STRING OR NULL]\n"));
+      errors.push(`${field} must be string or null`);
+    } else if (type !== "array" && type !== "string_or_null" && typeof scrap[field] !== type) {
       process.stdout.write(chalk.red(`[NOT ${type.toUpperCase()}]\n`));
       errors.push(`${field} must be type ${type}`);
     } else {
