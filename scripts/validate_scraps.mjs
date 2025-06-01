@@ -113,8 +113,9 @@ async function validateScrap(scrap) {
 
   // Required fields with fancy progress display
   console.log("\n[CHECKING REQUIRED FIELDS]");
+  // Use scrap_id for processor validation, id for database validation
   const required = {
-    id: "string",
+    [scrap.id ? "id" : "scrap_id"]: "string",
     source: "string",
     type: "string",
     url: "string",

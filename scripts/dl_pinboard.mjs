@@ -386,6 +386,7 @@ export async function processBookmark(bookmark) {
       published_at: bookmark.time,
       created_at: bookmark.time,
       updated_at: new Date().toISOString(),
+      shared: bookmark.shared === "yes",
       metadata: {
         original: bookmark,
         shared: bookmark.shared === "yes",

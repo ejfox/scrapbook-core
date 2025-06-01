@@ -5,6 +5,7 @@ import { generateScrapId } from "../helpers.js";
 import { createClient } from "@supabase/supabase-js";
 import winston from "winston";
 import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
+import { generateScreenshot } from "./generateScreenshot.mjs";
 
 dotenv.config();
 
@@ -135,15 +136,24 @@ export async function processGithubItem(item, type) {
         ...(type === "repo" && item.fork ? ["fork"] : []),
       ].filter(Boolean);
 
+      // Generate screenshot if URL is available
+      let screenshot_url = null;
+      if (url) {
+        try {
+          screenshot_url = await generateScreenshot(url);
+        } catch (error) {
+          logger.warn(`Failed to generate screenshot for ${url}:`, error);
+        }
+      }
+
       const processed = {
         scrap_id: scrapId,
-        id: generateScrapId("github", item.id),
         source: "github",
         type,
         url,
         title: item.title || item.name || "Untitled",
         content,
-        screenshot_url: null,
+        screenshot_url,
         published_at: item.created_at,
         created_at: item.created_at,
         updated_at: item.updated_at,
