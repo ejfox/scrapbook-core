@@ -7,6 +7,7 @@ import sanitizeHtml from "sanitize-html";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
+import { generateScreenshot } from "./generateScreenshot.mjs";
 
 dotenv.config();
 
@@ -172,9 +173,19 @@ export async function processStatus(status, isValidation = false) {
       ? new Date(status.edited_at).toISOString()
       : created_at;
 
+    // Generate screenshot if URL is available
+    let screenshot_url = null;
+    if (url) {
+      try {
+        screenshot_url = await generateScreenshot(url);
+      } catch (error) {
+        logger.warn(`Failed to generate screenshot for ${url}:`, error);
+      }
+    }
+
     // Create scrap object with more defensive programming
     const scrap = {
-      id: scrapId,
+      scrap_id: scrapId,
       source: "mastodon",
       type: "status",
       url,
@@ -183,6 +194,7 @@ export async function processStatus(status, isValidation = false) {
           (cleanContent.length > 100 ? "..." : "")
         : `Mastodon Status ${status.id}`,
       content: cleanContent || `Empty status ${status.id}`,
+      screenshot_url,
       published_at,
       created_at,
       updated_at,
