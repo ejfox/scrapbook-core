@@ -251,7 +251,7 @@ export const processBlock = async (block) => {
     const updated = block.updated_at ? new Date(block.updated_at) : created;
 
     const scrap = {
-      id: generateScrapId("arena", block.id),
+      scrap_id: generateScrapId("arena", block.id),
       source: "arena",
       type: "block",
       url,
@@ -353,6 +353,7 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
   let errorCount = 0;
   let totalChannels = 0;
   let currentChannel = 0;
+  const allBlocks = [];
 
   if (options.isShuttingDown) {
     isShuttingDown = options.isShuttingDown;
@@ -406,6 +407,7 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
 
         for (const block of blocks) {
           if (isShuttingDown) break;
+          allBlocks.push(block);
           processedCount++;
         }
       } catch (error) {
