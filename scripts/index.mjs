@@ -377,6 +377,7 @@ program
   .option("--github", "Fetch from GitHub")
   .option("--debug", "Enable debug logging")
   .option("--test", "Run in test mode (process fewer items)")
+  .option("--dry-run", "Run without making any database changes")
   .option(
     "--limit <number>",
     "Limit the number of items to process from each source",
@@ -768,6 +769,10 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
 
     if (!existing) {
       // New scrap - create it with our claim
+      if (options.dryRun) {
+        logger.info(`[DRY RUN] Would create new scrap: ${scrapId}`);
+        return true;
+      }
       const { error: insertError } = await supabase.from("scraps").insert({
         scrap_id: scrapId,
         processing_instance_id: INSTANCE_NAME,
@@ -823,6 +828,15 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
         const enrichedData = await enrichScrapWithAI(processedData);
 
         // Upsert the enriched data
+        if (options.dryRun) {
+          logger.info(`[DRY RUN] Would upsert scrap: ${scrapId}`);
+          logger.info(`[DRY RUN] Data:`, {
+            title: enrichedData.title?.substring(0, 50) + "...",
+            source: source,
+            type: enrichedData.type || getTypeFromSource(source),
+          });
+          return { success: true, dryRun: true };
+        }
         const { error: upsertError } = await supabase.from("scraps").upsert(
           {
             ...enrichedData,
@@ -1360,7 +1374,7 @@ async function fetchAndUpsertMastodonStatuses() {
     }
 
     const totalDuration = Date.now() - startTime;
-    logMetrics(source, {
+    logMetric(source, {
       total_duration_ms: totalDuration,
       items_processed: metrics.processed.bySource[source] || 0,
       items_skipped: metrics.skipped.bySource[source] || 0,
@@ -1498,7 +1512,7 @@ async function fetchAndUpsertArenaBlocks() {
     }
 
     const totalDuration = Date.now() - startTime;
-    logMetrics(source, {
+    logMetric(source, {
       total_duration_ms: totalDuration,
       items_processed: metrics.processed.bySource[source] || 0,
       items_skipped: metrics.skipped.bySource[source] || 0,
