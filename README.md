@@ -1,5 +1,15 @@
 # Scrapbook Core
 
+**Scrapbook Core** is an automated personal knowledge management system that turns your digital life into a searchable archive. It continuously collects your activities from platforms like GitHub, Mastodon, Pinboard, and Are.na, then uses AI to generate summaries, extract relationships, and create searchable "scraps" of knowledge.
+
+## What it does in simple terms:
+- **Collects**: Automatically pulls your bookmarks, social posts, code activity, and saved content
+- **Processes**: Uses AI to summarize content, extract key information, and find connections  
+- **Organizes**: Stores everything in a searchable database with tags, summaries, and relationships
+- **Accesses**: Provides instant search via Alfred workflow and web interface
+
+Think of it as an automated digital memory that captures what you read, create, and share online, then makes it easily findable later.
+
 Scrapbook Core is a comprehensive data management system designed to accumulate and analyze digital ephemera from various sources. It serves as a personal knowledge management tool, capturing and organizing daily digital interactions across multiple platforms.
 
 <img width="1912" alt="Screenshot 2024-07-07 at 10 02 54 PM" src="https://github.com/ejfox/scrapbook-core/assets/530073/614513b9-c85c-4815-8a24-e2c43cf5dad4">
