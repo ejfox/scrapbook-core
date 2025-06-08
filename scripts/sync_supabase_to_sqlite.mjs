@@ -10,7 +10,7 @@ import os from "os";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import readline from "readline";
-import helpers from "./helpers.mjs";
+import * as helpers from "../helpers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
