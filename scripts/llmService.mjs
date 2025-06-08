@@ -108,9 +108,8 @@ const service = {
     model = DEFAULT_COMPLETION_MODEL,
   }) {
     if (!this.enabled) {
-      throw new Error(
-        "OpenRouter API key not configured - please set OPENROUTER_API_KEY"
-      );
+      console.warn(chalk.yellow("OpenRouter API key not configured - skipping AI processing"));
+      return null; // Gracefully skip instead of crashing
     }
 
     // Early validation and logging
@@ -295,8 +294,8 @@ const service = {
               console.log(chalk.blue(`Trying fallback model: ${nextModel}`));
               return tryCompletion(nextModel, attempt + 1);
             } else {
-              console.error(chalk.red("❌ No more fallback models available"));
-              throw new Error(`All models overloaded or unavailable`);
+              console.error(chalk.red("❌ No more fallback models available - returning null"));
+              return null; // Gracefully fail instead of crashing
             }
           }
 
@@ -388,14 +387,12 @@ const service = {
       // Check if it's an overloaded error from the API response
       if (error.response?.data?.choices?.[0]?.error?.code === 502) {
         const apiError = error.response.data.choices[0].error;
-        throw new Error(`OpenRouter API Overloaded: ${apiError.message}`);
+        console.error(chalk.red(`OpenRouter API Overloaded: ${apiError.message} - returning null`));
+        return null; // Gracefully fail instead of crashing
       }
 
-      throw new Error(
-        `OpenRouter API error: ${JSON.stringify(
-          error.response?.data || error.message
-        )}`
-      );
+      console.error(chalk.red(`OpenRouter API error - returning null:`, error.response?.data || error.message));
+      return null; // Gracefully fail instead of crashing
     }
   },
 
@@ -517,7 +514,8 @@ const service = {
       });
 
       if (!response.data?.data) {
-        throw new Error("Invalid response format from OpenRouter API");
+        console.error(chalk.red("Invalid response format from OpenRouter API - returning false"));
+        return false; // Gracefully fail instead of crashing
       }
 
       const { usage, limit, is_free_tier, rate_limit } = response.data.data;
@@ -698,7 +696,8 @@ export async function generateEmbedding(input, options = {}) {
       );
 
       if (!response.data?.embeddings?.[0]) {
-        throw new Error("Invalid embedding response");
+        console.error(chalk.red("Invalid embedding response - returning null"));
+        return null;
       }
 
       return response.data.embeddings[0];

@@ -40,6 +40,7 @@ program
   .description('Interactively repair missing fields')
   .option('-s, --source <source>', 'Only repair specific source')
   .option('-t, --type <type>', 'Only repair specific type (screenshot, summary, embedding, tags)')
+  .option('-i, --ids <ids>', 'Comma-separated list of specific scrap IDs to repair')
   .option('-a, --auto', 'Auto-repair without prompts (be careful!)')
   .option('-l, --limit <number>', 'Limit repairs to N scraps', '50')
   .action(repair);
@@ -214,17 +215,43 @@ async function repair(options) {
   // Get scraps that need repair
   const spinner = ora('Finding scraps that need repair...').start();
   
-  let query = supabase
-    .from('scraps')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(parseInt(options.limit));
+  let scraps;
+  let error;
   
-  if (options.source) {
-    query = query.eq('source', options.source);
+  if (options.ids) {
+    // Repair specific scrap IDs
+    const scrapIds = options.ids.split(',').map(id => id.trim());
+    spinner.text = `Finding ${scrapIds.length} specific scraps...`;
+    
+    const { data, error: queryError } = await supabase
+      .from('scraps')
+      .select('*')
+      .in('scrap_id', scrapIds);
+    
+    scraps = data;
+    error = queryError;
+    
+    if (!error && scraps.length !== scrapIds.length) {
+      const found = scraps.map(s => s.scrap_id);
+      const missing = scrapIds.filter(id => !found.includes(id));
+      console.warn(chalk.yellow(`\nWarning: Could not find these scrap IDs: ${missing.join(', ')}`));
+    }
+  } else {
+    // Regular query with filters
+    let query = supabase
+      .from('scraps')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(parseInt(options.limit));
+    
+    if (options.source) {
+      query = query.eq('source', options.source);
+    }
+    
+    const result = await query;
+    scraps = result.data;
+    error = result.error;
   }
-  
-  const { data: scraps, error } = await query;
   
   if (error) {
     spinner.stop();
@@ -234,8 +261,10 @@ async function repair(options) {
   
   spinner.stop();
   
-  // Filter scraps based on repair type
-  let scrapsToRepair = scraps.filter(scrap => needsRepair(scrap, options.type));
+  // Filter scraps based on repair type (but skip filtering if specific IDs were requested)
+  let scrapsToRepair = options.ids ? 
+    scraps : 
+    scraps.filter(scrap => needsRepair(scrap, options.type));
   
   if (scrapsToRepair.length === 0) {
     console.log(chalk.green('✅ No scraps need repair!'));
@@ -450,20 +479,50 @@ async function repairScrap(scrap, repairTypes) {
     switch (repairType) {
       case 'summary':
         if (!scrap.summary || scrap.summary.trim() === '') {
-          // updates.summary = await generateSummary(scrap.content);
-          updates.summary = `Auto-generated summary for ${scrap.title || 'this item'}`;
+          // For now, create a simple summary from title/content
+          const content = scrap.content || scrap.title || '';
+          updates.summary = content.length > 200 ? 
+            content.substring(0, 200) + '...' : 
+            content || 'Content summary';
         }
         break;
       case 'embedding':
         if (!scrap.embedding) {
-          // updates.embedding = await generateEmbedding(scrap.content);
-          updates.processed_for_embedding = true;
+          // Mark that embedding processing was attempted
+          // In reality this would call your embedding service
+          updates.metadata = {
+            ...((typeof scrap.metadata === 'object') ? scrap.metadata : {}),
+            embedding_repair_attempted: new Date().toISOString()
+          };
         }
         break;
       case 'screenshot':
         if (!scrap.screenshot_url && scrap.url) {
-          // updates.screenshot_url = await generateScreenshot(scrap.url);
-          updates.screenshot_attempted = true;
+          // Mark that screenshot was attempted
+          updates.metadata = {
+            ...((typeof scrap.metadata === 'object') ? scrap.metadata : {}),
+            screenshot_repair_attempted: new Date().toISOString()
+          };
+        }
+        break;
+      case 'tags':
+        if (!scrap.tags || scrap.tags.length === 0) {
+          // Extract basic tags from content
+          const text = (scrap.summary || scrap.content || scrap.title || '').toLowerCase();
+          const basicTags = [];
+          
+          // Add source as a tag
+          basicTags.push(scrap.source);
+          
+          // Add some common keywords if found
+          const keywords = ['javascript', 'python', 'design', 'api', 'github', 'data', 'tool'];
+          keywords.forEach(keyword => {
+            if (text.includes(keyword)) basicTags.push(keyword);
+          });
+          
+          if (basicTags.length > 0) {
+            updates.tags = [...new Set(basicTags)]; // Remove duplicates
+          }
         }
         break;
       case 'metadata':
@@ -471,7 +530,11 @@ async function repairScrap(scrap, repairTypes) {
           try {
             JSON.parse(scrap.metadata);
           } catch {
-            updates.metadata = { error: 'Fixed broken JSON', original: scrap.metadata };
+            updates.metadata = { 
+              repair_note: 'Fixed broken JSON', 
+              repair_date: new Date().toISOString(),
+              original_length: scrap.metadata.length 
+            };
           }
         }
         break;
@@ -480,7 +543,6 @@ async function repairScrap(scrap, repairTypes) {
   
   if (Object.keys(updates).length > 0) {
     updates.updated_at = new Date().toISOString();
-    updates.last_repaired_at = new Date().toISOString();
     
     const { error } = await supabase
       .from('scraps')
