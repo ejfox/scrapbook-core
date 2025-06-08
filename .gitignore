@@ -1,11 +1,40 @@
+# Environment and secrets
 .env
+.env.local
+
+# Dependencies
 node_modules/
-screenshots/
+
+# Logs
 *.log
+logs/
 relationship_extraction.log
-data/pinboard_cache_meta.json
-data/pinboard_cache.json
-data/pinboard_cache_meta.json
-data/pinboard_cache.json
-data/pinboard_cache_meta.json
-data/pinboard_cache.json
+benchmarks.log
+
+# Data and cache files
+data/
+screenshots/
+*.tmp
+*.cache
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# SQLite databases (if local)
+*.db
+*.sqlite
+
+# Screenshots and temporary files
+temp/
+tmp/
