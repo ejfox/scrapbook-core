@@ -551,10 +551,20 @@ graph TD
 
 ## Usage
 
-- Fetch all data: `node index.mjs --all`
-- Fetch specific sources: `node index.mjs --[source]` (e.g., `--pinboard`, `--mastodon`)
-- Sync to SQLite: `node sync_supabase_to_sqlite.js`
-- Search scraps using Alfred (keyword: `sc`).
+### Data Collection
+- Fetch all data: `npm run fetch:all`
+- Fetch specific sources: `npm run fetch:pinboard`, `npm run fetch:github`, etc.
+- Sync to SQLite: `npm run sync:sqlite`
+
+### Data Quality & Maintenance
+- Check scrapbook health: `npm run doctor:status`
+- Detailed analysis: `npm run doctor:diagnose`
+- Repair missing fields: `npm run doctor:repair`
+
+### Interfaces
+- Launch dashboard: `npm run dashboard` (opens http://localhost:3001)
+- Search scraps using Alfred (keyword: `sc`)
+- Use the [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) TUI interface
 
 ### Maintenance Commands
 
