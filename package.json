@@ -15,7 +15,12 @@
     "doctor": "node scripts/scrap_doctor.mjs",
     "doctor:diagnose": "node scripts/scrap_doctor.mjs diagnose",
     "doctor:repair": "node scripts/scrap_doctor.mjs repair",
-    "doctor:status": "node scripts/scrap_doctor.mjs status"
+    "doctor:repair-ids": "node scripts/scrap_doctor.mjs repair --ids",
+    "doctor:status": "node scripts/scrap_doctor.mjs status",
+    "detective": "node scripts/log_detective.mjs",
+    "detective:investigate": "node scripts/log_detective.mjs investigate",
+    "detective:timeline": "node scripts/log_detective.mjs timeline",
+    "detective:health": "node scripts/log_detective.mjs health-degradation"
   },
   "keywords": [
     "knowledge-management",
