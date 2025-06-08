@@ -11,7 +11,11 @@
     "fetch:arena": "node scripts/index.mjs --arena",
     "fetch:github": "node scripts/index.mjs --github",
     "sync:sqlite": "node scripts/sync_supabase_to_sqlite.mjs",
-    "dashboard": "node api-server.mjs"
+    "dashboard": "node api-server.mjs",
+    "doctor": "node scripts/scrap_doctor.mjs",
+    "doctor:diagnose": "node scripts/scrap_doctor.mjs diagnose",
+    "doctor:repair": "node scripts/scrap_doctor.mjs repair",
+    "doctor:status": "node scripts/scrap_doctor.mjs status"
   },
   "keywords": [
     "knowledge-management",
