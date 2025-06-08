@@ -1677,8 +1677,12 @@ async function checkOpenRouterCredits() {
 
     return { enabled: true, usage, limit, is_free_tier };
   } catch (error) {
-    logError("OpenRouter API check failed", error, {
+    // Don't log credential errors as harshly - they're configuration issues, not bugs
+    const logLevel = error.code === 401 || error.code === 'ERR_BAD_REQUEST' ? 'warn' : 'error';
+    logger[logLevel]("OpenRouter API check failed - continuing without AI features", {
       api_key_present: !!process.env.OPENROUTER_API_KEY,
+      error_code: error.code,
+      error_message: error.message,
     });
     return { enabled: false, reason: error.message };
   }
@@ -1795,6 +1799,10 @@ async function identifyAndFixMissingData(options = {}) {
       condition: "screenshot_url.is.null,url.not.is.null",
       process: async (scrap) => {
         try {
+          if (!scrap.url) {
+            logger.debug("Skipping screenshot - no URL provided");
+            return { screenshot_url: null };
+          }
           logger.info(chalk.blue(`📸 Generating screenshot for ${scrap.url}`));
           const screenshot = await browserLimiter.schedule(() =>
             generateScreenshot(scrap.url),
@@ -2226,7 +2234,12 @@ async function runProcessing() {
       } catch (error) {
         logger.error(
           chalk.red(`❌ Error processing ${source}:`),
-          error.message,
+          {
+            source,
+            error: error.message,
+            stack: error.stack,
+            function: "runProcessing"
+          }
         );
         if (DEBUG) {
           logger.error(chalk.gray("Full error:"), error);

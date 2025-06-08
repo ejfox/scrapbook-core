@@ -187,8 +187,9 @@ async function takeScreenshotWithRetry(page, retries = 2) {
 
 // Update the screenshot function with better cleanup
 export async function generateScreenshot(url) {
-  if (!url) {
-    throw new Error("URL is required for screenshot generation");
+  if (!url || url === null || url === undefined || url === '') {
+    logger.warn(`Skipping screenshot generation - invalid URL: ${url}`);
+    return null;
   }
 
   // Ensure url is a string and handle URL objects

@@ -10,7 +10,8 @@
     "fetch:mastodon": "node scripts/index.mjs --mastodon",
     "fetch:arena": "node scripts/index.mjs --arena",
     "fetch:github": "node scripts/index.mjs --github",
-    "sync:sqlite": "node scripts/sync_supabase_to_sqlite.js"
+    "sync:sqlite": "node scripts/sync_supabase_to_sqlite.mjs",
+    "dashboard": "node api-server.mjs"
   },
   "keywords": [
     "knowledge-management",
@@ -55,10 +56,12 @@
     "chroma-js": "^2.4.2",
     "cloudinary": "^2.5.1",
     "commander": "^12.1.0",
+    "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "d3": "^7.9.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
+    "express": "^5.1.0",
     "filereader": "^0.10.3",
     "form-data": "^4.0.1",
     "formdata-polyfill": "^4.0.10",
