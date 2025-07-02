@@ -1,12 +1,26 @@
 import Bottleneck from "bottleneck";
+import { getRateLimitConfig } from "../../lib/config.mjs";
 
-// Rate limiters
-export const arenaLimiter = new Bottleneck({ minTime: 333 });
-export const processLimiter = new Bottleneck({ maxConcurrent: 3 });
+// Get rate limit configurations
+const arenaConfig = getRateLimitConfig('arena');
+const processConfig = getRateLimitConfig('process');
+const nomicConfig = getRateLimitConfig('nomic');
+
+// Rate limiters using centralized config
+export const arenaLimiter = new Bottleneck({ 
+  minTime: arenaConfig.minTimeBetweenRequests,
+  maxConcurrent: arenaConfig.maxConcurrent
+});
+
+export const processLimiter = new Bottleneck({ 
+  maxConcurrent: processConfig.maxConcurrent,
+  minTime: processConfig.minTimeBetweenRequests
+});
+
 export const nomicLimiter = new Bottleneck({
-  maxConcurrent: 2,
-  minTime: 500, // 500ms between requests
-  reservoir: 100, // 100 requests
-  reservoirRefreshAmount: 100,
-  reservoirRefreshInterval: 60 * 1000, // Refill every minute
+  maxConcurrent: nomicConfig.maxConcurrent,
+  minTime: nomicConfig.minTimeBetweenRequests,
+  reservoir: nomicConfig.reservoirSize,
+  reservoirRefreshAmount: nomicConfig.reservoirSize,
+  reservoirRefreshInterval: 60 * 1000, // 1 minute
 });
