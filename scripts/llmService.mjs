@@ -9,6 +9,16 @@ import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
 import winston from "winston";
 import sgMail from "@sendgrid/mail";
 import puppeteer from "puppeteer";
+import { 
+  loadConfig, 
+  getModelConfig, 
+  getModelForTask,
+  getFallbackModels,
+  getApiEndpoint, 
+  getMediaConfig,
+  getTimeoutConfig,
+  getRetryConfig
+} from "../lib/config.mjs";
 
 dotenv.config();
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -16,14 +26,17 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 // Add DEBUG constant
 const DEBUG = process.env.DEBUG === "true";
 
-// API configurations
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1";
-const NOMIC_API_URL = "https://api-atlas.nomic.ai/v1";
+// Load configuration
+const config = loadConfig();
+
+// API configurations from config
+const OPENROUTER_API_URL = getApiEndpoint('openrouter');
+const NOMIC_API_URL = getApiEndpoint('nomic');
 
 // Add loadCoreTags function that fetches from ejfox.com
 export async function loadCoreTags() {
   try {
-    const response = await axios.get("https://ejfox.com/tags.json");
+    const response = await axios.get(getApiEndpoint('coreTags'));
     return response.data;
   } catch (error) {
     console.warn("Failed to load core tags:", error.message);
@@ -32,56 +45,17 @@ export async function loadCoreTags() {
   }
 }
 
-// Model configurations
+// Get default models from config
+const DEFAULT_COMPLETION_MODEL = getModelForTask('contentAnalysis');
+const DEFAULT_TEXT_EMBEDDING_MODEL = getModelForTask('textEmbedding');
+const DEFAULT_IMAGE_EMBEDDING_MODEL = getModelForTask('imageEmbedding');
+
+// Backward compatibility - export legacy MODELS object
 export const MODELS = {
-  // Claude models
-  CLAUDE_3_OPUS: "anthropic/claude-3-opus-20240229",
-  CLAUDE_3_SONNET: "anthropic/claude-3-sonnet-20240229",
-  CLAUDE_2: "anthropic/claude-2.1",
-  CLAUDE_INSTANT: "anthropic/claude-instant-1.2",
-
-  // GPT-4 models
-  GPT_4_TURBO: "openai/gpt-4-turbo-preview",
-  GPT_4: "openai/gpt-4",
-
-  // GPT-3.5 models
-  GPT_3_5_TURBO: "openai/gpt-3.5-turbo",
-
-  // Mistral models
-  MISTRAL_LARGE: "mistral/mistral-large-latest",
-  MISTRAL_MEDIUM: "mistral/mistral-medium-latest",
-  MISTRAL_SMALL: "mistral/mistral-small-latest",
-
-  // Nomic embedding models
-  NOMIC_EMBED_TEXT: "nomic-embed-text-v1",
-  NOMIC_EMBED_IMAGE: "nomic-embed-image-v1",
+  CLAUDE_3_SONNET: DEFAULT_COMPLETION_MODEL,
+  NOMIC_EMBED_TEXT: DEFAULT_TEXT_EMBEDDING_MODEL,
+  NOMIC_EMBED_IMAGE: DEFAULT_IMAGE_EMBEDDING_MODEL,
 };
-
-// Define model tiers for fallback with better organization
-const MODEL_TIERS = [
-  // Tier 1: Most capable, best quality (but expensive)
-  [MODELS.CLAUDE_3_OPUS, MODELS.GPT_4, MODELS.MISTRAL_LARGE],
-
-  // Tier 2: Good balance of capability and cost
-  [MODELS.CLAUDE_3_SONNET, MODELS.GPT_4_TURBO, MODELS.MISTRAL_MEDIUM],
-
-  // Tier 3: Fast and cost-effective
-  [MODELS.CLAUDE_INSTANT, MODELS.GPT_3_5_TURBO, MODELS.MISTRAL_SMALL],
-];
-
-// Add dedicated embedding model configuration
-const EMBEDDING_MODELS = {
-  text: MODELS.NOMIC_EMBED_TEXT,
-  image: MODELS.NOMIC_EMBED_IMAGE,
-};
-
-// Export the embedding models configuration
-export { MODEL_TIERS, EMBEDDING_MODELS };
-
-// Default to a good balance of capability and cost
-const DEFAULT_COMPLETION_MODEL = MODELS.CLAUDE_3_SONNET;
-const DEFAULT_TEXT_EMBEDDING_MODEL = MODELS.NOMIC_EMBED_TEXT;
-const DEFAULT_IMAGE_EMBEDDING_MODEL = MODELS.NOMIC_EMBED_IMAGE;
 
 // Add token tracking
 const tokenUsage = {
@@ -223,34 +197,11 @@ const service = {
         );
       }
 
-      // Find current model tier
-      const currentTierIndex = MODEL_TIERS.findIndex((tier) =>
-        tier.includes(model)
-      );
-
-      // Get available fallback models
-      const getFallbackModels = (currentModel) => {
-        const currentTierIndex = MODEL_TIERS.findIndex((tier) =>
-          tier.includes(currentModel)
-        );
-
-        // Get all models from current tier (except the current one)
-        // plus all models from next tiers
-        const fallbacks = [];
-
-        // First try other models in current tier
-        if (currentTierIndex >= 0) {
-          fallbacks.push(
-            ...MODEL_TIERS[currentTierIndex].filter((m) => m !== currentModel)
-          );
-        }
-
-        // Then try models from next tiers
-        for (let i = currentTierIndex + 1; i < MODEL_TIERS.length; i++) {
-          fallbacks.push(...MODEL_TIERS[i]);
-        }
-
-        return fallbacks;
+      // Get fallback models from config
+      const getFallbackModelsForModel = (currentModel) => {
+        const fallbacks = getFallbackModels();
+        // Filter out the current model if it's in the fallbacks
+        return fallbacks.filter(m => m !== currentModel);
       };
 
       const tryCompletion = async (currentModel, attempt = 1) => {

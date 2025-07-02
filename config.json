@@ -1,0 +1,125 @@
+{
+  "models": {
+    "tasks": {
+      "summarization": "anthropic/claude-3-sonnet-20240229",
+      "tagging": "anthropic/claude-3-sonnet-20240229", 
+      "contentAnalysis": "anthropic/claude-3-sonnet-20240229",
+      "relationshipAnalysis": "anthropic/claude-3-opus-20240229",
+      "geolocation": "anthropic/claude-3-sonnet-20240229",
+      "mastodonProcessing": "anthropic/claude-3-sonnet-20240229",
+      "githubProcessing": "anthropic/claude-3-sonnet-20240229",
+      "fastProcessing": "anthropic/claude-instant-1.2",
+      "heavyAnalysis": "anthropic/claude-3-opus-20240229",
+      "costEffective": "anthropic/claude-instant-1.2",
+      "textEmbedding": "nomic-embed-text-v1.5",
+      "imageEmbedding": "nomic-embed-vision-v1.5"
+    },
+    "fallbacks": [
+      "openai/gpt-4o-mini:free",
+      "mistralai/mistral-nemo:free", 
+      "meta-llama/llama-3.1-8b-instruct:free",
+      "deepseek/deepseek-chat:free"
+    ]
+  },
+  "processing": {
+    "batchSizes": {
+      "dataProcessing": 50,
+      "contentChunk": 6144,
+      "largeContentChunk": 120000
+    },
+    "retries": {
+      "default": 3,
+      "screenshot": 2,
+      "embedding": 3
+    },
+    "timeouts": {
+      "screenshotNavigation": 30000,
+      "imageEmbedding": 30000,
+      "urlValidation": 5000,
+      "gracefulShutdown": 5000
+    }
+  },
+  "rateLimits": {
+    "arena": {
+      "minTimeBetweenRequests": 333,
+      "maxConcurrent": 1
+    },
+    "process": {
+      "maxConcurrent": 3,
+      "minTimeBetweenRequests": 0
+    },
+    "nomic": {
+      "maxConcurrent": 2,
+      "minTimeBetweenRequests": 500,
+      "reservoirSize": 100,
+      "reservoirRefillRate": 1.67
+    },
+    "general": {
+      "maxConcurrent": 1,
+      "minTimeBetweenRequests": 1500
+    },
+    "upsert": {
+      "maxConcurrent": 3,
+      "minTimeBetweenRequests": 1500
+    },
+    "browser": {
+      "maxConcurrent": 1,
+      "minTimeBetweenRequests": 1500
+    },
+    "aiServices": {
+      "maxConcurrent": 1,
+      "minTimeBetweenRequests": 1000
+    },
+    "pinboard": {
+      "postsAll": 300000,
+      "postsRecent": 60000,
+      "other": 3000,
+      "screenshot": 1000
+    }
+  },
+  "api": {
+    "endpoints": {
+      "openrouter": "https://openrouter.ai/api/v1",
+      "nomic": "https://api-atlas.nomic.ai/v1",
+      "coreTags": "https://ejfox.com/tags.json"
+    }
+  },
+  "media": {
+    "image": {
+      "maxFileSize": 4194304,
+      "resizeWidth": 1024,
+      "screenshotQuality": 85,
+      "compressionQuality": {
+        "high": 90,
+        "low": 40
+      }
+    },
+    "content": {
+      "maxLength": 8000,
+      "truncationLength": 8000
+    },
+    "tempFileRetention": 3600000
+  },
+  "embedding": {
+    "dimensions": {
+      "nomicText": 768,
+      "nomicImage": 768,
+      "openai": 1536
+    }
+  },
+  "system": {
+    "server": {
+      "port": 3001,
+      "metricsPort": 9091
+    },
+    "memory": {
+      "maxMB": 2048
+    },
+    "scheduling": {
+      "mainScraper": "@daily",
+      "cleanup": "@hourly",
+      "mainScraperTimeout": 1800000,
+      "cleanupTimeout": 300000
+    }
+  }
+}

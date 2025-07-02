@@ -165,10 +165,25 @@ function logError(message, error, context = {}) {
   });
 }
 
-// Bottleneck limiters for rate-limiting async tasks
-const limiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
-const upsertLimiter = new Bottleneck({ maxConcurrent: 3, minTime: 1500 });
-const browserLimiter = new Bottleneck({ maxConcurrent: 1, minTime: 1500 });
+import { getRateLimitConfig } from "../lib/config.mjs";
+
+// Bottleneck limiters for rate-limiting async tasks using centralized config
+const generalConfig = getRateLimitConfig('general');
+const upsertConfig = getRateLimitConfig('upsert');
+const browserConfig = getRateLimitConfig('browser');
+
+const limiter = new Bottleneck({ 
+  maxConcurrent: generalConfig.maxConcurrent, 
+  minTime: generalConfig.minTimeBetweenRequests 
+});
+const upsertLimiter = new Bottleneck({ 
+  maxConcurrent: upsertConfig.maxConcurrent, 
+  minTime: upsertConfig.minTimeBetweenRequests 
+});
+const browserLimiter = new Bottleneck({ 
+  maxConcurrent: browserConfig.maxConcurrent, 
+  minTime: browserConfig.minTimeBetweenRequests 
+});
 
 // Add metrics tracking
 const metrics = {
