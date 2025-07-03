@@ -15,10 +15,10 @@
       "imageEmbedding": "nomic-embed-vision-v1.5"
     },
     "fallbacks": [
-      "openai/gpt-4o-mini:free",
-      "mistralai/mistral-nemo:free", 
-      "meta-llama/llama-3.1-8b-instruct:free",
-      "deepseek/deepseek-chat:free"
+      "mistralai/mistral-small-3.2-24b-instruct:free",
+      "deepseek/deepseek-chat:free",
+      "google/gemini-2.0-flash-exp:free",
+      "meta-llama/llama-3.1-8b-instruct:free"
     ]
   },
   "processing": {
@@ -69,6 +69,10 @@
     "aiServices": {
       "maxConcurrent": 1,
       "minTimeBetweenRequests": 1000
+    },
+    "freeModels": {
+      "maxConcurrent": 1,
+      "minTimeBetweenRequests": 3000
     },
     "pinboard": {
       "postsAll": 300000,
