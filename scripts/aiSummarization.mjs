@@ -1,4 +1,5 @@
 import { completion, MODELS, PROMPTS, loadCoreTags } from "./llmService.mjs";
+import { getModelForTask } from "../lib/config.mjs";
 import { breakContentIntoChunks } from "../helpers.js";
 import Bottleneck from "bottleneck";
 
@@ -127,7 +128,7 @@ ${chunk}`,
         messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
         maxTokens: options.meta ? 1024 : 8196,
-        model: MODELS.CLAUDE_3_SONNET,
+        model: getModelForTask('summarization'),
       });
 
       if (!response) {

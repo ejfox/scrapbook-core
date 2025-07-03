@@ -4,6 +4,7 @@ import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import { summarizeGitHubActivity } from "./aiGithubSummarization.mjs";
+import { getFallbackModels } from "../lib/config.mjs";
 import chalk from "chalk";
 import { performance } from "perf_hooks";
 import axios from "axios";
@@ -26,6 +27,7 @@ console.log(
 program
   .option("--location", "Only test location extraction")
   .option("--debug", "Enable debug mode")
+  .option("--free", "Test with free models only")
   .parse(process.argv);
 
 const options = program.opts();
@@ -191,6 +193,49 @@ async function runTests() {
   for (const content of TEST_CONTENT) {
     console.log("\n" + "=".repeat(50));
     console.log("Testing content:", content.substring(0, 100) + "...");
+
+    // Test with free models if requested
+    if (options.free) {
+      console.log("\n[TESTING FREE MODELS]");
+      const freeModels = getFallbackModels();
+      console.log("Available free models:", freeModels);
+      
+      for (const freeModel of freeModels.slice(0, 2)) {
+        console.log(`\n🆓 Testing ${freeModel}:`);
+        try {
+          console.time(`Free Model ${freeModel}`);
+          const freeResult = await completion({
+            messages: [
+              {
+                role: "system",
+                content: "Create a structured summary with key facts as bullet points. Include fact extraction."
+              },
+              {
+                role: "user",
+                content: `Summarize this content and extract key facts:\n\n${content}`
+              }
+            ],
+            model: freeModel,
+            maxTokens: 400,
+            temperature: 0.3
+          });
+          console.timeEnd(`Free Model ${freeModel}`);
+          
+          if (freeResult) {
+            console.log(chalk.green("✓ Free model result:"), freeResult.substring(0, 200) + "...");
+            
+            // Check for structured elements
+            const hasMarkdown = freeResult.includes('**') || freeResult.includes('##');
+            const hasBullets = freeResult.includes('- ') || freeResult.includes('• ');
+            console.log(chalk.blue("  Has formatting:"), hasMarkdown, "| Has bullets:", hasBullets);
+          } else {
+            console.log(chalk.red("❌ Free model returned null"));
+          }
+        } catch (error) {
+          console.error(chalk.red(`❌ Free model ${freeModel} failed:`), error.message);
+        }
+      }
+    }
 
     // Test summarization
     console.log("\n[TESTING SUMMARIZATION]");

@@ -4,6 +4,7 @@ import axios from "axios";
 import Bottleneck from "bottleneck";
 import cheerio from "cheerio";
 import { completion, MODELS, PROMPTS } from "./llmService.mjs";
+import { getModelForTask } from "../lib/config.mjs";
 
 const DEBUG = process.env.DEBUG === "true";
 function log(...args) {
@@ -160,7 +161,7 @@ ${content}`,
       messages,
       temperature: 0.3,
       maxTokens: 1000,
-      model: MODELS.CLAUDE_3_SONNET,
+      model: getModelForTask('geolocation'),
     });
 
     if (!response) {

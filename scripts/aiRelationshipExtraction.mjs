@@ -1,4 +1,5 @@
 import { completion, MODELS, PROMPTS } from "./llmService.mjs";
+import { getModelForTask } from "../lib/config.mjs";
 
 export async function extractRelationships(content, options = {}) {
   if (!content) return [];
@@ -33,7 +34,7 @@ ${url ? `\nURL: ${url}` : ""}`,
       messages,
       temperature: 0.3,
       maxTokens: 1000,
-      model: MODELS.CLAUDE_3_SONNET,
+      model: getModelForTask('contentAnalysis'),
     });
 
     if (!response) {

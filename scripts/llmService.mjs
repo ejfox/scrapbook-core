@@ -14,11 +14,13 @@ import {
   getModelConfig, 
   getModelForTask,
   getFallbackModels,
+  getRateLimitConfig,
   getApiEndpoint, 
   getMediaConfig,
   getTimeoutConfig,
   getRetryConfig
 } from "../lib/config.mjs";
+import Bottleneck from "bottleneck";
 
 dotenv.config();
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -204,9 +206,17 @@ const service = {
         return fallbacks.filter(m => m !== currentModel);
       };
 
-      const tryCompletion = async (currentModel, attempt = 1) => {
+      // Rate limiter for free models
+      const freeModelConfig = getRateLimitConfig('freeModels');
+      const freeModelLimiter = new Bottleneck(freeModelConfig);
+
+      const tryCompletion = async (currentModel, attempt = 1, useFreeModels = false) => {
         try {
-          const response = await axios.post(
+          // Use rate limiter based on model type
+          const limiterToUse = useFreeModels ? freeModelLimiter : undefined;
+          
+          const makeRequest = async () => {
+            return await axios.post(
             `${OPENROUTER_API_URL}/chat/completions`,
             {
               model: currentModel,
@@ -227,6 +237,12 @@ const service = {
               },
             }
           );
+          };
+
+          // Execute with appropriate rate limiting
+          const response = limiterToUse ? 
+            await limiterToUse.schedule(makeRequest) : 
+            await makeRequest();
 
           // Check for overloaded error
           if (response.data?.choices?.[0]?.error?.code === 502) {
@@ -284,14 +300,26 @@ const service = {
 
           return response.data.choices[0].message.content;
         } catch (error) {
+          // Handle payment errors (402) by falling back to free models
+          if (error.response?.status === 402 && !useFreeModels) {
+            console.log(chalk.yellow(`💳 Payment required for ${currentModel}, trying free models...`));
+            const freeModels = getFallbackModelsForModel(currentModel);
+            if (freeModels.length > 0) {
+              const freeModel = freeModels[0];
+              console.log(chalk.blue(`🆓 Falling back to free model: ${freeModel}`));
+              return tryCompletion(freeModel, attempt + 1, true);
+            }
+          }
+          
+          // Handle overloaded errors (502)
           if (error.response?.data?.choices?.[0]?.error?.code === 502) {
-            const fallbacks = getFallbackModels(currentModel);
+            const fallbacks = getFallbackModelsForModel(currentModel);
             if (fallbacks.length > 0) {
               const nextModel = fallbacks[0];
               console.log(
-                chalk.blue(`Model ${currentModel} failed, trying: ${nextModel}`)
+                chalk.blue(`Model ${currentModel} overloaded, trying: ${nextModel}`)
               );
-              return tryCompletion(nextModel, attempt + 1);
+              return tryCompletion(nextModel, attempt + 1, useFreeModels);
             }
           }
           throw error;
