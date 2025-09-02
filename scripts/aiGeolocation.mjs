@@ -57,12 +57,37 @@ export async function extractLocation(content, options = {}) {
 
     log("Cleaned content length:", cleanContent.length);
 
-    // Combine content with any URL context and meta information
-    const enhancedContent = url
-      ? `URL: ${url}\nMeta: ${extractMetaInfo(
-          rawHtml || ""
-        )}\n\n${cleanContent}`
-      : `Meta: ${extractMetaInfo(rawHtml || "")}\n\n${cleanContent}`;
+    // Extract additional context from URL and metadata
+    let urlContext = "";
+    let metaInfo = "";
+    
+    if (url) {
+      urlContext = `URL: ${url}\n`;
+      
+      // Extract domain hints
+      const domainInfo = extractDomainInfo(url);
+      if (domainInfo.domain) {
+        urlContext += `Domain: ${domainInfo.domain}.${domainInfo.tld}\n`;
+      }
+      
+      // Check for location-related URL segments
+      const locationHints = extractUrlLocationHints(url);
+      if (locationHints.length > 0) {
+        urlContext += `URL Location Hints: ${locationHints.join(', ')}\n`;
+      }
+    }
+    
+    if (rawHtml) {
+      metaInfo = extractMetaInfo(rawHtml);
+      if (metaInfo) {
+        metaInfo = `Metadata:\n${metaInfo}\n`;
+      }
+    }
+    
+    // Combine all context for comprehensive analysis
+    const enhancedContent = `${urlContext}${metaInfo}
+Content to analyze:
+${cleanContent}`;
 
     log("🤖 Sending to LLM for location extraction...");
     const locations = await extractLocationsFromString(enhancedContent);
@@ -129,30 +154,51 @@ export async function extractLocation(content, options = {}) {
 
 async function extractLocationsFromString(content) {
   try {
-    // Create properly formatted messages array with clearer instructions
+    // Create properly formatted messages array with enhanced instructions
     const messages = [
       {
         role: "system",
-        content:
-          "You are a location extraction specialist. You output ONLY valid JSON containing location data, with no explanations or additional text.",
+        content: `You are an expert location extraction specialist. You analyze text, URLs, and metadata to identify specific geographic locations. You ONLY output valid JSON with no explanations.
+
+Your task is to find:
+- Cities, towns, neighborhoods 
+- Specific addresses or landmarks
+- Geographic regions (states, provinces, countries)
+- Venues, businesses with locations
+- Any place names mentioned
+
+You must be thorough and catch locations that might be mentioned in various contexts including:
+- Direct mentions ("in San Francisco", "visiting Tokyo")  
+- Indirect references ("the mayor announced", "local officials")
+- Business/venue names that imply location
+- URL context and metadata hints
+- Event locations and addresses`,
       },
       {
-        role: "user",
-        content: `Extract locations from this text and return ONLY a JSON object with this exact structure:
+        role: "user",  
+        content: `Analyze ALL provided information and extract every location mentioned. Return ONLY this JSON structure:
+
 {
   "locations": [
-    {"name": "location name", "type": "location type"}
-  ]
+    {
+      "name": "specific location name",
+      "type": "city|neighborhood|landmark|address|venue|region|country",
+      "context": "how/where it was mentioned in the source",
+      "confidence": 0.9
+    }
+  ],
+  "analysis_notes": "brief explanation of extraction approach used"
 }
 
 Rules:
-- Return ONLY the JSON object, no other text
-- Include ONLY specific places (cities, neighborhoods, landmarks, addresses)
-- Skip general regions or non-specific locations
-- If no locations found, return empty locations array
-- Maintain exact JSON format
+- Be aggressive in finding locations - look everywhere
+- Include business locations, event venues, geographic references
+- Confidence: 0.9-1.0 for explicit mentions, 0.6-0.8 for implied, 0.3-0.5 for uncertain
+- Context should help understand WHY this is a location
+- Return empty array only if truly no locations exist
+- ONLY return the JSON, no other text
 
-Text to analyze:
+Source material to analyze:
 ${content}`,
       },
     ];
@@ -196,35 +242,40 @@ ${content}`,
 
       if (!parsed.locations || !Array.isArray(parsed.locations)) {
         log("❌ Invalid locations array in response");
-        return { primary: null, others: [] };
+        return { primary: null, others: [], analysis_notes: parsed.analysis_notes || "Invalid response format" };
       }
 
-      // Validate each location object
-      const validLocations = parsed.locations.filter(
-        (loc) =>
+      // Validate and filter locations by confidence threshold
+      const validLocations = parsed.locations
+        .filter((loc) =>
           loc &&
           typeof loc === "object" &&
           typeof loc.name === "string" &&
-          loc.name.trim().length > 0
-      );
+          loc.name.trim().length > 0 &&
+          (loc.confidence || 0) >= 0.3 // Minimum confidence threshold
+        )
+        .sort((a, b) => (b.confidence || 0) - (a.confidence || 0)); // Sort by confidence descending
 
       if (validLocations.length === 0) {
-        log("❌ No valid locations found");
-        return { primary: null, others: [] };
+        log("❌ No valid locations found above confidence threshold");
+        return { primary: null, others: [], analysis_notes: parsed.analysis_notes || "No locations above confidence threshold" };
       }
 
-      // Get primary location (first in the list) and others
+      // Get primary location (highest confidence) and others
       const [primary, ...others] = validLocations;
 
       if (DEBUG) {
         log("✅ Extracted locations:");
         log("Primary:", primary);
         log("Others:", others);
+        log("Analysis notes:", parsed.analysis_notes);
       }
 
       return {
         primary: primary.name,
         others: others.map((loc) => loc.name),
+        analysis_notes: parsed.analysis_notes,
+        all_locations: validLocations, // Keep full location data for debugging
       };
     } catch (error) {
       console.error("Error parsing location response:", error);
@@ -232,11 +283,11 @@ ${content}`,
         console.error("Raw response:", response);
         console.error("Attempted clean response:", cleanResponse(response));
       }
-      return { primary: null, others: [] };
+      return { primary: null, others: [], analysis_notes: "JSON parsing failed", error: error.message };
     }
   } catch (error) {
     console.error("Error extracting locations:", error);
-    return { primary: null, others: [] };
+    return { primary: null, others: [], analysis_notes: "Location extraction failed", error: error.message };
   }
 }
 
@@ -262,19 +313,41 @@ function extractMetaInfo(rawHtml) {
     // Look for location-related meta tags
     const locationTags = [
       "place:location",
-      "geo.placename",
+      "geo.placename", 
       "geo.position",
       "geo.region",
       "og:locality",
-      "og:region",
+      "og:region", 
       "og:country",
+      "twitter:place",
+      "geo:lat",
+      "geo:lon",
+      "geo:location",
+      "location",
+      "address"
     ];
 
     $("meta").each((i, elem) => {
       const name = $(elem).attr("name") || $(elem).attr("property");
       const content = $(elem).attr("content");
-      if (name && content && locationTags.some((tag) => name.includes(tag))) {
+      if (name && content && locationTags.some((tag) => name.toLowerCase().includes(tag.toLowerCase()))) {
         metaInfo += `${name}: ${content}\n`;
+      }
+    });
+
+    // Also check for structured data with location info
+    $('script[type="application/ld+json"]').each((i, elem) => {
+      try {
+        const jsonData = JSON.parse($(elem).html());
+        if (jsonData.address || jsonData.location || jsonData.geo) {
+          metaInfo += `Structured Data: ${JSON.stringify({
+            address: jsonData.address,
+            location: jsonData.location, 
+            geo: jsonData.geo
+          })}\n`;
+        }
+      } catch (e) {
+        // Ignore JSON parsing errors
       }
     });
 
@@ -283,6 +356,47 @@ function extractMetaInfo(rawHtml) {
     console.error("Error parsing HTML:", error);
     return "";
   }
+}
+
+function extractUrlLocationHints(url) {
+  if (!url) return [];
+  
+  const hints = [];
+  const lowerUrl = url.toLowerCase();
+  
+  // Check for common location-related path segments
+  const locationSegments = [
+    'local', 'city', 'region', 'metro', 'area', 'location',
+    'weather', 'news', 'events', 'places', 'venue', 'address'
+  ];
+  
+  for (const segment of locationSegments) {
+    if (lowerUrl.includes(`/${segment}/`) || lowerUrl.includes(`-${segment}-`)) {
+      hints.push(segment);
+    }
+  }
+  
+  // Check for geographic TLDs
+  const geoTlds = ['.us', '.uk', '.ca', '.au', '.fr', '.de', '.jp', '.in'];
+  for (const tld of geoTlds) {
+    if (lowerUrl.includes(tld)) {
+      hints.push(`geographic domain (${tld})`);
+    }
+  }
+  
+  // Check for common location-indicating domains
+  const locationDomains = [
+    'patch.com', 'weather.com', 'yelp.com', 'foursquare.com', 
+    'maps.google.com', 'local.', 'city.', '.gov'
+  ];
+  
+  for (const domain of locationDomains) {
+    if (lowerUrl.includes(domain)) {
+      hints.push(`location-focused domain (${domain})`);
+    }
+  }
+  
+  return [...new Set(hints)]; // Remove duplicates
 }
 
 async function reverseGeocode(location) {
