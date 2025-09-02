@@ -5,7 +5,7 @@ import chalk from "chalk";
 import sharp from "sharp";
 import { FormData } from "@web-std/form-data";
 import { File, Blob } from "node:buffer";
-import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
+import { processImagesForScrap, getImageDescription } from "./imageDescriptions.mjs";
 import winston from "winston";
 import sgMail from "@sendgrid/mail";
 import puppeteer from "puppeteer";

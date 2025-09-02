@@ -33,7 +33,7 @@ import chalk from "chalk";
 import sgMail from "@sendgrid/mail";
 import Arena from "are.na";
 import { arenaLimiter, processLimiter } from "./shared/rateLimiters.mjs";
-import { processImagesForScrap, getImageEmbedding } from "./imageEmbedding.mjs";
+import { processImagesForScrap, getImageDescription } from "./imageDescriptions.mjs";
 import readline from "readline";
 import cron from "node-cron";
 import { run_terminal_cmd } from "./utils.mjs";

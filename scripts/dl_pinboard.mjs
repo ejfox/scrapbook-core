@@ -8,7 +8,7 @@ import { extractLocation } from "./aiGeolocation.mjs";
 import { generateScreenshot } from "./generateScreenshot.mjs";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
-import { getImageEmbedding } from "./imageEmbedding.mjs";
+import { getImageDescription } from "./imageDescriptions.mjs";
 import OpenAI from "openai";
 import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
 import puppeteer from "puppeteer";
