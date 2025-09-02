@@ -8,12 +8,21 @@ import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Check if Cloudinary is configured
+const isCloudinaryConfigured = !!(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+// Configure Cloudinary only if credentials are available
+if (isCloudinaryConfigured) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 // Create temp directory for screenshots if it doesn't exist
 const TEMP_DIR = path.join(os.tmpdir(), "scrapbook-screenshots");
@@ -52,6 +61,10 @@ export async function cleanupTempFiles() {
 
 // Helper function to upload to Cloudinary
 async function uploadToCloudinary(buffer) {
+  if (!isCloudinaryConfigured) {
+    throw new Error("Cloudinary is not configured - screenshot upload skipped");
+  }
+  
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -246,16 +259,25 @@ export async function generateScreenshot(url) {
       fullPage: true,
     });
 
-    // Read the file and upload to Cloudinary
+    // Read the file and upload to Cloudinary if configured
     const screenshot = await fs.readFile(tempFilePath);
-    const result = await uploadToCloudinary(screenshot);
-
-    // Trigger temp file cleanup
-    cleanupTempFiles().catch((error) =>
-      logger.error("Background cleanup failed:", error)
-    );
-
-    return { url: result.secure_url };
+    
+    if (!isCloudinaryConfigured) {
+      logger.warn("Cloudinary not configured - screenshots will not be uploaded");
+      return { url: null, localPath: tempFilePath };
+    }
+    
+    try {
+      const result = await uploadToCloudinary(screenshot);
+      // Trigger temp file cleanup
+      cleanupTempFiles().catch((error) =>
+        logger.error("Background cleanup failed:", error)
+      );
+      return { url: result.secure_url };
+    } catch (error) {
+      logger.error("Failed to upload screenshot to Cloudinary:", error);
+      return { url: null, localPath: tempFilePath };
+    }
   } catch (error) {
     throw error;
   } finally {
@@ -265,6 +287,15 @@ export async function generateScreenshot(url) {
         await browser.close();
       } catch (error) {
         logger.error("Failed to close browser:", error);
+        // Force kill if close doesn't work
+        try {
+          const process = browser.process();
+          if (process && !process.killed) {
+            process.kill('SIGKILL');
+          }
+        } catch (killError) {
+          logger.error("Failed to kill browser process:", killError);
+        }
       }
     }
 
@@ -305,6 +336,11 @@ export async function handleArenaImage(scrap) {
     throw new Error("No suitable image URL found in Arena block");
   }
 
+  if (!isCloudinaryConfigured) {
+    logger.warn("Cloudinary not configured - Arena image will not be uploaded");
+    return { url: null, originalUrl: imageUrl };
+  }
+
   try {
     // Upload directly to Cloudinary using the URL
     const result = await cloudinary.uploader.upload(imageUrl, {
@@ -315,6 +351,7 @@ export async function handleArenaImage(scrap) {
 
     return { url: result.secure_url };
   } catch (error) {
-    throw new Error(`Failed to upload Arena image: ${error.message}`);
+    logger.error(`Failed to upload Arena image: ${error.message}`);
+    return { url: null, originalUrl: imageUrl };
   }
 }

@@ -23,7 +23,23 @@ import {
 import Bottleneck from "bottleneck";
 
 dotenv.config();
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Setup logger
+const logger = winston.createLogger({
+  level: process.env.DEBUG === "true" ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `${timestamp} [${level.toUpperCase()}]: ${message}`;
+    })
+  ),
+  transports: [new winston.transports.Console()],
+});
+
+// Only set SendGrid API key if it's configured
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 // Add DEBUG constant
 const DEBUG = process.env.DEBUG === "true";
@@ -499,7 +515,7 @@ const service = {
 
       const { usage, limit, is_free_tier, rate_limit } = response.data.data;
 
-      if (usage >= limit) {
+      if (limit !== null && usage >= limit) {
         console.error(
           chalk.redBright(
             `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. Processing stopped.`
@@ -648,8 +664,8 @@ async function resizeImageForEmbedding(imageBuffer) {
 export async function generateEmbedding(input, options = {}) {
   const { type = "text", maxRetries = 3 } = options;
 
-  if (!process.env.NOMIC_API_KEY) {
-    logger.warn("Nomic API key not configured - please set NOMIC_API_KEY");
+  if (!process.env.NOMIC_API_KEY || process.env.NOMIC_API_KEY === "dummy") {
+    logger.warn("Nomic API key not configured or invalid - please set a valid NOMIC_API_KEY");
     return null;
   }
 
@@ -681,7 +697,7 @@ export async function generateEmbedding(input, options = {}) {
 
       return response.data.embeddings[0];
     } catch (error) {
-      logger.warn(`Embedding attempt ${attempt} failed:`, error.message);
+      logger.warn(`Embedding attempt ${attempt} failed:`, error.message || error.response?.data || error);
 
       if (attempt === maxRetries) {
         logger.error(

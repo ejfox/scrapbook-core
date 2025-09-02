@@ -3,7 +3,7 @@
     "tasks": {
       "summarization": "anthropic/claude-3-sonnet-20240229",
       "tagging": "anthropic/claude-3-sonnet-20240229", 
-      "contentAnalysis": "anthropic/claude-3-sonnet-20240229",
+      "contentAnalysis": "nousresearch/hermes-3-llama-3.1-405b:free",
       "relationshipAnalysis": "anthropic/claude-3-opus-20240229",
       "geolocation": "anthropic/claude-3-sonnet-20240229",
       "mastodonProcessing": "anthropic/claude-3-sonnet-20240229",
@@ -15,8 +15,9 @@
       "imageEmbedding": "nomic-embed-vision-v1.5"
     },
     "fallbacks": [
+      "nousresearch/hermes-3-llama-3.1-405b:free",
       "mistralai/mistral-small-3.2-24b-instruct:free",
-      "deepseek/deepseek-chat:free",
+      "deepseek/deepseek-chat:free", 
       "google/gemini-2.0-flash-exp:free",
       "meta-llama/llama-3.1-8b-instruct:free"
     ]
