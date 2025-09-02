@@ -21,6 +21,7 @@ import {
   getRetryConfig
 } from "../lib/config.mjs";
 import Bottleneck from "bottleneck";
+import { SmartRateLimiter, withSmartRateLimit } from "./shared/smartRateLimiter.mjs";
 
 dotenv.config();
 
@@ -46,6 +47,17 @@ const DEBUG = process.env.DEBUG === "true";
 
 // Load configuration
 const config = loadConfig();
+
+// Initialize smart rate limiters
+const openRouterLimiter = new SmartRateLimiter('aiServices', { 
+  name: 'OpenRouter' 
+});
+const nomicLimiter = new SmartRateLimiter('nomic', { 
+  name: 'Nomic' 
+});
+const openAILimiter = new SmartRateLimiter('aiServices', { 
+  name: 'OpenAI' 
+});
 
 // API configurations from config
 const OPENROUTER_API_URL = getApiEndpoint('openrouter');
@@ -222,15 +234,8 @@ const service = {
         return fallbacks.filter(m => m !== currentModel);
       };
 
-      // Rate limiter for free models
-      const freeModelConfig = getRateLimitConfig('freeModels');
-      const freeModelLimiter = new Bottleneck(freeModelConfig);
-
       const tryCompletion = async (currentModel, attempt = 1, useFreeModels = false) => {
         try {
-          // Use rate limiter based on model type
-          const limiterToUse = useFreeModels ? freeModelLimiter : undefined;
-          
           const makeRequest = async () => {
             return await axios.post(
             `${OPENROUTER_API_URL}/chat/completions`,
@@ -255,10 +260,13 @@ const service = {
           );
           };
 
-          // Execute with appropriate rate limiting
-          const response = limiterToUse ? 
-            await limiterToUse.schedule(makeRequest) : 
-            await makeRequest();
+          // Use smart rate limiter - automatically handles 429s and fallbacks
+          const response = await openRouterLimiter.schedule(makeRequest);
+          
+          // Log rate limiter status occasionally for monitoring
+          if (attempt === 1 && Math.random() < 0.05) { // 5% chance to log
+            logger.info('🔧 OpenRouter limiter status:', openRouterLimiter.getStatus());
+          }
 
           // Check for overloaded error
           if (response.data?.choices?.[0]?.error?.code === 502) {
@@ -443,7 +451,7 @@ const service = {
           );
         }
 
-        response = await axios.post(
+        const makeNomicImageRequest = () => axios.post(
           "https://api-atlas.nomic.ai/v1/embedding/image",
           form,
           {
@@ -453,9 +461,11 @@ const service = {
             },
           }
         );
+        
+        response = await nomicLimiter.schedule(makeNomicImageRequest);
       } else {
         // Text embeddings
-        response = await axios.post(
+        const makeNomicTextRequest = () => axios.post(
           "https://api-atlas.nomic.ai/v1/embedding/text",
           {
             model: "nomic-embed-text-v1.5",
@@ -468,6 +478,8 @@ const service = {
             },
           }
         );
+        
+        response = await nomicLimiter.schedule(makeNomicTextRequest);
       }
 
       if (DEBUG) {
@@ -664,38 +676,37 @@ async function resizeImageForEmbedding(imageBuffer) {
 export async function generateEmbedding(input, options = {}) {
   const { type = "text", maxRetries = 3 } = options;
 
-  if (!process.env.NOMIC_API_KEY || process.env.NOMIC_API_KEY === "dummy") {
-    logger.warn("Nomic API key not configured or invalid - please set a valid NOMIC_API_KEY");
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "dummy") {
+    logger.warn("OpenAI API key not configured or invalid - please set a valid OPENAI_API_KEY");
     return null;
   }
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      if (type === "image") {
-        return await getImageEmbedding(input);
-      }
-
-      // Text embedding with v1.5
-      const response = await axios.post(
-        "https://api-atlas.nomic.ai/v1/embedding/text",
+      // Use OpenAI text-embedding-3-small with 768 dimensions to match Supabase
+      const makeOpenAIRequest = () => axios.post(
+        "https://api.openai.com/v1/embeddings",
         {
-          model: "nomic-embed-text-v1.5",
-          texts: Array.isArray(input) ? input : [input],
+          model: "text-embedding-3-small",
+          input: Array.isArray(input) ? input : [input],
+          dimensions: 768,
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.NOMIC_API_KEY}`,
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
             "Content-Type": "application/json",
           },
         }
       );
+      
+      const response = await openAILimiter.schedule(makeOpenAIRequest);
 
-      if (!response.data?.embeddings?.[0]) {
+      if (!response.data?.data?.[0]?.embedding) {
         console.error(chalk.red("Invalid embedding response - returning null"));
         return null;
       }
 
-      return response.data.embeddings[0];
+      return response.data.data[0].embedding;
     } catch (error) {
       logger.warn(`Embedding attempt ${attempt} failed:`, error.message || error.response?.data || error);
 
