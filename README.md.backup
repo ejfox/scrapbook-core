@@ -346,9 +346,76 @@ All environment variables from your `.env` file are automatically passed to the 
 DEBUG=true docker-compose up -d
 ```
 
-## Additional Deployment Options
+## Deployment
 
-For detailed deployment instructions including troubleshooting, advanced configuration, and monitoring, see the [DEPLOYMENT.md](DEPLOYMENT.md) guide.
+### Fly.io Deployment
+
+1. Install the Flyctl CLI:
+```bash
+curl -L https://fly.io/install.sh | sh
+```
+
+2. Login to Fly:
+```bash
+flyctl auth login
+```
+
+3. Create a new app (first time only):
+```bash
+flyctl launch
+```
+
+4. Set environment variables:
+```bash
+flyctl secrets set GITHUB_TOKEN=your_token
+flyctl secrets set PINBOARD_TOKEN=your_token
+# ... set all required environment variables
+```
+
+5. Deploy:
+```bash
+flyctl deploy
+```
+
+### Monitoring & Maintenance
+
+View logs:
+```bash
+flyctl logs
+```
+
+Access the console:
+```bash
+flyctl ssh console
+```
+
+Run a one-time sync:
+```bash
+flyctl ssh console -C "node scripts/index.mjs --all"
+```
+
+### Health Checks
+
+The application includes built-in health checks that Fly.io uses to monitor its status. You can view the health check status in the Fly.io dashboard or via:
+
+```bash
+flyctl status
+```
+
+### Multi-Region Setup
+
+By default, the app deploys to a single region. To deploy to multiple regions:
+
+1. Add regions in `fly.toml`:
+```toml
+[regions]
+primary = ["sjc", "lax"]
+```
+
+2. Scale the app:
+```bash
+flyctl scale count 2
+```
 
 ## Local Development
 
@@ -580,6 +647,9 @@ The application utilizes AI services for tasks such as summarization and embeddi
 
 The application includes comprehensive error handling and logging using `winston`. Errors are logged to the console, and detailed error messages are provided to aid in troubleshooting.
 
+## Deployment (Fly.io)
+
+This application is designed for deployment on Fly.io.  You will need a Fly.io account.  After setting up your environment variables, deploy using `flyctl deploy`.  The `fly.toml` file configures the application for multi-region deployment and health checks.
 
 ## Validation Tools
 

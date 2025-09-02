@@ -19,6 +19,7 @@ import { generateMastodonTags } from "./aiMastodonSummarization.mjs";
 import { generateEmbedding } from "./llmService.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
+import { extractAndAddFinancialAnalysis } from "./aiFinancialAnalysis.mjs";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -164,6 +165,45 @@ function logError(message, error, context = {}) {
     memory_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
   });
 }
+
+// Webhook alerting system
+async function sendWebhookAlert(data) {
+  const webhookUrl = process.env.ALERT_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  try {
+    await axios.post(webhookUrl, {
+      timestamp: new Date().toISOString(),
+      instance: process.env.INSTANCE_NAME || 'unknown',
+      ...data
+    }, { timeout: 5000 });
+  } catch (error) {
+    // Don't log webhook failures to avoid loops
+    console.error('Webhook failed:', error.message);
+  }
+}
+
+// Track stats for daily summary
+const dailyStats = {
+  processed: { arena: 0, github: 0, pinboard: 0, mastodon: 0 },
+  errors: [],
+  startTime: Date.now(),
+  memory: { peak: 0, current: 0 },
+  stepFailures: {
+    screenshots: 0,
+    relationships: 0, 
+    embeddings: 0,
+    ai_summary: 0,
+    image_upload: 0
+  },
+  stepAttempts: {
+    screenshots: 0,
+    relationships: 0,
+    embeddings: 0, 
+    ai_summary: 0,
+    image_upload: 0
+  }
+};
 
 import { getRateLimitConfig } from "../lib/config.mjs";
 
@@ -377,8 +417,51 @@ process.on("uncaughtException", (error) => {
   gracefulShutdown("uncaughtException");
 });
 
+let rejectionCount = 0;
 process.on("unhandledRejection", (reason, promise) => {
-  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+  rejectionCount++;
+  logger.error(`Unhandled Rejection #${rejectionCount} at:`, promise);
+  logger.error("Rejection reason:", reason);
+  if (reason?.stack) {
+    logger.error("Error stack:", reason.stack);
+  }
+  
+  // Track error
+  dailyStats.errors.push({
+    type: 'unhandledRejection',
+    message: reason?.message || String(reason),
+    timestamp: new Date().toISOString()
+  });
+
+  // Send webhook alert for critical errors
+  if (rejectionCount >= 3) {
+    const memoryMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    const uptimeHours = Math.round(process.uptime() / 3600 * 100) / 100;
+    
+    // Only send if not in cooldown
+    const cooldownKey = 'critical_restart';
+    const lastAlert = alertCooldowns.get(cooldownKey);
+    if (!lastAlert || Date.now() - lastAlert > 5 * 60 * 1000) { // 5min cooldown
+      alertCooldowns.set(cooldownKey, Date.now());
+      
+      sendWebhookAlert({
+        alert_type: 'critical_error',
+        title: `🚨 CRITICAL: ${rejectionCount} unhandled errors in ${uptimeHours}h (${memoryMB}MB) - restarting`,
+        error_type: 'unhandledRejection',
+        error_count: rejectionCount,
+        message: reason?.message || String(reason),
+        memory_mb: memoryMB,
+        uptime_hours: uptimeHours
+      });
+    }
+  }
+  
+  // Don't crash on first few rejections, just log and continue
+  if (rejectionCount < 3) {
+    logger.warn("Continuing execution, will shutdown if more rejections occur");
+    return;
+  }
+  
   gracefulShutdown("unhandledRejection");
 });
 
@@ -439,7 +522,10 @@ if (!ARENA_ACCESS_TOKEN) {
 const arena = new Arena({ accessToken: ARENA_ACCESS_TOKEN });
 
 // Configure SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Only set SendGrid API key if it's configured
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 // Function to send email notification using SendGrid
 async function sendEmailNotification(subject, message) {
@@ -611,6 +697,7 @@ async function enrichScrapWithAI(scrapData) {
         if (textEmbedding) {
           scrapData.embedding_nomic = textEmbedding;
           logger.info(chalk.green("✅ Text embedding generated successfully"));
+          trackStep('embeddings', true);
           break;
         }
       } catch (error) {
@@ -618,6 +705,9 @@ async function enrichScrapWithAI(scrapData) {
           chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`),
         );
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        if (attempt === 3) {
+          trackStep('embeddings', false);
+        }
       }
     }
 
@@ -653,8 +743,57 @@ async function enrichScrapWithAI(scrapData) {
         logger.info(chalk.yellow("ℹ️  No relationships found"));
       }
 
+      // Extract financial analysis
+      logger.info(chalk.blue("\n4️⃣  Analyzing financial content..."));
+      const enrichedWithFinancials = await extractAndAddFinancialAnalysis(scrapData);
+      if (enrichedWithFinancials.financial_analysis?.assets?.length > 0) {
+        scrapData.financial_analysis = enrichedWithFinancials.financial_analysis;
+        const analysis = scrapData.financial_analysis;
+        const totalAssets = analysis.assets.length;
+        const trackedCount = analysis.tracked_assets?.length || 0;
+        const discoveredCount = analysis.discovered_assets?.length || 0;
+        
+        const avgSentiment = analysis.assets
+          .reduce((sum, asset) => sum + asset.sentiment_score, 0) / totalAssets;
+        
+        logger.info(
+          chalk.green(
+            `✅ Found ${totalAssets} financial assets (${trackedCount} tracked, ${discoveredCount} discovered) - avg sentiment: ${avgSentiment.toFixed(2)}`
+          )
+        );
+        
+        // Show tracked assets first
+        if (trackedCount > 0) {
+          logger.info(chalk.cyan("   📊 Tracked assets:"));
+          analysis.tracked_assets.forEach(asset => {
+            const sentimentColor = asset.sentiment_score >= 0.1 ? chalk.green : 
+                                  asset.sentiment_score <= -0.1 ? chalk.red : chalk.yellow;
+            logger.info(
+              chalk.gray(`     • ${asset.ticker}: ${sentimentColor(asset.sentiment_score.toFixed(2))}`)
+            );
+          });
+        }
+        
+        // Show discovered assets
+        if (discoveredCount > 0) {
+          logger.info(chalk.magenta("   🔍 Discovered assets:"));
+          analysis.discovered_assets.forEach(asset => {
+            const sentimentColor = asset.sentiment_score >= 0.1 ? chalk.green : 
+                                  asset.sentiment_score <= -0.1 ? chalk.red : chalk.yellow;
+            const typeEmoji = asset.asset_type === 'crypto' ? '₿' : 
+                             asset.asset_type === 'etf' ? '📈' :
+                             asset.asset_type === 'commodity' ? '🏗️' : '📊';
+            logger.info(
+              chalk.gray(`     ${typeEmoji} ${asset.ticker} (${asset.asset_type}): ${sentimentColor(asset.sentiment_score.toFixed(2))}`)
+            );
+          });
+        }
+      } else {
+        logger.info(chalk.yellow("ℹ️  No financial content detected"));
+      }
+
       // Extract location from the summary
-      logger.info(chalk.blue("\n4️⃣  Extracting location..."));
+      logger.info(chalk.blue("\n5️⃣  Extracting location..."));
       const location = await limiter.schedule(() =>
         extractLocation(scrapData.summary),
       );
@@ -674,7 +813,7 @@ async function enrichScrapWithAI(scrapData) {
 
     // Process images
     if (scrapData.screenshot_url || scrapData.metadata?.image_url) {
-      logger.info(chalk.blue("\n5️⃣  Processing image..."));
+      logger.info(chalk.blue("\n6️⃣  Processing image..."));
       const imageStartTime = Date.now();
 
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -712,6 +851,12 @@ async function enrichScrapWithAI(scrapData) {
     logger.info(chalk.gray(`• Tags: ${scrapData.tags?.length || 0}`));
     logger.info(
       chalk.gray(`• Relationships: ${scrapData.relationships?.length || 0}`),
+    );
+    const financialSummary = scrapData.financial_analysis?.assets?.length ? 
+      `${scrapData.financial_analysis.assets.length} (${scrapData.financial_analysis.tracked_assets?.length || 0} tracked, ${scrapData.financial_analysis.discovered_assets?.length || 0} discovered)` : 
+      "0";
+    logger.info(
+      chalk.gray(`• Financial Assets: ${financialSummary}`)
     );
     logger.info(chalk.gray(`• Location: ${scrapData.location ? "✅" : "❌"}`));
     logger.info(
@@ -947,13 +1092,21 @@ async function extractAndAddRelationships(scrapObj) {
   try {
     if (process.env.OPENROUTER_API_KEY) {
       // Use the improved relationship extraction with retries
-      const extractedRelationships = await limiter.schedule(() =>
-        extractRelationships(content, {
-          isRawText: !scrapObj.summary,
-          url: scrapObj.url,
-          maxRetries: 2,
-        }),
-      );
+      let extractedRelationships = [];
+      try {
+        extractedRelationships = await limiter.schedule(() =>
+          extractRelationships(content, {
+            isRawText: !scrapObj.summary,
+            url: scrapObj.url,
+            maxRetries: 2,
+          }),
+        );
+        trackStep('relationships', extractedRelationships && extractedRelationships.length > 0);
+      } catch (error) {
+        logger.error("Relationship extraction failed:", error.message);
+        trackStep('relationships', false);
+        extractedRelationships = [];
+      }
 
       function validateRelationships(relationships) {
         if (!Array.isArray(relationships)) return [];
@@ -1028,9 +1181,15 @@ async function generateSummaryAndTags(scrapObj) {
     if (process.env.OPENROUTER_API_KEY) {
       // Generate summary
       logger.info("Generating summary...");
-      scrapObj.summary = await limiter.schedule(() =>
-        summarizeContent(contentToProcess, { metaSummary: true }),
-      );
+      try {
+        scrapObj.summary = await limiter.schedule(() =>
+          summarizeContent(contentToProcess, { metaSummary: true }),
+        );
+        trackStep('ai_summary', scrapObj.summary && scrapObj.summary.length > 0);
+      } catch (error) {
+        logger.error("AI summary generation failed:", error.message);
+        trackStep('ai_summary', false);
+      }
 
       // Generate tags from summary if we have one
       if (scrapObj.summary) {
@@ -1309,6 +1468,9 @@ async function fetchAndUpsertPinboardBookmarks() {
         metrics.processingTimes.bySource[source] /
         (metrics.processed.bySource[source] || 1),
     });
+
+    // Track for daily summary
+    dailyStats.processed[source] = metrics.processed.bySource[source] || 0;
   } catch (error) {
     logError("Source processing failed", error, { source });
     metrics.errors.total++;
@@ -1395,6 +1557,9 @@ async function fetchAndUpsertMastodonStatuses() {
       items_skipped: metrics.skipped.bySource[source] || 0,
       items_errored: metrics.errors.bySource[source] || 0,
     });
+
+    // Track for daily summary
+    dailyStats.processed[source] = metrics.processed.bySource[source] || 0;
   } catch (error) {
     logger.error(`Error in Mastodon processing`, {
       source,
@@ -1533,6 +1698,9 @@ async function fetchAndUpsertArenaBlocks() {
       items_skipped: metrics.skipped.bySource[source] || 0,
       items_errored: metrics.errors.bySource[source] || 0,
     });
+
+    // Track for daily summary
+    dailyStats.processed[source] = metrics.processed.bySource[source] || 0;
   } catch (error) {
     logger.error(`Error in Arena processing`, {
       source,
@@ -1682,7 +1850,7 @@ async function checkOpenRouterCredits() {
       duration_ms: duration,
     });
 
-    if (usage >= limit) {
+    if (limit !== null && usage >= limit) {
       logStatus(
         "warn",
         `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. AI features will be disabled.`,
@@ -1825,13 +1993,16 @@ async function identifyAndFixMissingData(options = {}) {
 
           if (screenshot?.url) {
             logger.info(chalk.green("✅ Screenshot generated"));
+            trackStep('screenshots', true);
             return { screenshot_url: screenshot.url };
           } else {
             logger.warn(chalk.yellow("⚠️ No screenshot URL returned"));
+            trackStep('screenshots', false);
             return null;
           }
         } catch (error) {
           logger.error(`Screenshot generation failed for ${scrap.url}:`, error);
+          trackStep('screenshots', false);
           return null;
         }
       },
@@ -2136,6 +2307,17 @@ async function runCleanupJob(dryRun = false) {
 // Main execution function
 async function main() {
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
+  
+  // Send startup notification
+  const memoryMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
+  sendWebhookAlert({
+    alert_type: 'startup',
+    title: `🚀 STARTED: scrapbook-core (${memoryMB}MB) on ${INSTANCE_NAME}`,
+    instance: INSTANCE_NAME,
+    memory_mb: memoryMB,
+    node_version: process.version
+  });
+  
   logger.info(chalk.blue("\n🗺️ Processing Plan:"));
   logger.info(chalk.gray("1. Check OpenRouter credits (optional AI features)"));
   logger.info(chalk.gray("2. Initialize database if needed"));
@@ -2264,17 +2446,119 @@ async function runProcessing() {
   }
 }
 
+// Track step failures and send alerts for degraded services
+const alertCooldowns = new Map();
+function trackStep(stepName, success = true) {
+  if (!dailyStats.stepAttempts[stepName]) return; // Unknown step
+  
+  dailyStats.stepAttempts[stepName]++;
+  if (!success) {
+    dailyStats.stepFailures[stepName]++;
+    
+    // Check if this step is consistently failing (>50% failure rate after 5+ attempts)
+    const attempts = dailyStats.stepAttempts[stepName];
+    const failures = dailyStats.stepFailures[stepName];
+    const failureRate = failures / attempts;
+    
+    if (attempts >= 5 && failureRate >= 0.5) {
+      // Check cooldown (don't spam same alert)
+      const cooldownKey = `degraded_${stepName}`;
+      const lastAlert = alertCooldowns.get(cooldownKey);
+      if (!lastAlert || Date.now() - lastAlert > 30 * 60 * 1000) { // 30min cooldown
+        alertCooldowns.set(cooldownKey, Date.now());
+        
+        // Send degradation alert with cleaner title
+        const stepDisplay = stepName.replace('_', ' ');
+        sendWebhookAlert({
+          alert_type: 'service_degradation',
+          title: `⚠️ DEGRADED: ${stepDisplay} failing ${Math.round(failureRate * 100)}% (${failures}/${attempts})`,
+          step: stepName,
+          failure_rate: Math.round(failureRate * 100),
+          failures: failures,
+          attempts: attempts,
+          memory_mb: Math.round(process.memoryUsage().rss / 1024 / 1024)
+        });
+      }
+    }
+  }
+}
+
+// Send daily summary webhook
+async function sendDailySummary() {
+  const endTime = Date.now();
+  const duration = endTime - dailyStats.startTime;
+  const memory = process.memoryUsage();
+  
+  // Update peak memory
+  dailyStats.memory.current = Math.round(memory.rss / 1024 / 1024);
+  dailyStats.memory.peak = Math.max(dailyStats.memory.peak, dailyStats.memory.current);
+  
+  const totalProcessed = Object.values(dailyStats.processed).reduce((a, b) => a + b, 0);
+  
+  const successRate = totalProcessed > 0 ? Math.round((1 - dailyStats.errors.length / totalProcessed) * 100) : 100;
+  const durationHours = Math.round(duration / 3600000 * 10) / 10; // 1 decimal place
+  const uptimeHours = Math.round(process.uptime() / 3600 * 100) / 100;
+  
+  // Calculate step failure rates for degraded services
+  const stepFailures = Object.entries(dailyStats.stepFailures)
+    .map(([step, failures]) => {
+      const attempts = dailyStats.stepAttempts[step] || 0;
+      const rate = attempts > 0 ? Math.round((failures / attempts) * 100) : 0;
+      return { step, failures, attempts, rate };
+    })
+    .filter(s => s.attempts > 0 && s.rate > 0);
+  
+  const degradedSteps = stepFailures.filter(s => s.rate >= 30);
+  const degradedInfo = degradedSteps.length > 0 ? ` - ${degradedSteps.length} degraded` : '';
+  
+  await sendWebhookAlert({
+    alert_type: 'daily_summary',
+    title: `✅ PROCESSED ${totalProcessed} items in ${durationHours}h (${successRate}% success, ${dailyStats.memory.peak}MB peak${degradedInfo})`,
+    duration_minutes: Math.round(duration / 60000),
+    processed: dailyStats.processed,
+    total_processed: totalProcessed,
+    errors: {
+      count: dailyStats.errors.length,
+      recent: dailyStats.errors.slice(-3) // Last 3 errors
+    },
+    step_failures: stepFailures,
+    degraded_services: degradedSteps,
+    memory: {
+      peak_mb: dailyStats.memory.peak,
+      current_mb: dailyStats.memory.current
+    },
+    uptime_hours: uptimeHours,
+    success_rate: successRate
+  });
+}
+
 // Run main function with better error handling
 if (import.meta.url === `file://${process.argv[1]}`) {
   process.on("unhandledRejection", (reason, promise) => {
-    logger.error("Unhandled Rejection at:", promise, "reason:", reason);
+    logger.error("Unhandled Rejection at:", promise);
+    logger.error("Rejection reason:", reason);
+    if (reason?.stack) {
+      logger.error("Error stack:", reason.stack);
+    }
     process.exit(1);
   });
 
-  main().catch((error) => {
-    logger.error("Unhandled error:", error);
-    process.exit(1);
-  });
+  main()
+    .then(async () => {
+      // Send daily summary on successful completion
+      await sendDailySummary();
+      logger.info("✅ Processing completed successfully");
+    })
+    .catch(async (error) => {
+      logger.error("Unhandled error:", error);
+      dailyStats.errors.push({
+        type: 'fatal',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+      await sendDailySummary(); // Send summary even on failure
+      process.exit(1);
+    });
 }
 
 export {
