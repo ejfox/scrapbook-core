@@ -10,10 +10,7 @@
 
 Think of it as an automated digital memory that captures what you read, create, and share online, then makes it easily findable later.
 
-Scrapbook Core is a comprehensive data management system designed to accumulate and analyze digital ephemera from various sources. It serves as a personal knowledge management tool, capturing and organizing daily digital interactions across multiple platforms.
-
-<img width="1912" alt="Screenshot 2024-07-07 at 10 02 54 PM" src="https://github.com/ejfox/scrapbook-core/assets/530073/614513b9-c85c-4815-8a24-e2c43cf5dad4">
-
+<img width="1912" alt="Screenshot 2024-07-07 at 10 02 54 PM" src="https://github.com/ejfox/scrapbook-core/assets/530073/614513b9-c85c-4815-8a24-e2c43cf5dad4">
 
 ## Features
 
@@ -109,101 +106,16 @@ docker-compose exec scrapbook-core node scripts/index.mjs --all
 - View logs: `docker-compose logs -f`
 - Check status: `docker-compose ps`
 
-Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) tool.
+## System Requirements
 
-Also visible on [my website's scrapbook](https://ejfox.com/scrapbook/)
+Based on Docker testing with 10 concurrent instances:
 
-I also use it in combination with an Alfred Workflow and a local SQLite database for quick searching:
-- `<scripts/setup_sqlite.mjs>`
-- `<scripts/sync_supabase_to_sqlite.js>`
-- `<scripts/search_sqlite_scraps.js>`
-- `<Local Scrap Search.1.1.alfredworkflow.zip>`
+- **RAM**: 1GB minimum (single instance uses ~5MB active, ~520KB idle)
+- **CPU**: 1 vCPU (brief spikes during processing and screenshot generation)  
+- **Storage**: 2GB+ for Docker image and data
+- **Network**: Stable internet connection
 
-## Cron Job Setup
-
-The app is designed to run as a scheduled task using PM2's built-in cron feature. This ensures regular fetching and processing of data from all sources.
-
-### Setting up with PM2
-
-1. First, ensure PM2 is installed globally:
-```bash
-npm install -g pm2
-```
-
-2. Create an `ecosystem.config.js` file in your project root:
-```javascript
-module.exports = {
-  apps: [{
-    name: 'scrapbook-core',
-    script: 'scripts/index.mjs',
-    args: '--all',
-    cron_restart: '0 */4 * * *',  // Every 4 hours
-    autorestart: false,
-    watch: false,
-    max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'development'
-    },
-    env_production: {
-      NODE_ENV: 'production'
-    }
-  }]
-};
-```
-
-3. Start the app with PM2:
-```bash
-pm2 start ecosystem.config.js --env production
-```
-
-This will:
-- Start the app in production mode
-- Schedule it to run every 4 hours (configurable in `ecosystem.config.js`)
-- Manage logs automatically in the `logs` directory
-
-### Monitoring and Management
-
-Monitor the cron job:
-```bash
-pm2 logs scrapbook-core    # View logs
-pm2 monit                  # Monitor execution
-```
-
-Manual control:
-```bash
-pm2 trigger scrapbook-core # Run manually (outside schedule)
-pm2 stop scrapbook-core    # Stop the scheduled job
-pm2 delete scrapbook-core  # Remove from PM2
-```
-
-### Logs
-
-Logs are stored in the `logs` directory:
-- `logs/out.log` - Standard output
-- `logs/err.log` - Error logs
-
-### Startup Configuration
-
-To ensure the cron job persists across system restarts:
-
-```bash
-pm2 startup    # Generate startup script
-pm2 save       # Save current PM2 configuration
-```
-
-### Customizing the Schedule
-
-The cron schedule can be modified in `ecosystem.config.js`. The default schedule is every 4 hours (`0 */4 * * *`).
-
-Common cron patterns:
-```
-0 */4 * * *    # Every 4 hours (default)
-0 */6 * * *    # Every 6 hours
-0 0 * * *      # Once daily at midnight
-0 */12 * * *   # Every 12 hours
-*/30 * * * *   # Every 30 minutes (not recommended)
-0 3,15 * * *   # Twice daily at 3am and 3pm
-```
+Memory usage scales linearly (~520KB per additional idle instance).
 
 ## Environment Setup
 
@@ -244,112 +156,6 @@ INSTANCE_NAME=local-dev
 node scripts/validate_env.mjs
 ```
 
-## Docker Setup
-
-The project includes Docker support for easy deployment. You can run the entire application using Docker Compose.
-
-### Prerequisites
-
-- Docker
-- Docker Compose
-
-### Running with Docker Compose
-
-1. Make sure you have your `.env` file configured (see Environment Setup above)
-
-2. Build and start the container:
-```bash
-docker-compose up -d
-```
-
-The container will automatically:
-- Run the scrapbook update every hour at :20 minutes past
-- Log cron output to `logs/cron.log`
-- Restart on failure
-- Persist data between restarts
-
-3. View logs:
-```bash
-# View all logs
-docker-compose logs -f
-
-# View only cron job logs
-tail -f logs/cron.log
-```
-
-4. Stop the container:
-```bash
-docker-compose down
-```
-
-### Docker Volume Persistence
-
-The Docker setup includes two persistent volumes:
-- `./data`: Contains the SQLite database and cache files
-- `./logs`: Contains application logs
-
-These directories will be created automatically and persist data between container restarts.
-
-### Customizing the Update Schedule
-
-The default schedule runs updates every hour at :20 minutes past. To change this:
-
-1. Edit the cron schedule in `docker-compose.yml`:
-```yaml
-entrypoint: |
-  sh -c '
-  # Change "20 * * * *" to your desired schedule
-  echo "20 * * * * cd /usr/src/app && node scripts/index.mjs --all >> /usr/src/app/logs/cron.log 2>&1" > /etc/cron.d/scrapbook
-  chmod 0644 /etc/cron.d/scrapbook
-  crontab /etc/cron.d/scrapbook
-  crond -f -d 8
-  '
-```
-
-Common cron patterns:
-```
-20 * * * *     # Every hour at :20 (default)
-*/30 * * * *   # Every 30 minutes
-0 */4 * * *    # Every 4 hours
-0 0 * * *      # Once daily at midnight
-```
-
-2. Restart the container to apply changes:
-```bash
-docker-compose down && docker-compose up -d
-```
-
-### Docker Commands Reference
-
-```bash
-# Rebuild the container (after code changes)
-docker-compose up -d --build
-
-# View container status
-docker-compose ps
-
-# View resource usage
-docker stats scrapbook-core
-
-# Restart the container
-docker-compose restart
-
-# Remove containers and volumes
-docker-compose down -v
-```
-
-### Environment Variables in Docker
-
-All environment variables from your `.env` file are automatically passed to the container. You can override any variable when running docker-compose:
-
-```bash
-DEBUG=true docker-compose up -d
-```
-
-## Additional Deployment Options
-
-For detailed deployment instructions including troubleshooting, advanced configuration, and monitoring, see the [DEPLOYMENT.md](DEPLOYMENT.md) guide.
-
 ## Local Development
 
 1. Clone the repository:
@@ -375,119 +181,6 @@ npm run dev
 npm test
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Rate Limiting**: If you hit API rate limits, the app will back off automatically. You can adjust rate limits in `scripts/shared/rateLimiters.mjs`.
-
-2. **Database Connection**: If you can't connect to Supabase:
-   - Check your environment variables
-   - Ensure your IP is whitelisted
-   - Verify database permissions
-
-3. **Memory Issues**: If you see out-of-memory errors:
-   - Adjust `max_memory_restart` in `ecosystem.config.js`
-   - Consider reducing batch sizes in the fetchers
-
-### Getting Help
-
-- Check the logs in `logs/` directory
-- Run with DEBUG=true for verbose logging
-- Open an issue on GitHub
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
-
-Please follow the existing code style and include tests for new features.
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Database Schema
-
-### Scraps table
-```sql
-CREATE TABLE public.scraps (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
-    source TEXT NOT NULL,
-    content TEXT NOT NULL,
-    summary TEXT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
-    tags TEXT[],
-    relationships JSONB NULL,
-    metadata JSONB NULL,
-    scrap_id TEXT NULL,
-    embedding VECTOR NULL,
-    title TEXT NULL,
-    graph_imported BOOLEAN NULL DEFAULT FALSE,
-    CONSTRAINT scraps_pkey PRIMARY KEY (id),
-    CONSTRAINT scraps_id_key UNIQUE (id),
-    CONSTRAINT scraps_scrap_id_key UNIQUE (scrap_id)
-);
-```
-
-
-## System Architecture
-
-```mermaid
-graph TD
-    A[Data Sources] --> B[Fetchers]
-    B --> C[Processors]
-    C --> D[Storage]
-    D --> E[Supabase]
-    D --> F[SQLite]
-    G[AI Services] --> C
-    H[Screenshot Service] --> C
-    F --> I[Alfred Workflow]
-```
-
-## Key Components
-
-1. **Data Fetchers**: Modules for each data source (e.g., `dl_pinboard.mjs`, `dl_mastodon.mjs`).  These modules handle the retrieval of data from external APIs.
-2. **Processors**: Modules that process the raw data from the fetchers.  This includes:
-   - `aiSummarization.js`: Generates summaries and tags using AI.
-   - `aiGeolocation.mjs`: Extracts location data from text content.
-   - `aiRelationshipExtraction.mjs`: Identifies relationships between different scraps.
-3. **Storage**:  Handles persistence of processed data.
-   - `index.mjs`: The main script orchestrating data fetching, processing, and storage in Supabase.
-   - `sync_supabase_to_sqlite.js`: Synchronizes data between Supabase and a local SQLite database.
-4. **Utilities**: Helper functions and modules.
-   - `helpers.js`: Common utility functions.
-   - `manifestHelpers.mjs`: Manages a manifest file for tracking data fetch operations.
-5. **Alfred Workflow**: Enables quick searching of the local SQLite database.
-
-## Files
-
-- `index.mjs`: Main script orchestrating data flow.
-- `sync_supabase_to_sqlite.js`: Syncs Supabase data to local SQLite.
-- `aiSummarization.js`: AI-powered summarization and tag generation.
-- `dl_pinboard.mjs`: Pinboard bookmark fetching and processing.
-- `dl_mastodon.mjs`: Mastodon status retrieval and processing.
-- `dl_arena.mjs`: Are.na block and channel fetching and processing.
-- `dl_github.mjs`: GitHub data (repos, issues, PRs, gists) retrieval and processing.
-- `aiGeolocation.mjs`: Location data extraction from text.
-- `aiRelationshipExtraction.mjs`: Relationship identification between scraps.
-- `helpers.js`: General utility functions.
-- `manifestHelpers.mjs`: Manages data fetch manifests.
-- `alfred_search.js`: Alfred Workflow search script.
-- `Scrapbook Search.alfredworkflow`: Alfred Workflow (zip file).
-
-## Setup
-
-1. Clone the repository.
-2. Install dependencies: `npm install`.
-3. Set up environment variables (see "Setting Up Credentials" below).
-4. Run the main script: `node index.mjs`.
-5. Install the Alfred Workflow (unzip and double-click the `.alfredworkflow` file).
-
 ## Usage
 
 ### Data Collection
@@ -504,6 +197,16 @@ graph TD
 - Launch dashboard: `npm run dashboard` (opens http://localhost:3001)
 - Search scraps using Alfred (keyword: `sc`)
 - Use the [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) TUI interface
+
+Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) tool.
+
+Also visible on [my website's scrapbook](https://ejfox.com/scrapbook/)
+
+I also use it in combination with an Alfred Workflow and a local SQLite database for quick searching:
+- `scripts/setup_sqlite.mjs`
+- `scripts/sync_supabase_to_sqlite.js`
+- `scripts/search_sqlite_scraps.js`
+- `Local Scrap Search.1.1.alfredworkflow.zip`
 
 ### Maintenance Commands
 
@@ -533,92 +236,231 @@ All cleaning and fixing commands will:
 3. Show example scraps that will be modified
 4. Ask for confirmation before proceeding
 
-## Data Flow
-
-1. Data is fetched from various sources.
-2. Each item is processed: summaries are generated, locations and relationships are extracted, and screenshots are created (where applicable).
-3. Processed data is upserted into Supabase.
-4. Data is synced to a local SQLite database for offline access.
-5. The local SQLite database can be searched quickly using the Alfred Workflow.
-
-## Alfred Workflow
-
-The Alfred Workflow enables quick searching of the local SQLite database.  It displays title, summary, and age, with quick actions to open URLs, view full content, or copy formatted scraps.
-
-## Setting Up Credentials
-
-This project requires several API keys and secrets.  Store these securely in a `.env` file *in your local repository only*.  **Do not commit your `.env` file to version control.**  Use the `.env-example` file as a template.
-
-| Environment Variable        | Description                                                                     | Source                                                                          |
-|-----------------------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| `GITHUB_TOKEN`              | GitHub Personal Access Token (repo, read:user, gist scopes)                     | [GitHub Personal Access Tokens](https://github.com/settings/tokens)                 |
-| `GITHUB_USERNAME`           | Your GitHub username                                                              |                                                                                   |
-| `PINBOARD_TOKEN`            | Your Pinboard API token                                                            | [Pinboard Settings](https://pinboard.in/settings/password)                         |
-| `ARENA_ACCESS_TOKEN`        | Your Are.na API token                                                             | [Are.na Developer Settings](https://dev.are.na/oauth/applications)                 |
-| `USER_SLUG`                 | Your Are.na username                                                              |                                                                                   |
-| `MASTODON_ACCESS_TOKEN`     | Your Mastodon API token                                                            | Your Mastodon instance's developer settings                                        |
-| `MASTODON_API_URL`          | Your Mastodon instance URL (e.g., `https://mastodon.social`)                     | Your Mastodon instance's developer settings                                        |
-| `SUPABASE_URL`              | Your Supabase project URL                                                         | Your Supabase project settings                                                    |
-| `SUPABASE_KEY`              | Your Supabase anon key                                                            | Your Supabase project settings                                                    |
-| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key (required for database operations)               | Your Supabase project settings                                                    |
-| `CLOUDINARY_CLOUD_NAME`     | Your Cloudinary cloud name                                                        | Your Cloudinary account settings                                                  |
-| `CLOUDINARY_API_KEY`        | Your Cloudinary API key                                                           | Your Cloudinary account settings                                                  |
-| `CLOUDINARY_API_SECRET`     | Your Cloudinary API secret                                                       | Your Cloudinary account settings                                                  |
-| `OPENROUTER_API_KEY`        | OpenRouter API key (for AI summarization)                                      | OpenRouter account settings                                                       |
-| `OPENCAGE_API_KEY`          | OpenCage Geocoding API key (for location extraction)                             | [OpenCage Data](https://opencagedata.com/)                                      |
-
-
-## Rate Limiting and Caching
-
-The application employs rate limiting using the `Bottleneck` library to avoid exceeding API limits.  Caching is used to reduce the number of API calls and improve performance.  The cache is stored locally in the `./data` directory.  A manifest file (`public/data/scrapbook/manifest.json`) tracks the last updated timestamp for each source.
-
-## AI Services
-
-The application utilizes AI services for tasks such as summarization and embedding generation.  Currently, OpenAI's `text-embedding-ada-002` model is used for embeddings.  The `OPENROUTER_API_KEY` is required for AI summarization.  Costs associated with these services are the responsibility of the user.
-
-## Error Handling and Logging
-
-The application includes comprehensive error handling and logging using `winston`. Errors are logged to the console, and detailed error messages are provided to aid in troubleshooting.
-
-
-## Validation Tools
-
-The project includes two validation utilities:
-
-### Scrap Validation (`validate_scraps.mjs`)
-
-This script validates the structure and content of scraped data, checking for missing fields, incorrect data types, and invalid formats.  It provides detailed error reporting and performance benchmarking.  Run it with `node scripts/validate_scraps.mjs [source]` (e.g., `node scripts/validate_scraps.mjs pinboard`).
-
-### AI Service Validation (`validate_ai.mjs`)
-
-This script tests the AI-powered features (summarization, geolocation, relationship extraction) using sample data.  Run it with `node scripts/validate_ai.mjs [test_name]` (e.g., `node scripts/validate_ai.mjs summarization`).
-
-## Database Maintenance
-
-Regularly run `node scripts/validate_db_integrity.mjs` to check for and clean up any orphaned or stuck processing records in the database.
-
-## Claiming and Processing
-
-The application uses a claiming mechanism to prevent multiple instances from processing the same data concurrently.  This ensures data consistency and avoids race conditions.  The claiming process is managed using Supabase's database capabilities.
+## System Architecture
 
 ```mermaid
-graph LR
-  A[Data Source] --> B{Check Existing Scrap};
-  B -- Exists --> C[Merge with Existing];
-  B -- Does Not Exist --> D[Claim Scrap];
-  D --> E[Process Scrap];
-  E --> F[Upsert to Database];
-  C --> F;
-  F --> G[Release Claim];
-  subgraph "Error Handling"
-    E -.-> H[Handle Error];
-    H --> G;
-  end
+graph TD
+    A[Data Sources] --> B[Fetchers]
+    B --> C[Processors]
+    C --> D[Storage]
+    D --> E[Supabase]
+    D --> F[SQLite]
+    G[AI Services] --> C
+    H[Screenshot Service] --> C
+    F --> I[Alfred Workflow]
 ```
 
-## Overall Data Flow
+## Key Components
 
-This diagram illustrates the high-level data flow of the application.
+1. **Data Fetchers**: Modules for each data source (e.g., `dl_pinboard.mjs`, `dl_mastodon.mjs`). These modules handle the retrieval of data from external APIs.
+2. **Processors**: Modules that process the raw data from the fetchers. This includes:
+   - `aiSummarization.js`: Generates summaries and tags using AI.
+   - `aiGeolocation.mjs`: Extracts location data from text content.
+   - `aiRelationshipExtraction.mjs`: Identifies relationships between different scraps.
+3. **Storage**: Handles persistence of processed data.
+   - `index.mjs`: The main script orchestrating data fetching, processing, and storage in Supabase.
+   - `sync_supabase_to_sqlite.js`: Synchronizes data between Supabase and a local SQLite database.
+4. **Utilities**: Helper functions and modules.
+   - `helpers.js`: Common utility functions.
+   - `manifestHelpers.mjs`: Manages a manifest file for tracking data fetch operations.
+5. **Alfred Workflow**: Enables quick searching of the local SQLite database.
+
+## Database Schema
+
+### Scraps table
+```sql
+CREATE TABLE public.scraps (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    source TEXT NOT NULL,
+    content TEXT NOT NULL,
+    summary TEXT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    tags TEXT[],
+    relationships JSONB NULL,
+    metadata JSONB NULL,
+    scrap_id TEXT NULL,
+    embedding VECTOR NULL,
+    title TEXT NULL,
+    graph_imported BOOLEAN NULL DEFAULT FALSE,
+    url TEXT NULL,
+    screenshot_url TEXT NULL,
+    location TEXT NULL,
+    latitude FLOAT NULL,
+    longitude FLOAT NULL,
+    published_at TIMESTAMP NULL,
+    shared BOOLEAN DEFAULT FALSE,
+    CONSTRAINT scraps_pkey PRIMARY KEY (id),
+    CONSTRAINT scraps_id_key UNIQUE (id),
+    CONSTRAINT scraps_scrap_id_key UNIQUE (scrap_id)
+);
+```
+
+## Complete Scrap Data Structure (For Unity/Game Development)
+
+Each scrap contains the following properties accessible via API:
+
+### Core Identifiers
+```json
+{
+  "id": "uuid-v4",                    // Database UUID
+  "scrap_id": "source-hash",          // Unique ID format: "pinboard-abc123"
+  "source": "pinboard|github|mastodon|arena"  // Data source
+}
+```
+
+### Content & Metadata
+```json
+{
+  "title": "Page/item title",
+  "content": "Full text content",      // Raw content from source
+  "summary": "AI-generated summary",  // 2-3 sentence summary
+  "url": "https://...",              // Original URL
+  "screenshot_url": "https://...",   // Screenshot image URL
+}
+```
+
+### Timestamps
+```json
+{
+  "created_at": "2025-01-01T12:00:00Z",   // When scraped
+  "updated_at": "2025-01-01T12:00:00Z",   // Last updated
+  "published_at": "2024-12-31T10:00:00Z"  // Original publish date
+}
+```
+
+### AI-Extracted Data
+```json
+{
+  "tags": ["tag1", "tag2", "tag3"],          // AI-generated topical tags
+  "relationships": {                          // Connections to other scraps
+    "mentions": ["scrap_id_1", "scrap_id_2"],
+    "topics": ["topic1", "topic2"],
+    "people": ["person1", "person2"]
+  },
+  "embedding": [0.1, 0.2, -0.3, ...],       // 1536-dim vector for similarity
+}
+```
+
+### Location Data
+```json
+{
+  "location": "City, Country",        // Human-readable location
+  "latitude": 40.7128,               // GPS coordinates
+  "longitude": -74.0060,
+}
+```
+
+### Source-Specific Metadata
+The `metadata` field contains source-specific information:
+
+#### Pinboard Bookmarks
+```json
+{
+  "metadata": {
+    "description": "Original bookmark description",
+    "tags": ["original", "pinboard", "tags"],
+    "private": false,
+    "toread": false
+  }
+}
+```
+
+#### GitHub Items
+```json
+{
+  "metadata": {
+    "stargazers_count": 1234,
+    "forks_count": 56,
+    "language": "JavaScript", 
+    "topics": ["web", "frontend"],
+    "is_fork": false,
+    "default_branch": "main"
+  }
+}
+```
+
+#### Mastodon Posts
+```json
+{
+  "metadata": {
+    "replies_count": 5,
+    "reblogs_count": 12,
+    "favourites_count": 34,
+    "visibility": "public",
+    "language": "en"
+  }
+}
+```
+
+#### Are.na Blocks
+```json
+{
+  "metadata": {
+    "block_type": "text|image|link",
+    "connections": 5,
+    "channels": ["channel-name-1", "channel-name-2"]
+  }
+}
+```
+
+### Financial Data Extraction
+When financial information is detected, additional fields may be present:
+```json
+{
+  "metadata": {
+    "financial_assets": [
+      {
+        "type": "stock",
+        "symbol": "AAPL", 
+        "mentioned_price": "$150.00",
+        "context": "Apple stock hit $150"
+      }
+    ],
+    "financial_amounts": [
+      {
+        "amount": 1000000,
+        "currency": "USD",
+        "context": "$1M funding round"
+      }
+    ]
+  }
+}
+```
+
+### API Access Patterns
+
+#### Get All Scraps
+```http
+GET /api/scraps?limit=100&offset=0
+GET /api/scraps?source=pinboard
+GET /api/scraps?tags=contains(technology)
+```
+
+#### Search by Content  
+```http
+GET /api/scraps?search=machine learning
+POST /api/scraps/semantic_search
+{
+  "query": "AI and robotics",
+  "limit": 10,
+  "similarity_threshold": 0.8
+}
+```
+
+#### Get by Location
+```http
+GET /api/scraps?has_location=true
+GET /api/scraps?near_lat=40.7128&near_lng=-74.0060&radius_km=10
+```
+
+#### Filter by Date Range
+```http
+GET /api/scraps?created_after=2024-01-01&created_before=2024-12-31
+GET /api/scraps?published_after=2024-06-01
+```
+
+## Data Flow
 
 ```mermaid
 graph LR
@@ -640,3 +482,138 @@ graph LR
     J --> B;
   end
 ```
+
+1. Data is fetched from various sources.
+2. Each item is processed: summaries are generated, locations and relationships are extracted, and screenshots are created (where applicable).
+3. Processed data is upserted into Supabase.
+4. Data is synced to a local SQLite database for offline access.
+5. The local SQLite database can be searched quickly using the Alfred Workflow.
+
+## Claiming and Processing Flow
+
+```mermaid
+graph LR
+  A[Data Source] --> B{Check Existing Scrap};
+  B -- Exists --> C[Merge with Existing];
+  B -- Does Not Exist --> D[Claim Scrap];
+  D --> E[Process Scrap];
+  E --> F[Upsert to Database];
+  C --> F;
+  F --> G[Release Claim];
+  subgraph "Error Handling"
+    E -.-> H[Handle Error];
+    H --> G;
+  end
+```
+
+## Alfred Workflow
+
+The Alfred Workflow enables quick searching of the local SQLite database. It displays title, summary, and age, with quick actions to open URLs, view full content, or copy formatted scraps.
+
+## Setting Up Credentials
+
+This project requires several API keys and secrets. Store these securely in a `.env` file *in your local repository only*. **Do not commit your `.env` file to version control.** Use the `.env-example` file as a template.
+
+| Environment Variable        | Description                                                                     | Source                                                                          |
+|-----------------------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| `GITHUB_TOKEN`              | GitHub Personal Access Token (repo, read:user, gist scopes)                     | [GitHub Personal Access Tokens](https://github.com/settings/tokens)                 |
+| `GITHUB_USERNAME`           | Your GitHub username                                                              |                                                                                   |
+| `PINBOARD_TOKEN`            | Your Pinboard API token                                                            | [Pinboard Settings](https://pinboard.in/settings/password)                         |
+| `ARENA_ACCESS_TOKEN`        | Your Are.na API token                                                             | [Are.na Developer Settings](https://dev.are.na/oauth/applications)                 |
+| `USER_SLUG`                 | Your Are.na username                                                              |                                                                                   |
+| `MASTODON_ACCESS_TOKEN`     | Your Mastodon API token                                                            | Your Mastodon instance's developer settings                                        |
+| `MASTODON_API_URL`          | Your Mastodon instance URL (e.g., `https://mastodon.social`)                     | Your Mastodon instance's developer settings                                        |
+| `SUPABASE_URL`              | Your Supabase project URL                                                         | Your Supabase project settings                                                    |
+| `SUPABASE_KEY`              | Your Supabase anon key                                                            | Your Supabase project settings                                                    |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key (required for database operations)               | Your Supabase project settings                                                    |
+| `CLOUDINARY_CLOUD_NAME`     | Your Cloudinary cloud name                                                        | Your Cloudinary account settings                                                  |
+| `CLOUDINARY_API_KEY`        | Your Cloudinary API key                                                           | Your Cloudinary account settings                                                  |
+| `CLOUDINARY_API_SECRET`     | Your Cloudinary API secret                                                       | Your Cloudinary account settings                                                  |
+| `OPENROUTER_API_KEY`        | OpenRouter API key (for AI summarization)                                      | OpenRouter account settings                                                       |
+| `OPENCAGE_API_KEY`          | OpenCage Geocoding API key (for location extraction)                             | [OpenCage Data](https://opencagedata.com/)                                      |
+
+## Validation Tools
+
+The project includes validation utilities:
+
+### Scrap Validation (`validate_scraps.mjs`)
+This script validates the structure and content of scraped data, checking for missing fields, incorrect data types, and invalid formats. Run it with `node scripts/validate_scraps.mjs [source]`.
+
+### AI Service Validation (`validate_ai.mjs`)
+This script tests the AI-powered features (summarization, geolocation, relationship extraction) using sample data. Run it with `node scripts/validate_ai.mjs [test_name]`.
+
+### Database Maintenance
+Regularly run `node scripts/validate_db_integrity.mjs` to check for and clean up any orphaned or stuck processing records.
+
+## Smart Rate Limiting and Caching
+
+### Intelligent 429 Handling
+The application features **SmartRateLimiter** that automatically handles API rate limit errors (429 responses):
+
+**Progressive Backoff Levels:**
+1. **Normal**: Default API rate limits
+2. **Cautious**: 2x slower, reduced concurrency  
+3. **Conservative**: 4x slower, single requests only
+4. **Free Model**: Falls back to free model rate limits (3+ second delays)
+5. **Super Polite**: Double free model delays
+6. **Glacial**: 10+ second delays for extreme cases
+
+**Automatic Recovery:**
+- Escalates to more conservative levels after 3 consecutive 429s
+- Automatically recovers to faster levels after 10 consecutive successes
+- Maintains separate limiters for OpenRouter, OpenAI, and Nomic APIs
+
+**Usage Example:**
+```bash
+# Test the smart rate limiter
+node scripts/test-smart-rate-limiter.mjs
+
+# Monitor rate limiter status in logs
+DEBUG=true node scripts/index.mjs --pinboard
+```
+
+### Caching
+Caching is used to reduce API calls and improve performance. The cache is stored locally in the `./data` directory.
+
+## AI Services
+
+The application utilizes AI services for summarization and embedding generation. Currently, OpenAI's `text-embedding-ada-002` model is used for embeddings. The `OPENROUTER_API_KEY` is required for AI summarization.
+
+## Error Handling and Logging
+
+The application includes comprehensive error handling and logging using `winston`. Errors are logged to the console with detailed error messages for troubleshooting.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Rate Limiting**: If you hit API rate limits, the app will back off automatically. You can adjust rate limits in `scripts/shared/rateLimiters.mjs`.
+
+2. **Database Connection**: If you can't connect to Supabase:
+   - Check your environment variables
+   - Ensure your IP is whitelisted
+   - Verify database permissions
+
+3. **Memory Issues**: If you see out-of-memory errors:
+   - Consider reducing batch sizes in the fetchers
+   - Check Docker resource limits
+
+### Getting Help
+
+- Check the logs in `logs/` directory
+- Run with DEBUG=true for verbose logging
+- Open an issue on GitHub
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
+
+Please follow the existing code style and include tests for new features.
+
+## License
+
+MIT License - see LICENSE file for details
