@@ -1,7 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { generateScrapId } from "../helpers.js";
-import { processImagesForScrap } from "./imageEmbedding.mjs";
+import { processImagesForScrap } from "./imageDescriptions.mjs";
 import { createRestAPIClient } from "masto";
 import sanitizeHtml from "sanitize-html";
 import winston from "winston";

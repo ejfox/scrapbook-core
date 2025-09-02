@@ -4,7 +4,7 @@ import Bottleneck from "bottleneck";
 import dotenv from "dotenv";
 import { generateScrapId } from "../helpers.js";
 import { generateScreenshot } from "./generateScreenshot.mjs";
-import { processImagesForScrap } from "./imageEmbedding.mjs";
+import { processImagesForScrap } from "./imageDescriptions.mjs";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { INSTANCE_NAME } from "../helpers/instanceName.mjs";
