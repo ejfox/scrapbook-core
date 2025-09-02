@@ -1,18 +1,18 @@
 {
   "models": {
     "tasks": {
-      "summarization": "anthropic/claude-3-sonnet-20240229",
-      "tagging": "anthropic/claude-3-sonnet-20240229", 
-      "contentAnalysis": "nousresearch/hermes-3-llama-3.1-405b:free",
-      "relationshipAnalysis": "anthropic/claude-3-opus-20240229",
-      "geolocation": "anthropic/claude-3-sonnet-20240229",
-      "mastodonProcessing": "anthropic/claude-3-sonnet-20240229",
-      "githubProcessing": "anthropic/claude-3-sonnet-20240229",
-      "fastProcessing": "anthropic/claude-instant-1.2",
-      "heavyAnalysis": "anthropic/claude-3-opus-20240229",
-      "costEffective": "anthropic/claude-instant-1.2",
-      "textEmbedding": "nomic-embed-text-v1.5",
-      "imageEmbedding": "nomic-embed-vision-v1.5"
+      "summarization": "deepseek/deepseek-chat-v3.1:free",
+      "tagging": "deepseek/deepseek-chat-v3.1:free", 
+      "contentAnalysis": "deepseek/deepseek-chat-v3.1:free",
+      "relationshipAnalysis": "deepseek/deepseek-chat-v3.1:free",
+      "geolocation": "deepseek/deepseek-chat-v3.1:free",
+      "mastodonProcessing": "deepseek/deepseek-chat-v3.1:free",
+      "githubProcessing": "deepseek/deepseek-chat-v3.1:free",
+      "fastProcessing": "deepseek/deepseek-chat-v3.1:free",
+      "heavyAnalysis": "deepseek/deepseek-chat-v3.1:free",
+      "costEffective": "deepseek/deepseek-chat-v3.1:free",
+      "textEmbedding": "text-embedding-3-small",
+      "imageEmbedding": "text-embedding-3-small"
     },
     "fallbacks": [
       "nousresearch/hermes-3-llama-3.1-405b:free",
@@ -74,6 +74,17 @@
     "freeModels": {
       "maxConcurrent": 1,
       "minTimeBetweenRequests": 3000
+    },
+    "emergencyFallback": {
+      "maxConcurrent": 1,
+      "minTimeBetweenRequests": 10000,
+      "enabled": true
+    },
+    "rateLimitBackoff": {
+      "initialDelay": 1000,
+      "maxDelay": 30000,
+      "multiplier": 2,
+      "maxRetries": 5
     },
     "pinboard": {
       "postsAll": 300000,
