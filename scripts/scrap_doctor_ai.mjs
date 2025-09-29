@@ -1,0 +1,361 @@
+#!/usr/bin/env node
+
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+import chalk from "chalk";
+import ora from "ora";
+import { program } from "commander";
+import path from "path";
+import fs from "fs";
+
+// Import AI services and utilities
+import { summarizeContent } from "./aiSummarization.mjs";
+import { extractRelationships } from "./aiRelationshipExtraction.mjs";
+import { extractLocation } from "./aiGeolocation.mjs";
+import { extractFinancialAnalysis } from "./aiFinancialAnalysis.mjs";
+import { completion, MODELS } from "./llmService.mjs";
+import { getModelForTask } from "../lib/config.mjs";
+import { fetchPageContent } from "../helpers.js";
+import { trackCost } from "./costTracking.mjs";
+
+// Load environment variables
+const envPath = path.resolve(process.cwd(), ".env");
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
+
+// Set up CLI
+program
+  .name('scrap-doctor-ai')
+  .description('🩺 AI-powered doctor for your digital memory - generates rich summaries and tags')
+  .version('2.0.0');
+
+program
+  .command('repair')
+  .description('Repair scraps with AI-generated summaries, tags, and relationships')
+  .option('-s, --source <source>', 'Only repair specific source')
+  .option('-t, --type <type>', 'Only repair specific type (summary, tags, relationships, location, financial)')
+  .option('-l, --limit <number>', 'Limit repairs to N scraps', '10')
+  .option('-a, --auto', 'Auto-repair without prompts')
+  .option('--fetch-content', 'Fetch full content from URLs', true)
+  .option('-f, --force', 'Force regenerate all fields even if they exist')
+  .action(repair);
+
+async function repair(options) {
+  console.log(chalk.cyan('🔧 AI-Powered Scrap Doctor - Repair Mode\n'));
+
+  const spinner = ora('Finding scraps that need repair...').start();
+
+  // Get scraps that need repair - most recent first
+  let query = supabase
+    .from('scraps')
+    .select('*')
+    .order('created_at', { ascending: false })  // Most recent first
+    .limit(parseInt(options.limit));
+
+  if (options.source) {
+    query = query.eq('source', options.source);
+  }
+
+  // Filter based on repair type
+  if (options.type === 'summary') {
+    query = query.or('summary.is.null,summary.eq.""');
+  } else if (options.type === 'tags') {
+    query = query.or('tags.is.null,tags.eq.{}');
+  } else if (options.type === 'relationships') {
+    query = query.or('relationships.is.null,relationships.eq.{}');
+  } else if (options.type === 'location') {
+    query = query.is('location', null);
+  } else if (options.type === 'financial') {
+    // For now, select all scraps since financial_analysis column may not exist yet
+    // query = query.is('financial_analysis', null);
+  } else {
+    // Get scraps missing any AI enrichment (excluding financial_analysis until column exists)
+    query = query.or('summary.is.null,tags.is.null,relationships.is.null,location.is.null');
+  }
+
+  const { data: scraps, error } = await query;
+
+  if (error) {
+    spinner.stop();
+    console.error(chalk.red('❌ Error fetching scraps:'), error.message);
+    return;
+  }
+
+  spinner.stop();
+
+  if (!scraps || scraps.length === 0) {
+    console.log(chalk.green('✅ No scraps need repair!'));
+    return;
+  }
+
+  console.log(chalk.yellow(`Found ${scraps.length} scraps that need repair.\n`));
+
+  let repaired = 0;
+  let failed = 0;
+
+  for (const [index, scrap] of scraps.entries()) {
+    const progress = `[${index + 1}/${scraps.length}]`;
+    console.log(chalk.gray(`${progress} Repairing: ${scrap.title?.substring(0, 60) || scrap.url?.substring(0, 60) || scrap.scrap_id}...`));
+
+    try {
+      await repairScrapWithAI(scrap, options);
+      repaired++;
+      console.log(chalk.green(`  ✅ Repaired`));
+    } catch (error) {
+      failed++;
+      console.log(chalk.red(`  ❌ Failed: ${error.message}`));
+    }
+
+    // Small delay to be nice to APIs
+    if (index < scraps.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  console.log(chalk.blue(`\n📊 Repair Summary:`));
+  console.log(`  ✅ Repaired: ${repaired}`);
+  console.log(`  ❌ Failed: ${failed}`);
+  console.log(`  📈 Success rate: ${Math.round((repaired / scraps.length) * 100)}%`);
+}
+
+async function repairScrapWithAI(scrap, options) {
+  const updates = {};
+  const scrapId = scrap.scrap_id;
+
+  // Determine what content to use for AI processing
+  let content = scrap.content || scrap.title || '';
+
+  // Fetch full content from URL if available and enabled
+  if (options.fetchContent && scrap.url && (!content || content.length < 200)) {
+    console.log(chalk.dim(`    Fetching content from ${scrap.url.substring(0, 50)}...`));
+    try {
+      const fetchedContent = await fetchPageContent(scrap.url);
+      if (fetchedContent && fetchedContent.length > content.length) {
+        content = fetchedContent;
+        console.log(chalk.dim(`    ✓ Fetched ${fetchedContent.length} chars of content`));
+      }
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Could not fetch content: ${error.message}`));
+    }
+  }
+
+  // Generate summary if missing
+  if (!scrap.summary || scrap.summary.trim() === '' || options.type === 'summary' || options.force) {
+    console.log(chalk.dim('    Generating AI summary...'));
+    try {
+      const summary = await summarizeContent(content, {
+        scrapId,
+        taskType: 'summarization',
+        url: scrap.url,
+        title: scrap.title
+      });
+
+      if (summary && summary.length > 50) {
+        updates.summary = summary;
+        console.log(chalk.dim(`    ✓ Generated ${summary.length} char summary`));
+      }
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Summary generation failed: ${error.message}`));
+    }
+  }
+
+  // Generate tags if missing or bad (only has 'pinboard')
+  const hasBadTags = scrap.tags && scrap.tags.length === 1 && scrap.tags[0] === 'pinboard';
+  if (!scrap.tags || scrap.tags.length === 0 || hasBadTags || options.type === 'tags' || options.force) {
+    console.log(chalk.dim('    Generating AI tags...'));
+    try {
+      const tags = await generateTags(content, scrap);
+      if (tags && tags.length > 0) {
+        updates.tags = tags;
+        console.log(chalk.dim(`    ✓ Generated ${tags.length} tags`));
+      }
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Tag generation failed: ${error.message}`));
+    }
+  }
+
+  // Extract relationships if missing
+  if (!scrap.relationships || scrap.relationships.length === 0 || options.type === 'relationships' || options.force) {
+    console.log(chalk.dim('    Extracting relationships...'));
+    try {
+      const relationships = await extractRelationships(content, {
+        scrapId,
+        url: scrap.url,
+        title: scrap.title
+      });
+
+      if (relationships && relationships.length > 0) {
+        updates.relationships = relationships;
+        console.log(chalk.dim(`    ✓ Extracted ${relationships.length} relationships`));
+      }
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Relationship extraction failed: ${error.message}`));
+    }
+  }
+
+  // Extract locations if missing
+  if (!scrap.location || options.type === 'location' || options.force) {
+    console.log(chalk.dim('    Extracting locations...'));
+    try {
+      const locationData = await extractLocation(content, {
+        scrapId,
+        url: scrap.url,
+        title: scrap.title
+      });
+
+      if (locationData) {
+        updates.location = locationData;
+        console.log(chalk.dim(`    ✓ Extracted location: ${locationData.location || 'Unknown'}`));
+      }
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Location extraction failed: ${error.message}`));
+    }
+  }
+
+  // Extract financial analysis if missing (or if financial_analysis column doesn't exist yet)
+  if (!scrap.financial_analysis || options.type === 'financial' || options.force || typeof scrap.financial_analysis === 'undefined') {
+    console.log(chalk.dim('    Extracting financial analysis...'));
+    try {
+      const financialAnalysis = await extractFinancialAnalysis(content, {
+        url: scrap.url,
+        isRawText: false
+      });
+
+      // Only add financial analysis if we found some assets or meaningful data
+      if (financialAnalysis && (
+        (financialAnalysis.assets && financialAnalysis.assets.length > 0) ||
+        (financialAnalysis.tracked_assets && financialAnalysis.tracked_assets.length > 0) ||
+        (financialAnalysis.discovered_assets && financialAnalysis.discovered_assets.length > 0) ||
+        Math.abs(financialAnalysis.overall_market_sentiment || 0) > 0.1
+      )) {
+        updates.financial_analysis = financialAnalysis;
+        const assetCount = (financialAnalysis.assets || []).length;
+        const trackedCount = (financialAnalysis.tracked_assets || []).length;
+        const discoveredCount = (financialAnalysis.discovered_assets || []).length;
+        console.log(chalk.dim(`    ✓ Extracted financial data: ${trackedCount} tracked, ${discoveredCount} discovered assets`));
+      }
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Financial analysis failed: ${error.message}`));
+    }
+  }
+
+  // Update the scrap if we have any updates
+  if (Object.keys(updates).length > 0) {
+    updates.updated_at = new Date().toISOString();
+
+    // Handle financial_analysis column not existing yet
+    if (updates.financial_analysis) {
+      console.log(chalk.dim('    ⚠ Warning: financial_analysis column may not exist in database yet'));
+      console.log(chalk.dim('    Please add this column: ALTER TABLE scraps ADD COLUMN financial_analysis JSONB;'));
+
+      // For now, skip financial_analysis update to prevent database errors
+      const { financial_analysis, ...updatesWithoutFinancial } = updates;
+      if (Object.keys(updatesWithoutFinancial).length > 1) { // more than just updated_at
+        const { error } = await supabase
+          .from('scraps')
+          .update(updatesWithoutFinancial)
+          .eq('scrap_id', scrap.scrap_id);
+
+        if (error) throw error;
+      }
+    } else {
+      const { error } = await supabase
+        .from('scraps')
+        .update(updates)
+        .eq('scrap_id', scrap.scrap_id);
+
+      if (error) throw error;
+    }
+  }
+}
+
+async function generateTags(content, scrap) {
+  const model = getModelForTask('tagging');
+
+  // User's existing tags from ejfox.com/tags.json
+  const userTags = ["!inspo","!tobuy","!tohire","3d","3dmodel","aboutme","activism","advice","america","analog","anarchism","api","ar","ar15","arduino","art","audio","automation","beacon","blender","book","callofduty","camping","cannabis","cheatsheet","chess","cli","climatechange","clothes","cms","code","coding","comedy","cooking","covid","crypto","cryptocurrency","css","culture","d3","data","database","datajournalism","dataset","dataviz","demo","design","dj","documentary","drama","ecology","editing","education","election2020","elections","electronics","event","exercise","Fashion","food","funny","game","games","generative","git","github","gpt3","guns","hackers","hacking","hardware","health","howto","html","hudsonvalley","infographic","inspiration","internet","ios","irc","javascript","jiujitsu","journalism","jquery","js","json","lackofdata","legal","linocut","livestream","machinelearning","mapping","maps","markdown","mastodon","media","meditation","military","militias","minecraft","motorcycle","movies","music","nature","network","nft","node","nodejs","ny","nypd","oakland","occupy","occupyoakland","opensource","opinion","osint","osx","pdf","People","personal","photography","photojournalism","pico8","podcast","police","politics","pottery","process","product","programming","project","protest","psychedelics","qgis","quantifiedself","quote","R","raspberrypi","recipe","reference","research","resource","security","sex","shapefile","shortcut","soap","sqlite","startups","study","systemsthinking","tactics","teaching","tech","technique","tool","travel","tributary","tv","twitter","typography","ui","utility","ux","video","videogames","vim","vinyl","visualization","visuals","vj","vr","vue","watercolor","webdesign","woodworking","writing","youtube"];
+
+  const prompt = `You are a content tagger. Analyze this content and select appropriate tags.
+
+${scrap.title ? `Title: ${scrap.title}` : ''}
+${scrap.url ? `URL: ${scrap.url}` : ''}
+
+Content: ${content.substring(0, 3000)}
+
+EXISTING TAGS TO PREFER (use these when relevant):
+${userTags.slice(0, 100).join(', ')}
+
+RULES:
+1. Use SINGLE WORDS only (e.g., "javascript" not "javascript-framework")
+2. Prefer tags from the existing tags list above when they match the content
+3. Use lowercase only
+4. Concatenate multi-word concepts into one word (e.g., "machinelearning", "dataviz", "opensource")
+5. Generate 5-10 relevant tags
+
+FOCUS ON:
+- Technologies mentioned (javascript, python, react, nodejs, arduino)
+- Concepts (machinelearning, dataviz, security, privacy)
+- Content type (tutorial, documentation, tool, demo, video)
+- Domains (art, music, design, journalism, gaming)
+
+NEVER USE:
+- Generic tags like "pinboard", "bookmark", "web", "article", "post"
+- Hyphenated words
+- Multiple word phrases
+
+Return ONLY a comma-separated list of lowercase single-word tags. No explanations.`;
+
+  try {
+    const response = await completion({
+      model,
+      prompt,
+      max_tokens: 150,
+      temperature: 0.5,
+      taskType: 'tagging',
+      scrapId: scrap.scrap_id
+    });
+
+    // Handle both response formats (object with content property or direct string)
+    const content = response?.content || response;
+
+    if (content && typeof content === 'string') {
+      // Parse the tags from the response
+      const rawTags = content
+        .toLowerCase()
+        .replace(/[\n\r]/g, ' ')  // Remove newlines
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0 && tag.length < 30);  // Max length for single word tags
+
+      // Filter out useless generic tags
+      const uselessTags = ['pinboard', 'bookmark', 'link', 'url', 'web', 'website', 'page', 'bookmarks', 'article', 'post'];
+      const filteredTags = rawTags.filter(tag => !uselessTags.includes(tag));
+
+      // Track the cost
+      if (response.usage) {
+        trackCost(model, response.usage.prompt_tokens, response.usage.completion_tokens);
+      }
+
+      return filteredTags;
+    }
+  } catch (error) {
+    console.error('Error generating tags:', error);
+  }
+
+  return [];
+}
+
+// Make it executable
+if (import.meta.url === `file://${process.argv[1]}`) {
+  program.parse();
+}
+
+export { repair, repairScrapWithAI, generateTags };
