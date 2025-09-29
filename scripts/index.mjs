@@ -20,6 +20,15 @@ import { generateEmbedding } from "./llmService.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import { extractAndAddFinancialAnalysis } from "./aiFinancialAnalysis.mjs";
+import { resetSession, printCostSummary, checkCostAlerts } from "./costTracking.mjs";
+import {
+  shouldContinueProcessing,
+  startProcessingRun,
+  recordSuccess,
+  recordFailure,
+  validateData,
+  printSafetyStatus
+} from "./safetyManager.mjs";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -692,7 +701,11 @@ async function enrichScrapWithAI(scrapData) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         textEmbedding = await limiter.schedule(() =>
-          generateEmbedding(contentToProcess, { type: "text" }),
+          generateEmbedding(contentToProcess, {
+            type: "text",
+            scrapId: scrapIdentifier,
+            taskType: 'text_embedding'
+          }),
         );
         if (textEmbedding) {
           scrapData.embedding_nomic = textEmbedding;
@@ -713,7 +726,7 @@ async function enrichScrapWithAI(scrapData) {
 
     // Generate summary and tags
     logger.info(chalk.blue("\n2️⃣  Generating summary and tags..."));
-    const enrichedWithSummary = await generateSummaryAndTags(scrapData);
+    const enrichedWithSummary = await generateSummaryAndTags(scrapData, scrapIdentifier);
     if (enrichedWithSummary.summary) {
       scrapData.summary = enrichedWithSummary.summary;
       scrapData.tags = enrichedWithSummary.tags;
@@ -731,7 +744,7 @@ async function enrichScrapWithAI(scrapData) {
       // Extract relationships from the summary
       logger.info(chalk.blue("\n3️⃣  Extracting relationships..."));
       const enrichedWithRelationships =
-        await extractAndAddRelationships(scrapData);
+        await extractAndAddRelationships(scrapData, scrapIdentifier);
       if (enrichedWithRelationships.relationships) {
         scrapData.relationships = enrichedWithRelationships.relationships;
         logger.info(
@@ -795,7 +808,7 @@ async function enrichScrapWithAI(scrapData) {
       // Extract location from the summary
       logger.info(chalk.blue("\n5️⃣  Extracting location..."));
       const location = await limiter.schedule(() =>
-        extractLocation(scrapData.summary),
+        extractLocation(scrapData.summary, { scrapId: scrapIdentifier }),
       );
       if (location) {
         scrapData.location = location.location;
@@ -858,7 +871,7 @@ async function enrichScrapWithAI(scrapData) {
     logger.info(
       chalk.gray(`• Financial Assets: ${financialSummary}`)
     );
-    logger.info(chalk.gray(`• Location: ${scrapData.location ? "✅" : "❌"}`));
+    logger.info(chalk.gray(`• Location: ${scrapData.location ? `✅ ${scrapData.location}` : "✅ (none found)"}`));
     logger.info(
       chalk.gray(
         `• Image Embedding: ${scrapData.image_embedding ? "✅" : "❌"}`,
@@ -1085,7 +1098,7 @@ async function upsertWithRetry(scrapData, retries = 3) {
 }
 
 // Extract and add relationships to scrap
-async function extractAndAddRelationships(scrapObj) {
+async function extractAndAddRelationships(scrapObj, scrapId) {
   const content = scrapObj.summary || scrapObj.content;
   if (!content) return scrapObj;
 
@@ -1099,6 +1112,7 @@ async function extractAndAddRelationships(scrapObj) {
             isRawText: !scrapObj.summary,
             url: scrapObj.url,
             maxRetries: 2,
+            scrapId,
           }),
         );
         trackStep('relationships', extractedRelationships && extractedRelationships.length > 0);
@@ -1155,7 +1169,7 @@ async function extractAndAddRelationships(scrapObj) {
 }
 
 // Add this helper function near the top with other helper functions
-async function generateSummaryAndTags(scrapObj) {
+async function generateSummaryAndTags(scrapObj, scrapId) {
   // Gather all possible content sources
   const contentToProcess = [
     scrapObj.content,
@@ -1183,7 +1197,11 @@ async function generateSummaryAndTags(scrapObj) {
       logger.info("Generating summary...");
       try {
         scrapObj.summary = await limiter.schedule(() =>
-          summarizeContent(contentToProcess, { metaSummary: true }),
+          summarizeContent(contentToProcess, {
+            metaSummary: true,
+            scrapId,
+            taskType: 'summarization'
+          }),
         );
         trackStep('ai_summary', scrapObj.summary && scrapObj.summary.length > 0);
       } catch (error) {
@@ -1195,7 +1213,7 @@ async function generateSummaryAndTags(scrapObj) {
       if (scrapObj.summary) {
         logger.info("Generating tags from summary...");
         const summaryTags = await limiter.schedule(() =>
-          metaSummaryToTags(scrapObj.summary),
+          metaSummaryToTags(scrapObj.summary, { scrapId }),
         );
         scrapObj.tags = [
           ...new Set([...(scrapObj.tags || []), ...summaryTags]),
@@ -1378,6 +1396,13 @@ async function fetchAndUpsertPinboardBookmarks() {
   const source = "pinboard";
 
   try {
+    // Check safety conditions before starting
+    const safetyCheck = shouldContinueProcessing(true); // automated=true
+    if (!safetyCheck.safe) {
+      logger.warn(chalk.red(`🚨 Safety check failed: ${safetyCheck.reason}`));
+      return;
+    }
+
     logStatus("info", "🔄 Checking for Pinboard updates...");
     const bookmarks = await fetchBookmarksWithCache();
 
@@ -1387,25 +1412,62 @@ async function fetchAndUpsertPinboardBookmarks() {
       cache_used: true,
     });
 
-    // Apply limit if specified
+    // Apply safety limits for automated runs
     let bookmarksToProcess = bookmarks;
+    const isManualRun = options.limit; // If user specified limit, treat as manual
+    const safetyLimits = isManualRun ?
+      parseInt(process.env.SAFETY_MANUAL_MAX_ITEMS_PER_RUN || '500') :
+      parseInt(process.env.SAFETY_MAX_ITEMS_PER_RUN || '50');
+
+    // Apply user limit or safety limit
     if (options.limit) {
       const limit = parseInt(options.limit, 10);
       if (!isNaN(limit) && limit > 0) {
-        bookmarksToProcess = bookmarks.slice(0, limit);
+        bookmarksToProcess = bookmarks.slice(0, Math.min(limit, safetyLimits));
         logger.info(
           chalk.blue(
-            `Limiting to ${limit} bookmarks (out of ${bookmarks.length} total)`,
+            `Limiting to ${Math.min(limit, safetyLimits)} bookmarks (user: ${limit}, safety: ${safetyLimits}, total: ${bookmarks.length})`,
+          ),
+        );
+      }
+    } else {
+      // Apply safety limits for automated runs
+      bookmarksToProcess = bookmarks.slice(0, safetyLimits);
+      if (bookmarks.length > safetyLimits) {
+        logger.info(
+          chalk.yellow(
+            `🛡️  Safety limit applied: processing ${safetyLimits} of ${bookmarks.length} bookmarks`,
           ),
         );
       }
     }
+
+    // Start safety-managed processing run
+    startProcessingRun({
+      isAutomated: !isManualRun,
+      expectedItems: bookmarksToProcess.length
+    });
 
     for (const bookmark of bookmarksToProcess) {
       if (isShuttingDown) break;
 
       const scrapId = `pinboard-${bookmark.hash}`;
       const itemStart = Date.now();
+
+      // Check safety before processing each item
+      const itemSafetyCheck = shouldContinueProcessing(!isManualRun);
+      if (!itemSafetyCheck.safe) {
+        logger.warn(chalk.yellow(`🛑 Safety stop during processing: ${itemSafetyCheck.reason}`));
+        break;
+      }
+
+      // Validate data before processing
+      const validation = validateData(bookmark, source);
+      if (!validation.valid) {
+        logger.warn(chalk.yellow(`⚠️  Skipping malformed bookmark: ${validation.reason}`));
+        recordFailure(scrapId, source, new Error(`Data validation: ${validation.reason}`));
+        continue;
+      }
 
       try {
         if (
@@ -1428,6 +1490,9 @@ async function fetchAndUpsertPinboardBookmarks() {
           continue;
         }
 
+        // Record successful processing
+        recordSuccess(scrapId, source);
+
         metrics.processed.total++;
         metrics.processed.bySource[source] =
           (metrics.processed.bySource[source] || 0) + 1;
@@ -1444,6 +1509,9 @@ async function fetchAndUpsertPinboardBookmarks() {
           url: bookmark.href,
         });
       } catch (error) {
+        // Record failure for safety tracking
+        recordFailure(scrapId, source, error);
+
         logError("Item processing failed", error, {
           source,
           scrap_id: scrapId,
@@ -2340,6 +2408,13 @@ async function main() {
     // Start periodic metric logging
     startPeriodicMetricLogging();
 
+    // SAFETY: Hard timeout for cron jobs - kill after 10 minutes
+    const MAX_RUNTIME = parseInt(process.env.MAX_RUNTIME_MS || '600000'); // 10 minutes default
+    setTimeout(() => {
+      logger.error(`🚨 Process exceeded maximum runtime of ${MAX_RUNTIME}ms - forcing exit`);
+      process.exit(1);
+    }, MAX_RUNTIME);
+
     // Add dry run test if requested
     if (options.test) {
       logger.info(chalk.blue("\n🧪 Running cleanup dry run test..."));
@@ -2392,6 +2467,20 @@ async function main() {
 
 // Extract processing logic to reusable function
 async function runProcessing() {
+  // Check initial safety conditions
+  logger.info(chalk.blue("\n🛡️  Checking Safety Conditions..."));
+  const initialSafetyCheck = shouldContinueProcessing(true);
+  if (!initialSafetyCheck.safe) {
+    logger.error(chalk.red(`🚨 Cannot start processing: ${initialSafetyCheck.reason}`));
+    logger.info(chalk.gray(`   Recommendation: ${initialSafetyCheck.recommendation}`));
+    printSafetyStatus();
+    return;
+  }
+
+  // Reset cost tracking for this run
+  resetSession();
+  logger.info(chalk.cyan("💰 Cost tracking session reset"));
+
   // Check OpenRouter credits but don't stop processing if check fails
   logger.info(chalk.blue("\n1️⃣ Checking OpenRouter Credits..."));
   const aiStatus = await checkOpenRouterCredits();
@@ -2411,10 +2500,17 @@ async function runProcessing() {
   logger.info(chalk.blue("\n4️⃣ Running Cleanup Job..."));
   await runCleanupJob();
 
-  // Process each source
+  // Process each source with safety checks
   logger.info(chalk.blue("\n5️⃣ Processing Sources..."));
   for (const source of ["pinboard", "github", "mastodon", "arena"]) {
     if (options.all || options[source]) {
+      // Check safety before each source
+      const sourceSafetyCheck = shouldContinueProcessing(true);
+      if (!sourceSafetyCheck.safe) {
+        logger.warn(chalk.yellow(`🛑 Stopping at ${source}: ${sourceSafetyCheck.reason}`));
+        break;
+      }
+
       logger.info(
         chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`),
       );
@@ -2444,6 +2540,24 @@ async function runProcessing() {
       }
     }
   }
+
+  // Print cost summary and check for alerts at the end of processing
+  logger.info(chalk.cyan("\n💰 PROCESSING RUN COMPLETE - COST SUMMARY:"));
+  printCostSummary();
+
+  // Check for cost alerts
+  const alerts = checkCostAlerts();
+  if (alerts.length > 0) {
+    logger.warn(chalk.yellow(`⚠️  ${alerts.length} cost alerts:`));
+    alerts.forEach(alert => {
+      const icon = alert.severity === 'critical' ? '🚨' : '⚠️';
+      logger.warn(chalk.yellow(`   ${icon} ${alert.message}`));
+    });
+  }
+
+  // Print final safety status
+  logger.info(chalk.blue("\n🛡️  FINAL SAFETY STATUS:"));
+  printSafetyStatus();
 }
 
 // Track step failures and send alerts for degraded services
@@ -2548,6 +2662,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       // Send daily summary on successful completion
       await sendDailySummary();
       logger.info("✅ Processing completed successfully");
+
+      // Final safety and cost summary after all processing
+      logger.info(chalk.cyan("\n💰 FINAL COST SUMMARY:"));
+      printCostSummary();
+
+      logger.info(chalk.blue("\n🛡️  FINAL SAFETY STATUS:"));
+      printSafetyStatus();
+
+      // CRITICAL: Exit cleanly after successful completion
+      process.exit(0);
     })
     .catch(async (error) => {
       logger.error("Unhandled error:", error);
