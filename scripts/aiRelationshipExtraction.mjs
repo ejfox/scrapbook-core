@@ -1,6 +1,21 @@
 import { completion, MODELS, PROMPTS } from "./llmService.mjs";
 import { getModelForTask } from "../lib/config.mjs";
 
+// Validate relationship structure before returning
+function validateRelationship(rel) {
+  return rel &&
+    typeof rel === 'object' &&
+    rel.source &&
+    typeof rel.source === 'object' &&
+    typeof rel.source.type === 'string' &&
+    typeof rel.source.name === 'string' &&
+    rel.target &&
+    typeof rel.target === 'object' &&
+    typeof rel.target.type === 'string' &&
+    typeof rel.target.name === 'string' &&
+    typeof rel.type === 'string';
+}
+
 export async function extractRelationships(content, options = {}) {
   if (!content) return [];
 
@@ -43,7 +58,7 @@ ${url ? `\nURL: ${url}` : ""}`,
     }
 
     // Parse Cypher-style relationships
-    return response
+    const relationships = response
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.match(/^\[.+?\]-\[.+?\]->\[.+?\]$/))
@@ -52,13 +67,49 @@ ${url ? `\nURL: ${url}` : ""}`,
         if (!match) return null;
 
         const [_, source, relationship, target] = match;
+
+        // Detect entity types based on common patterns
+        const detectEntityType = (entity) => {
+          const lower = entity.toLowerCase();
+          // Check for common patterns
+          if (lower.includes('.js') || lower.includes('.py') || lower.includes('react') || lower.includes('vue') || lower.includes('node')) {
+            return 'Technology';
+          } else if (entity.match(/^[A-Z][a-z]+ [A-Z][a-z]+/)) {
+            return 'Person';
+          } else if (entity.match(/Inc\.|Corp\.|LLC|Ltd\.|Company|Microsoft|Google|Facebook|Amazon|Apple/i)) {
+            return 'Organization';
+          } else if (entity.match(/^[A-Z][a-z]+$/)) {
+            return 'Concept';
+          } else {
+            return 'Entity';
+          }
+        };
+
         return {
-          source: source.trim(),
-          relationship: relationship.trim(),
-          target: target.trim(),
+          source: {
+            type: detectEntityType(source.trim()),
+            name: source.trim()
+          },
+          target: {
+            type: detectEntityType(target.trim()),
+            name: target.trim()
+          },
+          type: relationship.trim()
         };
       })
       .filter(Boolean);
+
+    // Validate all relationships before returning
+    const validRelationships = relationships.filter(rel => {
+      const isValid = validateRelationship(rel);
+      if (!isValid) {
+        console.warn("Invalid relationship structure detected, skipping:", rel);
+      }
+      return isValid;
+    });
+
+    console.log(`✅ Extracted ${validRelationships.length} valid relationships (${relationships.length - validRelationships.length} invalid skipped)`);
+    return validRelationships;
   } catch (error) {
     console.error("Error extracting relationships:", error);
     return [];
