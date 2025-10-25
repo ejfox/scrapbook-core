@@ -648,10 +648,12 @@ function validateAIOutput(type, data) {
 
 // Simplify enrichScrapWithAI to handle tags more directly
 async function enrichScrapWithAI(scrapData) {
-  if (!process.env.OPENROUTER_API_KEY || !process.env.NOMIC_API_KEY) {
-    logStatus("warn", "⚠️  Skipping AI enrichment - API keys not configured");
+  if (!process.env.OPENROUTER_API_KEY) {
+    logStatus("warn", "⚠️  Skipping AI enrichment - OPENROUTER_API_KEY not configured");
     return scrapData;
   }
+
+  // Note: OPENAI_API_KEY is checked within generateEmbedding function
 
   const scrapIdentifier =
     scrapData.scrap_id || scrapData.id || `${scrapData.source}-${Date.now()}`;
@@ -1018,8 +1020,18 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
             scrap_id: scrapId, // Ensure scrap_id is set in final data
             content: enrichedData.content || "",
             title: enrichedData.title || "",
+            summary: enrichedData.summary || null, // EXPLICITLY include summary
             metadata: enrichedData.metadata || {},
             tags: enrichedData.tags || [],
+            relationships: enrichedData.relationships || null,
+            location: enrichedData.location || null,
+            latitude: enrichedData.latitude || null,
+            longitude: enrichedData.longitude || null,
+            financial_analysis: enrichedData.financial_analysis || null,
+            screenshot_url: enrichedData.screenshot_url || null,
+            embedding: enrichedData.embedding || null,
+            embedding_nomic: enrichedData.embedding_nomic || null,
+            image_embedding: enrichedData.image_embedding || null,
             updated_at: new Date().toISOString(),
           },
           {

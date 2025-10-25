@@ -381,7 +381,7 @@ export async function processBookmark(bookmark) {
       type: "bookmark",
       url: bookmark.href,
       title: bookmark.description,
-      content: bookmark.extended,
+      content: bookmark.extended || bookmark.description || '',
       tags: bookmark.tags ? bookmark.tags.split(" ") : [],
       published_at: bookmark.time,
       created_at: bookmark.time,
