@@ -17,6 +17,8 @@ const limiter = new Bottleneck({
 const blacklistPhrases = ["Here is a summary"]; // Add more phrases as needed
 
 export async function summarizeContent(content, options = {}) {
+  const { scrapId, taskType = 'summarization', ...otherOptions } = options;
+
   if (!content) {
     log("❌ No content to summarize");
     return null;
@@ -58,7 +60,7 @@ export async function summarizeContent(content, options = {}) {
         log(`Processing chunk ${i + 1}/${chunks.length}`);
         const summary = await limiter.schedule(async () => {
           log(`🔄 Starting chunk ${i + 1} summarization...`);
-          const result = await summarizeChunk(chunk, options);
+          const result = await summarizeChunk(chunk, { ...otherOptions, scrapId, taskType });
           log(
             `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`
           );
@@ -95,10 +97,11 @@ export async function summarizeContent(content, options = {}) {
 }
 
 async function summarizeChunk(chunk, options = {}) {
+  const { scrapId, taskType = 'summarization', ...otherOptions } = options;
   const startTime = performance.now();
   let summary = null;
   let retries = 0;
-  let messages = options.messages || [];
+  let messages = otherOptions.messages || [];
 
   const blacklistInstruction = `The following phrases are not allowed in the summary: ${blacklistPhrases
     .map((phrase) => `"${phrase}"`)
@@ -108,16 +111,27 @@ async function summarizeChunk(chunk, options = {}) {
   const systemMessage = {
     role: "system",
     content:
-      "You are a precise summarizer that creates concise, factual summaries.",
+      "You are an expert content analyst helping someone build their digital memory. Your summaries help them remember why they saved something, what was interesting about it, and all the key information they might want to recall later. Be thorough, insightful, and capture the essence of why this content matters.",
   };
 
   const userMessage = {
     role: "user",
-    content: `Generate a newline-delimited list of concise, factual summary points. Prioritize key information, interesting details, and direct quotes from the provided text. Do not include any introductory or concluding phrases; only provide the list. Focus on telling a story or highlighting the most important aspects. Thoroughly cover the content.
+    content: `You are summarizing content for a digital memory system. Create a rich, detailed summary that captures everything interesting and useful.
+
+Instructions:
+• Generate as many bullet points as the content warrants (typically 5-15)
+• Each point must start with "• "
+• Be comprehensive - capture ALL interesting facts, insights, quotes, numbers, dates, names
+• For articles: main thesis, supporting arguments, evidence, counterpoints, conclusions, author insights
+• For code/docs: purpose, key features, how it works, API details, examples, limitations
+• For products: all features, pricing tiers, technical specs, use cases, comparisons
+• For social media: the actual content of posts, discussions, key points made
+
+Write in a natural, informative style. Be specific and detailed. Include context that helps understand why this was saved.
 
 ${blacklistInstruction}
 
-Text:
+Content to summarize:
 ${chunk}`,
   };
 
@@ -127,8 +141,10 @@ ${chunk}`,
       const response = await completion({
         messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
-        maxTokens: options.meta ? 1024 : 8196,
+        maxTokens: options.metaSummary ? 2048 : 16384,  // Doubled the output limit
         model: getModelForTask('summarization'),
+        scrapId,
+        taskType,
       });
 
       if (!response) {
@@ -197,7 +213,7 @@ ${chunk}`,
   return summary;
 }
 
-export async function metaSummaryToTags(summary) {
+export async function metaSummaryToTags(summary, options = {}) {
   if (!summary) {
     log("❌ No summary to tag");
     return [];
@@ -234,6 +250,8 @@ Return only valid tags from the list above, one per line, no explanations.`,
       // model: MODELS.CLAUDE_3_SONNET,
       // lets use a cheaper model for this
       model: MODELS.GPT_3_5_TURBO,
+      scrapId: options.scrapId,
+      taskType: 'tagging',
     });
     const endTime = performance.now();
     log(`✅ Tags generated in ${endTime - startTime}ms`);
@@ -266,7 +284,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.log(summary);
 
       console.log("\n🏷️ Generating tags...");
-      const tags = await metaSummaryToTags(summary);
+      const tags = await metaSummaryToTags(summary, {});
       console.log("Tags:", tags);
     })
     .catch(console.error);

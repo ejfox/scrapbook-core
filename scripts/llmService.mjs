@@ -22,6 +22,7 @@ import {
 } from "../lib/config.mjs";
 import Bottleneck from "bottleneck";
 import { SmartRateLimiter, withSmartRateLimit } from "./shared/smartRateLimiter.mjs";
+import { trackCost } from "./costTracking.mjs";
 
 dotenv.config();
 
@@ -110,6 +111,8 @@ const service = {
     temperature = 0.7,
     maxTokens = 1000,
     model = DEFAULT_COMPLETION_MODEL,
+    scrapId,
+    taskType = 'completion',
   }) {
     if (!this.enabled) {
       console.warn(chalk.yellow("OpenRouter API key not configured - skipping AI processing"));
@@ -301,6 +304,13 @@ const service = {
             tokenUsage.byEndpoint["chat/completions"] =
               (tokenUsage.byEndpoint["chat/completions"] || 0) + total_tokens;
 
+            // Track cost using the new cost tracking service
+            const costInfo = trackCost(currentModel, response.data.usage, {
+              scrapId,
+              taskType,
+              source: 'openrouter'
+            });
+
             if (DEBUG) {
               console.log(chalk.cyan("\n📊 Token Usage for this request:"));
               console.log(chalk.gray(`Prompt tokens: ${prompt_tokens}`));
@@ -308,7 +318,8 @@ const service = {
                 chalk.gray(`Completion tokens: ${completion_tokens}`)
               );
               console.log(chalk.gray(`Total tokens: ${total_tokens}`));
-              console.log(chalk.gray(`Model: ${model}`));
+              console.log(chalk.gray(`Model: ${currentModel}`));
+              console.log(chalk.green(`💰 Cost: $${costInfo.totalCost.toFixed(6)}`));
             }
           }
 
@@ -674,7 +685,7 @@ async function resizeImageForEmbedding(imageBuffer) {
 
 // Consolidated embedding functions
 export async function generateEmbedding(input, options = {}) {
-  const { type = "text", maxRetries = 3 } = options;
+  const { type = "text", maxRetries = 3, scrapId, taskType = 'embedding' } = options;
 
   if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "dummy") {
     logger.warn("OpenAI API key not configured or invalid - please set a valid OPENAI_API_KEY");
@@ -704,6 +715,15 @@ export async function generateEmbedding(input, options = {}) {
       if (!response.data?.data?.[0]?.embedding) {
         console.error(chalk.red("Invalid embedding response - returning null"));
         return null;
+      }
+
+      // Track cost for embedding
+      if (response.data?.usage) {
+        trackCost("text-embedding-3-small", response.data.usage, {
+          scrapId,
+          taskType,
+          source: 'openai'
+        });
       }
 
       return response.data.data[0].embedding;

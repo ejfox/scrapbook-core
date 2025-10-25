@@ -68,7 +68,7 @@ URL: ${sample.url || 'No URL'}
       console.log(chalk.white(summary));
 
       console.log(chalk.gray(`\n[INFO] Extracting tags...`));
-      const tags = await metaSummaryToTags(summary);
+      const tags = await metaSummaryToTags(summary, {});
       console.log(chalk.cyan(`\n>> TAGS: ${tags}`));
 
       console.log(chalk.yellow(`
