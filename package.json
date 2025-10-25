@@ -20,7 +20,10 @@
     "detective": "node scripts/log_detective.mjs",
     "detective:investigate": "node scripts/log_detective.mjs investigate",
     "detective:timeline": "node scripts/log_detective.mjs timeline",
-    "detective:health": "node scripts/log_detective.mjs health-degradation"
+    "detective:health": "node scripts/log_detective.mjs health-degradation",
+    "health": "node scripts/health_check.mjs",
+    "validate": "node scripts/validate_processing.mjs",
+    "audit": "node audit_fields.mjs"
   },
   "keywords": [
     "knowledge-management",
