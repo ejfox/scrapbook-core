@@ -312,7 +312,19 @@ const service = {
 
           // Use smart rate limiter - automatically handles 429s and fallbacks
           const response = await openRouterLimiter.schedule(makeRequest);
-          
+
+          // CRITICAL DEBUG: Log response structure to catch silent failures
+          console.log(chalk.magenta(`\n🔍 Response received from ${currentModel}`));
+          console.log(chalk.gray('Response structure:'), {
+            hasData: !!response.data,
+            hasChoices: !!response.data?.choices,
+            choicesLength: response.data?.choices?.length,
+            hasMessage: !!response.data?.choices?.[0]?.message,
+            hasContent: !!response.data?.choices?.[0]?.message?.content,
+            contentLength: response.data?.choices?.[0]?.message?.content?.length || 0,
+            contentPreview: response.data?.choices?.[0]?.message?.content?.substring(0, 100)
+          });
+
           // Log rate limiter status occasionally for monitoring
           if (attempt === 1 && Math.random() < 0.05) { // 5% chance to log
             logger.info('🔧 OpenRouter limiter status:', openRouterLimiter.getStatus());
@@ -406,9 +418,12 @@ const service = {
             }
           }
 
+          // CRITICAL: Log the actual response to catch silent failures
           if (!response.data?.choices?.[0]?.message?.content) {
+            console.error(chalk.red(`\n❌ Empty response from ${currentModel}`));
+            console.error(chalk.yellow('Response data:'), JSON.stringify(response.data, null, 2));
             throw new Error(
-              `Invalid response format from OpenRouter API: ${JSON.stringify(
+              `Invalid response format from OpenRouter API (model: ${currentModel}): ${JSON.stringify(
                 response.data,
                 null,
                 2
@@ -418,6 +433,10 @@ const service = {
 
           return response.data.choices[0].message.content;
         } catch (error) {
+          // Log ALL errors to prevent silent failures
+          console.error(chalk.red(`\n⚠️ Error in tryCompletion for ${currentModel}:`));
+          console.error(chalk.yellow(`Error message: ${error.message}`));
+
           // Handle payment errors (402) by falling back to free models
           if (error.response?.status === 402 && !useFreeModels) {
             console.log(chalk.yellow(`💳 Payment required for ${currentModel}, trying free models...`));
@@ -429,42 +448,39 @@ const service = {
             }
           }
 
-          // If free models also fail with payment error, try OpenAI
-          if (error.response?.status === 402 && useFreeModels) {
-            console.log(chalk.red(`❌ Free models also require payment!`));
-            if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
-              console.log(chalk.yellow('⚠️  Trying OpenAI as last resort...'));
-              try {
-                const openaiResponse = await axios.post(
-                  'https://api.openai.com/v1/chat/completions',
-                  {
-                    model: 'gpt-4o-mini',
-                    messages: finalMessages,
-                    temperature,
-                    max_tokens: maxTokens,
-                  },
-                  {
-                    headers: {
-                      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-                      'Content-Type': 'application/json',
-                    }
+          // If free models fail with ANY error (404, 402, etc), try OpenAI
+          if (useFreeModels && process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
+            console.log(chalk.yellow(`⚠️  Free model failed (${error.response?.status || error.message}), trying OpenAI as fallback...`));
+            try {
+              const openaiResponse = await axios.post(
+                'https://api.openai.com/v1/chat/completions',
+                {
+                  model: 'gpt-4o-mini',
+                  messages: finalMessages,
+                  temperature,
+                  max_tokens: maxTokens,
+                },
+                {
+                  headers: {
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json',
                   }
-                );
-
-                if (openaiResponse.data?.usage) {
-                  trackCost('gpt-4o-mini', openaiResponse.data.usage, {
-                    scrapId,
-                    taskType,
-                    source: 'openai-fallback'
-                  });
                 }
+              );
 
-                console.log(chalk.green('✅ OpenAI fallback succeeded'));
-                return openaiResponse.data.choices[0].message.content;
-              } catch (openaiError) {
-                console.error(chalk.red(`❌ OpenAI fallback failed: ${openaiError.message}`));
-                throw error; // Throw original error
+              if (openaiResponse.data?.usage) {
+                trackCost('gpt-4o-mini', openaiResponse.data.usage, {
+                  scrapId,
+                  taskType,
+                  source: 'openai-fallback'
+                });
               }
+
+              console.log(chalk.green('✅ OpenAI fallback succeeded'));
+              return openaiResponse.data.choices[0].message.content;
+            } catch (openaiError) {
+              console.error(chalk.red(`❌ OpenAI fallback failed: ${openaiError.message}`));
+              throw error; // Throw original error
             }
           }
 
