@@ -153,6 +153,53 @@ const service = {
     // Check credits before making the API call
     const sufficientCredits = await this.checkOpenRouterCredits();
     if (!sufficientCredits) {
+      // If OpenRouter has insufficient credits, try OpenAI instead
+      if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
+        console.log(chalk.yellow('⚠️  OpenRouter credits insufficient, using OpenAI...'));
+
+        // Format messages
+        let finalMessages;
+        if (messages && Array.isArray(messages)) {
+          finalMessages = messages.map(msg => ({
+            role: msg.role,
+            content: String(msg.content),
+          }));
+        } else if (prompt) {
+          finalMessages = [{ role: "user", content: String(prompt) }];
+        }
+
+        try {
+          const openaiResponse = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+              model: 'gpt-4o-mini',
+              messages: finalMessages,
+              temperature,
+              max_tokens: maxTokens,
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+              }
+            }
+          );
+
+          if (openaiResponse.data?.usage) {
+            trackCost('gpt-4o-mini', openaiResponse.data.usage, {
+              scrapId,
+              taskType,
+              source: 'openai-primary'
+            });
+          }
+
+          console.log(chalk.green('✅ OpenAI succeeded'));
+          return openaiResponse.data.choices[0].message.content;
+        } catch (openaiError) {
+          console.error(chalk.red(`❌ OpenAI failed: ${openaiError.message}`));
+          return null;
+        }
+      }
       return null;
     }
 
@@ -288,7 +335,43 @@ const service = {
               console.log(chalk.blue(`Trying fallback model: ${nextModel}`));
               return tryCompletion(nextModel, attempt + 1);
             } else {
-              console.error(chalk.red("❌ No more fallback models available - returning null"));
+              console.error(chalk.red("❌ No more OpenRouter fallback models available"));
+
+              // Try OpenAI as final fallback
+              if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
+                console.log(chalk.yellow('⚠️  Trying OpenAI as last resort fallback...'));
+                try {
+                  const openaiResponse = await axios.post(
+                    'https://api.openai.com/v1/chat/completions',
+                    {
+                      model: 'gpt-4o-mini',
+                      messages: finalMessages,
+                      temperature,
+                      max_tokens: maxTokens,
+                    },
+                    {
+                      headers: {
+                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                        'Content-Type': 'application/json',
+                      }
+                    }
+                  );
+
+                  if (openaiResponse.data?.usage) {
+                    trackCost('gpt-4o-mini', openaiResponse.data.usage, {
+                      scrapId,
+                      taskType,
+                      source: 'openai-fallback'
+                    });
+                  }
+
+                  console.log(chalk.green('✅ OpenAI fallback succeeded'));
+                  return openaiResponse.data.choices[0].message.content;
+                } catch (openaiError) {
+                  console.error(chalk.red(`❌ OpenAI fallback also failed: ${openaiError.message}`));
+                }
+              }
+
               return null; // Gracefully fail instead of crashing
             }
           }
@@ -345,7 +428,46 @@ const service = {
               return tryCompletion(freeModel, attempt + 1, true);
             }
           }
-          
+
+          // If free models also fail with payment error, try OpenAI
+          if (error.response?.status === 402 && useFreeModels) {
+            console.log(chalk.red(`❌ Free models also require payment!`));
+            if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
+              console.log(chalk.yellow('⚠️  Trying OpenAI as last resort...'));
+              try {
+                const openaiResponse = await axios.post(
+                  'https://api.openai.com/v1/chat/completions',
+                  {
+                    model: 'gpt-4o-mini',
+                    messages: finalMessages,
+                    temperature,
+                    max_tokens: maxTokens,
+                  },
+                  {
+                    headers: {
+                      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                      'Content-Type': 'application/json',
+                    }
+                  }
+                );
+
+                if (openaiResponse.data?.usage) {
+                  trackCost('gpt-4o-mini', openaiResponse.data.usage, {
+                    scrapId,
+                    taskType,
+                    source: 'openai-fallback'
+                  });
+                }
+
+                console.log(chalk.green('✅ OpenAI fallback succeeded'));
+                return openaiResponse.data.choices[0].message.content;
+              } catch (openaiError) {
+                console.error(chalk.red(`❌ OpenAI fallback failed: ${openaiError.message}`));
+                throw error; // Throw original error
+              }
+            }
+          }
+
           // Handle overloaded errors (502)
           if (error.response?.data?.choices?.[0]?.error?.code === 502) {
             const fallbacks = getFallbackModelsForModel(currentModel);
@@ -401,11 +523,47 @@ const service = {
       // Check if it's an overloaded error from the API response
       if (error.response?.data?.choices?.[0]?.error?.code === 502) {
         const apiError = error.response.data.choices[0].error;
-        console.error(chalk.red(`OpenRouter API Overloaded: ${apiError.message} - returning null`));
-        return null; // Gracefully fail instead of crashing
+        console.error(chalk.red(`OpenRouter API Overloaded: ${apiError.message}`));
       }
 
-      console.error(chalk.red(`OpenRouter API error - returning null:`, error.response?.data || error.message));
+      // LAST RESORT: Try OpenAI as fallback when all OpenRouter options fail
+      if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
+        console.log(chalk.yellow('⚠️  All OpenRouter attempts failed, trying OpenAI as fallback...'));
+
+        try {
+          const openaiResponse = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+              model: 'gpt-4o-mini',
+              messages: finalMessages,
+              temperature,
+              max_tokens: maxTokens,
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+              }
+            }
+          );
+
+          // Track OpenAI cost
+          if (openaiResponse.data?.usage) {
+            trackCost('gpt-4o-mini', openaiResponse.data.usage, {
+              scrapId,
+              taskType,
+              source: 'openai-fallback'
+            });
+          }
+
+          console.log(chalk.green('✅ OpenAI fallback succeeded'));
+          return openaiResponse.data.choices[0].message.content;
+        } catch (openaiError) {
+          console.error(chalk.red(`❌ OpenAI fallback also failed: ${openaiError.message}`));
+        }
+      }
+
+      console.error(chalk.red(`All completion attempts failed - returning null`));
       return null; // Gracefully fail instead of crashing
     }
   },
