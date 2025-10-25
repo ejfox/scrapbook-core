@@ -710,7 +710,7 @@ async function enrichScrapWithAI(scrapData) {
           }),
         );
         if (textEmbedding) {
-          scrapData.embedding_nomic = textEmbedding;
+          scrapData.embedding = textEmbedding;  // OpenAI text-embedding-3-small
           logger.info(chalk.green("✅ Text embedding generated successfully"));
           trackStep('embeddings', true);
           break;
@@ -859,7 +859,7 @@ async function enrichScrapWithAI(scrapData) {
     logger.info(chalk.gray("Results:"));
     logger.info(
       chalk.gray(
-        `• Text Embedding: ${scrapData.embedding_nomic ? "✅" : "❌"}`,
+        `• Text Embedding: ${scrapData.embedding ? "✅" : "❌"}`,
       ),
     );
     logger.info(chalk.gray(`• Summary: ${scrapData.summary ? "✅" : "❌"}`));
