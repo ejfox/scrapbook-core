@@ -250,7 +250,7 @@ async function runTests() {
 
       if (summary) {
         console.time("Tag Generation");
-        const tags = await metaSummaryToTags(summary);
+        const tags = await metaSummaryToTags(summary, {});
         console.timeEnd("Tag Generation");
         console.log(chalk.green("✓ Tags:"), tags);
       }

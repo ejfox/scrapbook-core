@@ -1,24 +1,24 @@
 {
   "models": {
     "tasks": {
-      "summarization": "deepseek/deepseek-chat-v3.1:free",
-      "tagging": "deepseek/deepseek-chat-v3.1:free", 
-      "contentAnalysis": "deepseek/deepseek-chat-v3.1:free",
-      "relationshipAnalysis": "deepseek/deepseek-chat-v3.1:free",
-      "geolocation": "deepseek/deepseek-chat-v3.1:free",
-      "mastodonProcessing": "deepseek/deepseek-chat-v3.1:free",
-      "githubProcessing": "deepseek/deepseek-chat-v3.1:free",
-      "fastProcessing": "deepseek/deepseek-chat-v3.1:free",
-      "heavyAnalysis": "deepseek/deepseek-chat-v3.1:free",
+      "summarization": "google/gemini-2.5-flash",
+      "tagging": "openai/gpt-4o-mini",
+      "contentAnalysis": "google/gemini-2.5-flash",
+      "relationshipAnalysis": "deepseek/deepseek-chat-v3.1",
+      "geolocation": "deepseek/deepseek-chat-v3.1",
+      "mastodonProcessing": "google/gemini-2.5-flash",
+      "githubProcessing": "google/gemini-2.5-flash",
+      "fastProcessing": "google/gemini-2.5-flash",
+      "heavyAnalysis": "google/gemini-2.5-flash",
       "costEffective": "deepseek/deepseek-chat-v3.1:free",
       "textEmbedding": "text-embedding-3-small",
       "imageEmbedding": "text-embedding-3-small"
     },
     "fallbacks": [
+      "deepseek/deepseek-chat-v3.1:free",
+      "deepseek/deepseek-chat:free",
       "nousresearch/hermes-3-llama-3.1-405b:free",
       "mistralai/mistral-small-3.2-24b-instruct:free",
-      "deepseek/deepseek-chat:free", 
-      "google/gemini-2.0-flash-exp:free",
       "meta-llama/llama-3.1-8b-instruct:free"
     ]
   },
@@ -74,6 +74,10 @@
     "freeModels": {
       "maxConcurrent": 1,
       "minTimeBetweenRequests": 3000
+    },
+    "gemini": {
+      "maxConcurrent": 1,
+      "minTimeBetweenRequests": 2000
     },
     "emergencyFallback": {
       "maxConcurrent": 1,
