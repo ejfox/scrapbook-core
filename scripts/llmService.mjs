@@ -868,13 +868,13 @@ export async function generateEmbedding(input, options = {}) {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Use OpenAI text-embedding-3-small with 768 dimensions to match Supabase
+      // Use OpenAI text-embedding-3-small with 1536 dimensions to match Supabase
       const makeOpenAIRequest = () => axios.post(
         "https://api.openai.com/v1/embeddings",
         {
           model: "text-embedding-3-small",
           input: Array.isArray(input) ? input : [input],
-          dimensions: 768,
+          dimensions: 1536,
         },
         {
           headers: {
