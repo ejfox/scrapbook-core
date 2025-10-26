@@ -20,7 +20,9 @@ import { generateEmbedding } from "./llmService.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import { extractAndAddFinancialAnalysis } from "./aiFinancialAnalysis.mjs";
+import { enrichWithReasoningFields } from "./reasoningFields.mjs";
 import { resetSession, printCostSummary, checkCostAlerts } from "./costTracking.mjs";
+import { showHeader, StepVisualizer, showSummary, showTags, showConfidence, showSuccess, separator } from "./cyberpunkUI.mjs";
 import {
   shouldContinueProcessing,
   startProcessingRun,
@@ -659,22 +661,8 @@ async function enrichScrapWithAI(scrapData) {
     scrapData.scrap_id || scrapData.id || `${scrapData.source}-${Date.now()}`;
   const startTime = Date.now();
 
-  logger.info(
-    chalk.blue(
-      `\n📝 Processing ${chalk.bold(scrapData.source)} scrap: ${chalk.gray(
-        scrapIdentifier,
-      )}`,
-    ),
-  );
-  if (scrapData.title) {
-    logger.info(
-      chalk.gray(
-        `Title: ${scrapData.title.substring(0, 60)}${
-          scrapData.title.length > 60 ? "..." : ""
-        }`,
-      ),
-    );
-  }
+  const stepViz = new StepVisualizer(scrapData.title || scrapData.url || scrapIdentifier);
+  stepViz.showTitle();
 
   try {
     const contentToProcess = [
@@ -698,7 +686,7 @@ async function enrichScrapWithAI(scrapData) {
     }
 
     // Generate text embedding with retries
-    logger.info(chalk.blue("\n1️⃣  Generating text embedding..."));
+    stepViz.startStep(5);  // EMBED step
     let textEmbedding = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -711,7 +699,7 @@ async function enrichScrapWithAI(scrapData) {
         );
         if (textEmbedding) {
           scrapData.embedding = textEmbedding;  // OpenAI text-embedding-3-small
-          logger.info(chalk.green("✅ Text embedding generated successfully"));
+          stepViz.completeStep(5, `1536 dimensions`);
           trackStep('embeddings', true);
           break;
         }
@@ -727,35 +715,24 @@ async function enrichScrapWithAI(scrapData) {
     }
 
     // Generate summary and tags
-    logger.info(chalk.blue("\n2️⃣  Generating summary and tags..."));
+    stepViz.startStep(2);  // SUMMARIZE step
     const enrichedWithSummary = await generateSummaryAndTags(scrapData, scrapIdentifier);
     if (enrichedWithSummary.summary) {
       scrapData.summary = enrichedWithSummary.summary;
       scrapData.tags = enrichedWithSummary.tags;
-      logger.info(
-        chalk.green(`✅ Generated summary (${scrapData.summary.length} chars)`),
-      );
-      logger.info(
-        chalk.green(
-          `✅ Generated ${scrapData.tags.length} tags: ${chalk.gray(
-            scrapData.tags.join(", "),
-          )}`,
-        ),
-      );
+      stepViz.completeStep(2, `${scrapData.summary.length} chars, ${scrapData.tags.length} tags`);
+      showSummary(scrapData.summary, 2);
+      showTags(scrapData.tags, null);
 
       // Extract relationships from the summary
-      logger.info(chalk.blue("\n3️⃣  Extracting relationships..."));
+      stepViz.startStep(4);  // FIND RELATIONS step
       const enrichedWithRelationships =
         await extractAndAddRelationships(scrapData, scrapIdentifier);
       if (enrichedWithRelationships.relationships) {
         scrapData.relationships = enrichedWithRelationships.relationships;
-        logger.info(
-          chalk.green(
-            `✅ Found ${scrapData.relationships.length} relationships`,
-          ),
-        );
+        stepViz.completeStep(4, `${scrapData.relationships.length} connections`);
       } else {
-        logger.info(chalk.yellow("ℹ️  No relationships found"));
+        stepViz.completeStep(4, 'none found');
       }
 
       // Extract financial analysis
@@ -848,37 +825,24 @@ async function enrichScrapWithAI(scrapData) {
       }
     }
 
+    // Extract reasoning fields (content_type, concept_tags, confidence)
+    if (scrapData.summary) {
+      stepViz.startStep(6);  // REASON step
+      try {
+        await enrichWithReasoningFields(scrapData, { scrapId: scrapIdentifier });
+        stepViz.completeStep(6, `${scrapData.content_type}, ${scrapData.concept_tags?.length || 0} concepts`);
+        showTags(null, scrapData.concept_tags);
+        showConfidence(scrapData.extraction_confidence);
+      } catch (error) {
+        logger.error(chalk.red("❌ Reasoning field extraction failed:", error.message));
+      }
+    }
+
     const totalDuration = Date.now() - startTime;
-    logger.info(
-      chalk.blue(
-        `\n✨ Processing completed in ${chalk.bold(
-          (totalDuration / 1000).toFixed(1),
-        )}s`,
-      ),
-    );
-    logger.info(chalk.gray("Results:"));
-    logger.info(
-      chalk.gray(
-        `• Text Embedding: ${scrapData.embedding ? "✅" : "❌"}`,
-      ),
-    );
-    logger.info(chalk.gray(`• Summary: ${scrapData.summary ? "✅" : "❌"}`));
-    logger.info(chalk.gray(`• Tags: ${scrapData.tags?.length || 0}`));
-    logger.info(
-      chalk.gray(`• Relationships: ${scrapData.relationships?.length || 0}`),
-    );
-    const financialSummary = scrapData.financial_analysis?.assets?.length ? 
-      `${scrapData.financial_analysis.assets.length} (${scrapData.financial_analysis.tracked_assets?.length || 0} tracked, ${scrapData.financial_analysis.discovered_assets?.length || 0} discovered)` : 
-      "0";
-    logger.info(
-      chalk.gray(`• Financial Assets: ${financialSummary}`)
-    );
-    logger.info(chalk.gray(`• Location: ${scrapData.location ? `✅ ${scrapData.location}` : "✅ (none found)"}`));
-    logger.info(
-      chalk.gray(
-        `• Image Embedding: ${scrapData.image_embedding ? "✅" : "❌"}`,
-      ),
-    );
+    stepViz.startStep(7);  // SAVE step
+    stepViz.completeStep(7, `${(totalDuration / 1000).toFixed(1)}s total`);
+    showSuccess();
+    separator();
 
     return scrapData;
   } catch (error) {
@@ -1032,6 +996,9 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
             embedding: enrichedData.embedding || null,
             embedding_nomic: enrichedData.embedding_nomic || null,
             image_embedding: enrichedData.image_embedding || null,
+            content_type: enrichedData.content_type || null,
+            concept_tags: enrichedData.concept_tags || [],
+            extraction_confidence: enrichedData.extraction_confidence || null,
             updated_at: new Date().toISOString(),
           },
           {
@@ -2386,8 +2353,9 @@ async function runCleanupJob(dryRun = false) {
 
 // Main execution function
 async function main() {
+  showHeader();
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`);
-  
+
   // Send startup notification
   const memoryMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
   sendWebhookAlert({
@@ -2397,7 +2365,7 @@ async function main() {
     memory_mb: memoryMB,
     node_version: process.version
   });
-  
+
   logger.info(chalk.blue("\n🗺️ Processing Plan:"));
   logger.info(chalk.gray("1. Check OpenRouter credits (optional AI features)"));
   logger.info(chalk.gray("2. Initialize database if needed"));
