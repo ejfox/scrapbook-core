@@ -128,15 +128,38 @@ ${cleanContent}`;
       );
     }
 
-    // Return object with otherLocations in a format suitable for metadata
+    // Only keep locations that successfully geocoded (have coordinates)
+    // If primary location didn't geocode, try to use first other location that did
+    let finalLocation = locations.primary;
+    let finalLat = primaryCoords.latitude;
+    let finalLon = primaryCoords.longitude;
+
+    // Filter other locations to only those with coordinates
+    const validOthers = otherLocationsWithCoords.filter(
+      (l) => l.latitude && l.longitude
+    );
+
+    // If primary didn't geocode but we have valid others, use the first one as primary
+    if (!finalLat && !finalLon && validOthers.length > 0) {
+      log(`⚠️ Primary location "${locations.primary}" failed to geocode, using "${validOthers[0].location}" instead`);
+      finalLocation = validOthers[0].location;
+      finalLat = validOthers[0].latitude;
+      finalLon = validOthers[0].longitude;
+      validOthers.shift(); // Remove it from others since it's now primary
+    }
+
+    // If primary didn't geocode and no valid others, set location to null
+    if (!finalLat && !finalLon) {
+      log(`⚠️ No locations successfully geocoded`);
+      finalLocation = null;
+    }
+
     return {
-      location: locations.primary,
-      latitude: primaryCoords.latitude,
-      longitude: primaryCoords.longitude,
+      location: finalLocation,
+      latitude: finalLat,
+      longitude: finalLon,
       metadata: {
-        otherLocations: otherLocationsWithCoords.filter(
-          (l) => l.latitude && l.longitude
-        ),
+        otherLocations: validOthers,
       },
     };
   } catch (error) {
@@ -158,47 +181,55 @@ async function extractLocationsFromString(content) {
     const messages = [
       {
         role: "system",
-        content: `You are an expert location extraction specialist. You analyze text, URLs, and metadata to identify specific geographic locations. You ONLY output valid JSON with no explanations.
+        content: `You are an expert at identifying REAL GEOGRAPHIC LOCATIONS in formats that geocoding APIs can easily resolve. You ONLY output valid JSON with no explanations.
 
-Your task is to find:
-- Cities, towns, neighborhoods 
-- Specific addresses or landmarks
-- Geographic regions (states, provinces, countries)
-- Venues, businesses with locations
-- Any place names mentioned
+CRITICAL: Format locations for maximum geocodability:
+- Cities: Include state/country (e.g., "San Francisco, California", "Tokyo, Japan", "Paris, France")
+- Neighborhoods: Include city and state/country (e.g., "Brooklyn, New York", "Shibuya, Tokyo, Japan")
+- Landmarks: Include city/country (e.g., "Eiffel Tower, Paris, France", "Central Park, New York")
+- Addresses: Full street address with city, state
+- Regions: Use official names (e.g., "California, USA", "Bavaria, Germany")
+- Countries: Full country names (e.g., "United States", "Japan", "France")
 
-You must be thorough and catch locations that might be mentioned in various contexts including:
-- Direct mentions ("in San Francisco", "visiting Tokyo")  
-- Indirect references ("the mayor announced", "local officials")
-- Business/venue names that imply location
-- URL context and metadata hints
-- Event locations and addresses`,
+ALWAYS PREFER:
+- "City, State, Country" format when possible
+- More specific > less specific (e.g., "Austin, Texas" > "Texas")
+- Full names > abbreviations (e.g., "New York" > "NY")
+- Official place names > colloquialisms
+
+DO NOT EXTRACT:
+- Social media platforms (Reddit, Twitter, Facebook, Instagram, GitHub, YouTube, TikTok, LinkedIn)
+- Website names or URLs (.com, .org, http://, etc.)
+- Company/brand names without location context
+- Online platforms or services
+- Anything that isn't a physical place on Earth`,
       },
       {
-        role: "user",  
-        content: `Analyze ALL provided information and extract every location mentioned. Return ONLY this JSON structure:
+        role: "user",
+        content: `Extract ONLY real geographic locations in the most geocodable format possible. Return ONLY this JSON:
 
 {
   "locations": [
     {
-      "name": "specific location name",
-      "type": "city|neighborhood|landmark|address|venue|region|country",
-      "context": "how/where it was mentioned in the source",
+      "name": "Location Name, City/State, Country (formatted for geocoding)",
+      "type": "city|neighborhood|landmark|address|region|country",
+      "context": "how it was mentioned",
       "confidence": 0.9
     }
   ],
-  "analysis_notes": "brief explanation of extraction approach used"
+  "analysis_notes": "what was found"
 }
 
-Rules:
-- Be aggressive in finding locations - look everywhere
-- Include business locations, event venues, geographic references
-- Confidence: 0.9-1.0 for explicit mentions, 0.6-0.8 for implied, 0.3-0.5 for uncertain
-- Context should help understand WHY this is a location
-- Return empty array only if truly no locations exist
-- ONLY return the JSON, no other text
+FORMATTING RULES:
+- Use "City, State" or "City, Country" format whenever possible
+- Include geographic context (state/country) to help geocoding
+- Be specific and unambiguous
+- Confidence: 0.9-1.0 for clear city/country, 0.6-0.8 for regions, 0.3-0.5 for ambiguous
+- If uncertain whether something is geocodable, LEAVE IT OUT
+- Return empty array if no clear geographic locations exist
+- ONLY return the JSON, nothing else
 
-Source material to analyze:
+Source material:
 ${content}`,
       },
     ];
