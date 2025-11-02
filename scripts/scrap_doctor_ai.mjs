@@ -13,6 +13,7 @@ import { summarizeContent } from "./aiSummarization.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractFinancialAnalysis } from "./aiFinancialAnalysis.mjs";
+import { enrichWithReasoningFields } from "./reasoningFields.mjs";
 import { generateScreenshot } from "./generateScreenshot.mjs";
 import { completion, MODELS } from "./llmService.mjs";
 import { getModelForTask } from "../lib/config.mjs";
@@ -175,9 +176,13 @@ async function repairScrapWithAI(scrap, options) {
       if (summary && summary.length > 50) {
         updates.summary = summary;
         console.log(chalk.dim(`    ✓ Generated ${summary.length} char summary`));
+      } else {
+        // Critical field - throw if generation failed
+        throw new Error('Summary generation returned empty result');
       }
     } catch (error) {
-      console.log(chalk.dim(`    ⚠ Summary generation failed: ${error.message}`));
+      console.log(chalk.red(`    ✗ Summary generation failed: ${error.message}`));
+      throw error; // Re-throw to stop repair
     }
   }
 
@@ -285,6 +290,31 @@ async function repairScrapWithAI(scrap, options) {
       }
     } catch (error) {
       console.log(chalk.dim(`    ⚠ Financial analysis failed: ${error.message}`));
+    }
+  }
+
+  // Extract reasoning fields if missing (content_type, concept_tags, extraction_confidence)
+  if (shouldProcessType('reasoning') &&
+      scrap.summary &&
+      (!scrap.content_type || !scrap.concept_tags || !scrap.extraction_confidence)) {
+    console.log(chalk.dim('    Extracting reasoning fields...'));
+    try {
+      // Create a temporary object to pass to enrichWithReasoningFields
+      const tempScrap = {
+        ...scrap,
+        ...updates, // Include any updates we've made (like summary/tags)
+      };
+
+      await enrichWithReasoningFields(tempScrap, { scrapId });
+
+      // Copy the extracted fields to updates
+      if (tempScrap.content_type) updates.content_type = tempScrap.content_type;
+      if (tempScrap.concept_tags) updates.concept_tags = tempScrap.concept_tags;
+      if (tempScrap.extraction_confidence) updates.extraction_confidence = tempScrap.extraction_confidence;
+
+      console.log(chalk.dim(`    ✓ ${tempScrap.content_type}, ${(tempScrap.concept_tags || []).length} concepts`));
+    } catch (error) {
+      console.log(chalk.dim(`    ⚠ Reasoning extraction failed: ${error.message}`));
     }
   }
 
