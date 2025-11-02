@@ -13,10 +13,12 @@ import { summarizeContent } from "./aiSummarization.mjs";
 import { extractRelationships } from "./aiRelationshipExtraction.mjs";
 import { extractLocation } from "./aiGeolocation.mjs";
 import { extractFinancialAnalysis } from "./aiFinancialAnalysis.mjs";
+import { generateScreenshot } from "./generateScreenshot.mjs";
 import { completion, MODELS } from "./llmService.mjs";
 import { getModelForTask } from "../lib/config.mjs";
 import { fetchPageContent } from "../helpers.js";
 import { trackCost } from "./costTracking.mjs";
+import Bottleneck from "bottleneck";
 
 // Load environment variables
 const envPath = path.resolve(process.cwd(), ".env");
@@ -31,6 +33,12 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
+// Rate limiter for screenshots: 1 every 3 seconds
+const browserLimiter = new Bottleneck({
+  minTime: 3000,
+  maxConcurrent: 1,
+});
+
 // Set up CLI
 program
   .name('scrap-doctor-ai')
@@ -41,7 +49,7 @@ program
   .command('repair')
   .description('Repair scraps with AI-generated summaries, tags, and relationships')
   .option('-s, --source <source>', 'Only repair specific source')
-  .option('-t, --type <type>', 'Only repair specific type (summary, tags, relationships, location, financial)')
+  .option('-t, --type <type>', 'Only repair specific type (summary, tags, relationships, location, financial, screenshot)')
   .option('-l, --limit <number>', 'Limit repairs to N scraps', '10')
   .option('-a, --auto', 'Auto-repair without prompts')
   .option('--fetch-content', 'Fetch full content from URLs', true)
@@ -76,6 +84,8 @@ async function repair(options) {
   } else if (options.type === 'financial') {
     // For now, select all scraps since financial_analysis column may not exist yet
     // query = query.is('financial_analysis', null);
+  } else if (options.type === 'screenshot') {
+    query = query.not('url', 'is', null).is('screenshot_url', null);
   } else {
     // Get scraps missing any AI enrichment (excluding financial_analysis until column exists)
     query = query.or('summary.is.null,tags.is.null,relationships.is.null,location.is.null');
@@ -130,11 +140,15 @@ async function repairScrapWithAI(scrap, options) {
   const updates = {};
   const scrapId = scrap.scrap_id;
 
+  // If a specific type is requested, ONLY process that type
+  const shouldProcessAll = !options.type || options.force;
+  const shouldProcessType = (type) => !options.type || options.type === type || options.force;
+
   // Determine what content to use for AI processing
   let content = scrap.content || scrap.title || '';
 
-  // Fetch full content from URL if available and enabled
-  if (options.fetchContent && scrap.url && (!content || content.length < 200)) {
+  // Only fetch content if we're processing fields that need it (not for screenshots)
+  if (options.type !== 'screenshot' && options.fetchContent && scrap.url && (!content || content.length < 200)) {
     console.log(chalk.dim(`    Fetching content from ${scrap.url.substring(0, 50)}...`));
     try {
       const fetchedContent = await fetchPageContent(scrap.url);
@@ -148,7 +162,7 @@ async function repairScrapWithAI(scrap, options) {
   }
 
   // Generate summary if missing
-  if (!scrap.summary || scrap.summary.trim() === '' || options.type === 'summary' || options.force) {
+  if (shouldProcessType('summary') && (!scrap.summary || scrap.summary.trim() === '')) {
     console.log(chalk.dim('    Generating AI summary...'));
     try {
       const summary = await summarizeContent(content, {
@@ -169,7 +183,7 @@ async function repairScrapWithAI(scrap, options) {
 
   // Generate tags if missing or bad (only has 'pinboard')
   const hasBadTags = scrap.tags && scrap.tags.length === 1 && scrap.tags[0] === 'pinboard';
-  if (!scrap.tags || scrap.tags.length === 0 || hasBadTags || options.type === 'tags' || options.force) {
+  if (shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags)) {
     console.log(chalk.dim('    Generating AI tags...'));
     try {
       const tags = await generateTags(content, scrap);
@@ -183,26 +197,53 @@ async function repairScrapWithAI(scrap, options) {
   }
 
   // Extract relationships if missing
-  if (!scrap.relationships || scrap.relationships.length === 0 || options.type === 'relationships' || options.force) {
+  if (shouldProcessType('relationships') && (!scrap.relationships || scrap.relationships.length === 0)) {
     console.log(chalk.dim('    Extracting relationships...'));
-    try {
-      const relationships = await extractRelationships(content, {
-        scrapId,
-        url: scrap.url,
-        title: scrap.title
-      });
 
-      if (relationships && relationships.length > 0) {
-        updates.relationships = relationships;
-        console.log(chalk.dim(`    ✓ Extracted ${relationships.length} relationships`));
+    // Try 3 different models for relationship extraction
+    const models = [
+      'deepseek/deepseek-chat-v3.1',     // First try: DeepSeek (default)
+      'google/gemini-2.5-flash',         // Second try: Gemini
+      'openai/gpt-4o-mini'               // Third try: OpenAI
+    ];
+
+    let relationships = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const model = models[attempt];
+        console.log(chalk.dim(`      Attempt ${attempt + 1}/3 with ${model}...`));
+
+        relationships = await extractRelationships(content, {
+          scrapId,
+          url: scrap.url,
+          title: scrap.title,
+          model
+        });
+
+        // If we got relationships, break out of retry loop
+        if (relationships && relationships.length > 0) {
+          updates.relationships = relationships;
+          console.log(chalk.dim(`    ✓ Extracted ${relationships.length} relationships from ${model}`));
+          break;
+        } else {
+          console.log(chalk.dim(`      ${model} returned no relationships, trying next model...`));
+        }
+      } catch (error) {
+        console.log(chalk.dim(`      Attempt ${attempt + 1} failed: ${error.message}`));
+        if (attempt < 2) {
+          // Wait a bit before next attempt
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-    } catch (error) {
-      console.log(chalk.dim(`    ⚠ Relationship extraction failed: ${error.message}`));
+    }
+
+    if (!relationships || relationships.length === 0) {
+      console.log(chalk.dim(`    ⚠ All 3 models failed to extract relationships`));
     }
   }
 
   // Extract locations if missing
-  if (!scrap.location || options.type === 'location' || options.force) {
+  if (shouldProcessType('location') && !scrap.location) {
     console.log(chalk.dim('    Extracting locations...'));
     try {
       const locationData = await extractLocation(content, {
@@ -220,8 +261,8 @@ async function repairScrapWithAI(scrap, options) {
     }
   }
 
-  // Extract financial analysis if missing (or if financial_analysis column doesn't exist yet)
-  if (!scrap.financial_analysis || options.type === 'financial' || options.force || typeof scrap.financial_analysis === 'undefined') {
+  // Extract financial analysis if missing
+  if (shouldProcessType('financial') && (!scrap.financial_analysis || typeof scrap.financial_analysis === 'undefined')) {
     console.log(chalk.dim('    Extracting financial analysis...'));
     try {
       const financialAnalysis = await extractFinancialAnalysis(content, {
@@ -244,6 +285,38 @@ async function repairScrapWithAI(scrap, options) {
       }
     } catch (error) {
       console.log(chalk.dim(`    ⚠ Financial analysis failed: ${error.message}`));
+    }
+  }
+
+  // Generate screenshot if missing
+  if (shouldProcessType('screenshot') && !scrap.screenshot_url) {
+    // Special handling for Are.na images
+    if (scrap.source === 'arena' && scrap.metadata?.image_data) {
+      const imageUrl = scrap.metadata.image_data.original_url ||
+                      scrap.metadata.image_data.display ||
+                      scrap.metadata.image_data.cloudinary_url;
+      if (imageUrl) {
+        updates.screenshot_url = imageUrl;
+        const imgShort = imageUrl.split('/').pop()?.substring(0, 20) || 'image';
+        console.log(chalk.dim(`    ✓ Arena image: ${imgShort}`));
+      }
+    }
+    // For everything else with a URL, generate screenshot
+    else if (scrap.url) {
+      console.log(chalk.dim('    Generating screenshot...'));
+      try {
+        const screenshot = await browserLimiter.schedule(() =>
+          generateScreenshot(scrap.url)
+        );
+
+        if (screenshot?.url) {
+          updates.screenshot_url = screenshot.url;
+          const filename = screenshot.url.split('/').pop()?.substring(0, 20) || 'screenshot';
+          console.log(chalk.dim(`    ✓ Screenshot: ${filename}`));
+        }
+      } catch (error) {
+        console.log(chalk.dim(`    ⚠ Screenshot generation failed: ${error.message}`));
+      }
     }
   }
 

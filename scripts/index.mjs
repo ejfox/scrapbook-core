@@ -803,6 +803,47 @@ async function enrichScrapWithAI(scrapData) {
       logger.info(chalk.yellow("⚠️  Failed to generate summary"));
     }
 
+    // Generate screenshot if URL exists and we don't have one
+    if (!scrapData.screenshot_url) {
+      // For Are.na images, use the highest resolution version directly
+      if (scrapData.source === 'arena' && scrapData.metadata?.image_data) {
+        const imageUrl = scrapData.metadata.image_data.original_url ||
+                        scrapData.metadata.image_data.display ||
+                        scrapData.metadata.image_data.cloudinary_url;
+        if (imageUrl) {
+          scrapData.screenshot_url = imageUrl;
+          const urlShort = imageUrl.split('/').pop()?.substring(0, 20) || 'image';
+          logger.info(chalk.green(`📸 ARENA → ${urlShort}... ✅`));
+          trackStep('screenshots', true);
+        }
+      }
+      // For everything else with a URL, generate screenshot
+      else if (scrapData.url) {
+        const urlShort = scrapData.url.substring(0, 50);
+        const startTime = Date.now();
+        process.stdout.write(chalk.blue(`📸 SCREENSHOT → ${urlShort}... `));
+        try {
+          const screenshot = await browserLimiter.schedule(() =>
+            generateScreenshot(scrapData.url),
+          );
+          const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+          if (screenshot?.url) {
+            scrapData.screenshot_url = screenshot.url;
+            const filename = screenshot.url.split('/').pop()?.substring(0, 20) || 'screenshot';
+            console.log(chalk.green(`✅ ${filename} (${duration}s)`));
+            trackStep('screenshots', true);
+          } else {
+            console.log(chalk.yellow(`⚠️ no URL (${duration}s)`));
+            trackStep('screenshots', false);
+          }
+        } catch (error) {
+          const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+          console.log(chalk.red(`❌ ${error.message.substring(0, 30)} (${duration}s)`));
+          trackStep('screenshots', false);
+        }
+      }
+    }
+
     // Process images
     if (scrapData.screenshot_url || scrapData.metadata?.image_url) {
       logger.info(chalk.blue("\n6️⃣  Processing image..."));
@@ -1083,22 +1124,48 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
 
   try {
     if (process.env.OPENROUTER_API_KEY) {
-      // Use the improved relationship extraction with retries
+      // Try 3 different models for relationship extraction
       let extractedRelationships = [];
-      try {
-        extractedRelationships = await limiter.schedule(() =>
-          extractRelationships(content, {
-            isRawText: !scrapObj.summary,
-            url: scrapObj.url,
-            maxRetries: 2,
-            scrapId,
-          }),
-        );
-        trackStep('relationships', extractedRelationships && extractedRelationships.length > 0);
-      } catch (error) {
-        logger.error("Relationship extraction failed:", error.message);
-        trackStep('relationships', false);
-        extractedRelationships = [];
+      const models = [
+        'deepseek/deepseek-chat-v3.1',     // First try: DeepSeek (default)
+        'google/gemini-2.5-flash',         // Second try: Gemini
+        'openai/gpt-4o-mini'               // Third try: OpenAI
+      ];
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const model = models[attempt];
+          logger.info(chalk.blue(`🔗 Attempt ${attempt + 1}/3 with ${model}...`));
+
+          extractedRelationships = await limiter.schedule(() =>
+            extractRelationships(content, {
+              isRawText: !scrapObj.summary,
+              url: scrapObj.url,
+              scrapId,
+              model
+            }),
+          );
+
+          // If we got relationships, break out of retry loop
+          if (extractedRelationships && extractedRelationships.length > 0) {
+            logger.info(chalk.green(`✅ Got ${extractedRelationships.length} relationships from ${model}`));
+            trackStep('relationships', true);
+            break;
+          } else {
+            logger.warn(chalk.yellow(`⚠️ ${model} returned no relationships, trying next model...`));
+          }
+        } catch (error) {
+          logger.error(chalk.red(`❌ Attempt ${attempt + 1} failed: ${error.message}`));
+          if (attempt === 2) {
+            // Last attempt failed
+            logger.error("All 3 models failed to extract relationships");
+            trackStep('relationships', false);
+            extractedRelationships = [];
+          } else {
+            // Wait a bit before next attempt
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
       }
 
       function validateRelationships(relationships) {

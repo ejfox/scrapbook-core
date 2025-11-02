@@ -53,7 +53,8 @@ export function inferContentType(url, content, title) {
 
 /**
  * Extract concept tags using AI
- * These are hierarchical semantic concepts, not flat keywords
+ * These are THREAD-level concepts - overarching themes that connect scraps
+ * NOT just better tags, but narrative threads that span multiple pieces of content
  */
 export async function extractConceptTags(summary, existingTags, options = {}) {
   const { scrapId, taskType = 'concept_extraction' } = options;
@@ -62,30 +63,48 @@ export async function extractConceptTags(summary, existingTags, options = {}) {
     return [];
   }
 
-  const prompt = `Analyze this content summary and extract 3-5 high-level semantic concepts.
+  const prompt = `Extract 3-5 THREAD-level concepts from this content.
+
+WHAT ARE THREADS?
+Threads are overarching narratives/themes that CONNECT multiple pieces of content.
+They answer: "What ongoing story, trend, or investigation does this belong to?"
+
+REGULAR TAGS (specific to THIS piece):
+- "machinelearning", "tensorflow", "python"
+- Describe what's IN this specific content
+
+THREAD CONCEPTS (connect MULTIPLE pieces):
+- "ai_capability_scaling" - an ongoing trend across many AI articles
+- "regulatory_capture" - a theme that appears in policy/business/tech
+- "decentralization_movement" - a narrative thread across crypto/web3/politics
 
 RULES:
-- Use specific concepts like "immigration_policy" not generic "politics"
-- Use snake_case format: "climate_change" not "Climate Change"
-- Be hierarchical: "machine_learning" > "ml" > "tech"
-- Focus on WHAT the content is about, not how it's formatted
+1. Think LONGITUDINAL: What ongoing story does this contribute to?
+2. Think CONNECTION: What theme would help me find RELATED content?
+3. Use snake_case: "climate_attribution_science" not "Climate Science"
+4. Be specific but not narrow: "supply_chain_resilience" not "chip_shortage"
+5. Focus on TRENDS, NARRATIVES, MOVEMENTS, not just topics
 
 EXAMPLES:
-Input: "Article about ICE budget increasing for enforcement"
-Output: ["immigration_policy", "government_spending", "law_enforcement"]
 
-Input: "Tutorial on using TensorFlow for image classification"
-Output: ["machine_learning", "computer_vision", "tensorflow", "tutorial_content"]
+Input: "Article about ICE budget increasing for enforcement operations"
+Tags: immigration, politics, ice
+Concepts: ["state_capacity_building", "immigration_enforcement_expansion", "executive_power_creep"]
 
-Input: "Opinion piece about climate change policy failures"
-Output: ["climate_change", "environmental_policy", "policy_analysis"]
+Input: "Tutorial on using LLMs for code generation"
+Tags: ai, coding, llm, tutorial
+Concepts: ["ai_augmented_development", "developer_tooling_evolution", "code_synthesis_advancement"]
 
-Now extract concepts from this summary:
+Input: "New research on attribution of extreme weather to climate change"
+Tags: climate, research, weather
+Concepts: ["climate_attribution_science", "extreme_weather_trends", "climate_evidence_accumulation"]
+
+Now extract THREAD concepts from this summary:
 ${summary}
 
-Existing user tags: ${existingTags?.join(', ') || 'none'}
+Existing tags (for context): ${existingTags?.join(', ') || 'none'}
 
-Return ONLY a JSON array of 3-5 concept tags, nothing else. Format: ["concept_one", "concept_two", ...]`;
+Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concept_two", ...]`;
 
   try {
     const response = await completion({
