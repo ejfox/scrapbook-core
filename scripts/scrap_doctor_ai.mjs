@@ -165,6 +165,7 @@ async function repairScrapWithAI(scrap, options) {
   // Generate summary if missing
   if (shouldProcessType('summary') && (!scrap.summary || scrap.summary.trim() === '')) {
     console.log(chalk.dim('    Generating AI summary...'));
+    console.log(chalk.gray(`      Input: ${content.length} chars, URL: ${scrap.url}`));
     try {
       const summary = await summarizeContent(content, {
         scrapId,
@@ -178,10 +179,18 @@ async function repairScrapWithAI(scrap, options) {
         console.log(chalk.dim(`    ✓ Generated ${summary.length} char summary`));
       } else {
         // Critical field - throw if generation failed
+        console.error(chalk.red(`    ✗ CRITICAL: Summary generation returned empty/short result`));
+        console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+        console.error(chalk.red(`      Content length: ${content.length}`));
+        console.error(chalk.red(`      Summary received: ${JSON.stringify(summary)}`));
         throw new Error('Summary generation returned empty result');
       }
     } catch (error) {
-      console.log(chalk.red(`    ✗ Summary generation failed: ${error.message}`));
+      console.error(chalk.red(`    ✗ SUMMARY GENERATION FAILED`));
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+      console.error(chalk.red(`      URL: ${scrap.url}`));
+      console.error(chalk.red(`      Error: ${error.message}`));
+      console.error(chalk.red(`      Stack: ${error.stack}`));
       throw error; // Re-throw to stop repair
     }
   }
@@ -190,20 +199,31 @@ async function repairScrapWithAI(scrap, options) {
   const hasBadTags = scrap.tags && scrap.tags.length === 1 && scrap.tags[0] === 'pinboard';
   if (shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags)) {
     console.log(chalk.dim('    Generating AI tags...'));
+    console.log(chalk.gray(`      Input: ${content.length} chars`));
     try {
       const tags = await generateTags(content, scrap);
       if (tags && tags.length > 0) {
         updates.tags = tags;
-        console.log(chalk.dim(`    ✓ Generated ${tags.length} tags`));
+        console.log(chalk.dim(`    ✓ Generated ${tags.length} tags: ${tags.join(', ')}`));
+      } else {
+        console.error(chalk.yellow(`    ⚠ Tag generation returned empty array`));
+        console.error(chalk.yellow(`      Scrap ID: ${scrapId}`));
+        console.error(chalk.yellow(`      Content length: ${content.length}`));
+        console.error(chalk.yellow(`      Tags received: ${JSON.stringify(tags)}`));
       }
     } catch (error) {
-      console.log(chalk.dim(`    ⚠ Tag generation failed: ${error.message}`));
+      console.error(chalk.red(`    ✗ TAG GENERATION FAILED`));
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+      console.error(chalk.red(`      URL: ${scrap.url}`));
+      console.error(chalk.red(`      Error: ${error.message}`));
+      console.error(chalk.red(`      Stack: ${error.stack}`));
     }
   }
 
   // Extract relationships if missing
   if (shouldProcessType('relationships') && (!scrap.relationships || scrap.relationships.length === 0)) {
     console.log(chalk.dim('    Extracting relationships...'));
+    console.log(chalk.gray(`      Input: ${content.length} chars`));
 
     // Try 3 different models for relationship extraction
     const models = [
@@ -231,10 +251,13 @@ async function repairScrapWithAI(scrap, options) {
           console.log(chalk.dim(`    ✓ Extracted ${relationships.length} relationships from ${model}`));
           break;
         } else {
-          console.log(chalk.dim(`      ${model} returned no relationships, trying next model...`));
+          console.log(chalk.yellow(`      ${model} returned empty relationships`));
+          console.log(chalk.gray(`        Response: ${JSON.stringify(relationships)}`));
         }
       } catch (error) {
-        console.log(chalk.dim(`      Attempt ${attempt + 1} failed: ${error.message}`));
+        console.error(chalk.yellow(`      Attempt ${attempt + 1} with ${models[attempt]} FAILED`));
+        console.error(chalk.yellow(`        Error: ${error.message}`));
+        console.error(chalk.gray(`        Stack: ${error.stack}`));
         if (attempt < 2) {
           // Wait a bit before next attempt
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -243,13 +266,18 @@ async function repairScrapWithAI(scrap, options) {
     }
 
     if (!relationships || relationships.length === 0) {
-      console.log(chalk.dim(`    ⚠ All 3 models failed to extract relationships`));
+      console.error(chalk.red(`    ✗ ALL 3 MODELS FAILED TO EXTRACT RELATIONSHIPS`));
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+      console.error(chalk.red(`      URL: ${scrap.url}`));
+      console.error(chalk.red(`      Content length: ${content.length}`));
+      console.error(chalk.red(`      Models tried: ${models.join(', ')}`));
     }
   }
 
   // Extract locations if missing
   if (shouldProcessType('location') && !scrap.location) {
     console.log(chalk.dim('    Extracting locations...'));
+    console.log(chalk.gray(`      Input: ${content.length} chars`));
     try {
       const locationData = await extractLocation(content, {
         scrapId,
@@ -260,15 +288,23 @@ async function repairScrapWithAI(scrap, options) {
       if (locationData) {
         updates.location = locationData;
         console.log(chalk.dim(`    ✓ Extracted location: ${locationData.location || 'Unknown'}`));
+      } else {
+        console.log(chalk.yellow(`    ⚠ Location extraction returned null`));
+        console.log(chalk.gray(`      Scrap ID: ${scrapId}`));
       }
     } catch (error) {
-      console.log(chalk.dim(`    ⚠ Location extraction failed: ${error.message}`));
+      console.error(chalk.red(`    ✗ LOCATION EXTRACTION FAILED`));
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+      console.error(chalk.red(`      URL: ${scrap.url}`));
+      console.error(chalk.red(`      Error: ${error.message}`));
+      console.error(chalk.red(`      Stack: ${error.stack}`));
     }
   }
 
   // Extract financial analysis if missing
   if (shouldProcessType('financial') && (!scrap.financial_analysis || typeof scrap.financial_analysis === 'undefined')) {
     console.log(chalk.dim('    Extracting financial analysis...'));
+    console.log(chalk.gray(`      Input: ${content.length} chars`));
     try {
       const financialAnalysis = await extractFinancialAnalysis(content, {
         url: scrap.url,
@@ -287,9 +323,15 @@ async function repairScrapWithAI(scrap, options) {
         const trackedCount = (financialAnalysis.tracked_assets || []).length;
         const discoveredCount = (financialAnalysis.discovered_assets || []).length;
         console.log(chalk.dim(`    ✓ Extracted financial data: ${trackedCount} tracked, ${discoveredCount} discovered assets`));
+      } else {
+        console.log(chalk.gray(`    ℹ No financial assets found (empty or low sentiment)`));
       }
     } catch (error) {
-      console.log(chalk.dim(`    ⚠ Financial analysis failed: ${error.message}`));
+      console.error(chalk.red(`    ✗ FINANCIAL ANALYSIS FAILED`));
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+      console.error(chalk.red(`      URL: ${scrap.url}`));
+      console.error(chalk.red(`      Error: ${error.message}`));
+      console.error(chalk.red(`      Stack: ${error.stack}`));
     }
   }
 
@@ -298,6 +340,7 @@ async function repairScrapWithAI(scrap, options) {
       scrap.summary &&
       (!scrap.content_type || !scrap.concept_tags || !scrap.extraction_confidence)) {
     console.log(chalk.dim('    Extracting reasoning fields...'));
+    console.log(chalk.gray(`      Summary length: ${(scrap.summary || updates.summary || '').length} chars`));
     try {
       // Create a temporary object to pass to enrichWithReasoningFields
       const tempScrap = {
@@ -312,9 +355,18 @@ async function repairScrapWithAI(scrap, options) {
       if (tempScrap.concept_tags) updates.concept_tags = tempScrap.concept_tags;
       if (tempScrap.extraction_confidence) updates.extraction_confidence = tempScrap.extraction_confidence;
 
-      console.log(chalk.dim(`    ✓ ${tempScrap.content_type}, ${(tempScrap.concept_tags || []).length} concepts`));
+      const conceptCount = (tempScrap.concept_tags || []).length;
+      console.log(chalk.dim(`    ✓ ${tempScrap.content_type}, ${conceptCount} concepts`));
+      if (conceptCount > 0) {
+        console.log(chalk.gray(`      Concepts: ${(tempScrap.concept_tags || []).join(', ')}`));
+      }
     } catch (error) {
-      console.log(chalk.dim(`    ⚠ Reasoning extraction failed: ${error.message}`));
+      console.error(chalk.red(`    ✗ REASONING EXTRACTION FAILED`));
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+      console.error(chalk.red(`      URL: ${scrap.url}`));
+      console.error(chalk.red(`      Has summary: ${!!(scrap.summary || updates.summary)}`));
+      console.error(chalk.red(`      Error: ${error.message}`));
+      console.error(chalk.red(`      Stack: ${error.stack}`));
     }
   }
 
@@ -334,6 +386,7 @@ async function repairScrapWithAI(scrap, options) {
     // For everything else with a URL, generate screenshot
     else if (scrap.url) {
       console.log(chalk.dim('    Generating screenshot...'));
+      console.log(chalk.gray(`      URL: ${scrap.url.substring(0, 80)}`));
       try {
         const screenshot = await browserLimiter.schedule(() =>
           generateScreenshot(scrap.url)
@@ -343,9 +396,17 @@ async function repairScrapWithAI(scrap, options) {
           updates.screenshot_url = screenshot.url;
           const filename = screenshot.url.split('/').pop()?.substring(0, 20) || 'screenshot';
           console.log(chalk.dim(`    ✓ Screenshot: ${filename}`));
+        } else {
+          console.log(chalk.yellow(`    ⚠ Screenshot generation returned no URL`));
+          console.log(chalk.yellow(`      Scrap ID: ${scrapId}`));
+          console.log(chalk.yellow(`      Response: ${JSON.stringify(screenshot)}`));
         }
       } catch (error) {
-        console.log(chalk.dim(`    ⚠ Screenshot generation failed: ${error.message}`));
+        console.error(chalk.red(`    ✗ SCREENSHOT GENERATION FAILED`));
+        console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+        console.error(chalk.red(`      URL: ${scrap.url}`));
+        console.error(chalk.red(`      Error: ${error.message}`));
+        console.error(chalk.red(`      Stack: ${error.stack}`));
       }
     }
   }
@@ -353,6 +414,7 @@ async function repairScrapWithAI(scrap, options) {
   // Update the scrap if we have any updates
   if (Object.keys(updates).length > 0) {
     updates.updated_at = new Date().toISOString();
+    console.log(chalk.gray(`    📝 Updating ${Object.keys(updates).length} fields: ${Object.keys(updates).join(', ')}`));
 
     // Handle financial_analysis column not existing yet
     if (updates.financial_analysis) {
@@ -362,21 +424,49 @@ async function repairScrapWithAI(scrap, options) {
       // For now, skip financial_analysis update to prevent database errors
       const { financial_analysis, ...updatesWithoutFinancial } = updates;
       if (Object.keys(updatesWithoutFinancial).length > 1) { // more than just updated_at
-        const { error } = await supabase
-          .from('scraps')
-          .update(updatesWithoutFinancial)
-          .eq('scrap_id', scrap.scrap_id);
+        try {
+          const { error } = await supabase
+            .from('scraps')
+            .update(updatesWithoutFinancial)
+            .eq('scrap_id', scrap.scrap_id);
 
-        if (error) throw error;
+          if (error) {
+            console.error(chalk.red(`    ✗ DATABASE UPDATE FAILED (without financial_analysis)`));
+            console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+            console.error(chalk.red(`      Fields: ${Object.keys(updatesWithoutFinancial).join(', ')}`));
+            console.error(chalk.red(`      Error: ${JSON.stringify(error)}`));
+            throw error;
+          }
+        } catch (error) {
+          console.error(chalk.red(`    ✗ DATABASE UPDATE EXCEPTION`));
+          console.error(chalk.red(`      Error: ${error.message}`));
+          console.error(chalk.red(`      Stack: ${error.stack}`));
+          throw error;
+        }
       }
     } else {
-      const { error } = await supabase
-        .from('scraps')
-        .update(updates)
-        .eq('scrap_id', scrap.scrap_id);
+      try {
+        const { error } = await supabase
+          .from('scraps')
+          .update(updates)
+          .eq('scrap_id', scrap.scrap_id);
 
-      if (error) throw error;
+        if (error) {
+          console.error(chalk.red(`    ✗ DATABASE UPDATE FAILED`));
+          console.error(chalk.red(`      Scrap ID: ${scrapId}`));
+          console.error(chalk.red(`      Fields: ${Object.keys(updates).join(', ')}`));
+          console.error(chalk.red(`      Error: ${JSON.stringify(error)}`));
+          throw error;
+        }
+      } catch (error) {
+        console.error(chalk.red(`    ✗ DATABASE UPDATE EXCEPTION`));
+        console.error(chalk.red(`      Error: ${error.message}`));
+        console.error(chalk.red(`      Stack: ${error.stack}`));
+        throw error;
+      }
     }
+  } else {
+    console.log(chalk.gray(`    ℹ No updates needed`));
   }
 }
 
