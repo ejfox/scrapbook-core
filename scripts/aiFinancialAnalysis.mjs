@@ -155,55 +155,49 @@ export async function extractFinancialAnalysis(content, options = {}) {
 
   try {
     // Create system prompt for financial analysis
-    const systemPrompt = `You are a financial analysis specialist. Your task is to:
-1. Extract ANY mentions of financial assets (stocks, crypto, ETFs, commodities, forex) from the text
-2. Provide sentiment analysis for each asset's potential market impact
-3. Prioritize these tracked assets: ${Object.keys(TRACKED_ASSETS).join(", ")}
-4. But ALSO identify any other financial assets mentioned, even if not in the tracked list
+    const systemPrompt = `You are a financial analysis specialist. Extract mentions of financial assets (stocks, crypto, ETFs, commodities, forex) and analyze sentiment.
 
-Return results in this JSON format:
+TRACKED ASSETS (prioritize these): ${Object.keys(TRACKED_ASSETS).join(", ")}
+
+CRITICAL: You MUST return ONLY valid JSON with no markdown, no code blocks, no explanations. Just the raw JSON object.
+
+Sentiment scores: -1 (very negative) to +1 (very positive)`;
+
+    const userPrompt = `Analyze for financial assets and sentiment. Return ONLY this exact JSON structure with no markdown formatting:
+
 {
   "tracked_assets": [
     {
       "ticker": "AAPL",
-      "name": "Apple Inc.", 
-      "mentions": ["Apple", "AAPL"],
-      "context": "Brief context of how it was mentioned",
-      "sentiment_score": 0.7,
-      "sentiment_reasoning": "Explanation of sentiment score",
+      "name": "Apple Inc.",
+      "mentions": ["Apple"],
+      "context": "how mentioned",
+      "sentiment_score": 0.5,
+      "sentiment_reasoning": "why",
       "is_tracked": true
     }
   ],
   "discovered_assets": [
     {
-      "ticker": "PLTR", 
-      "name": "Palantir Technologies",
-      "mentions": ["Palantir", "PLTR"],
-      "context": "Brief context of how it was mentioned", 
-      "sentiment_score": -0.3,
-      "sentiment_reasoning": "Explanation of sentiment score",
+      "ticker": "OTHER",
+      "name": "Other Asset",
+      "mentions": ["name"],
+      "context": "how mentioned",
+      "sentiment_score": 0.0,
+      "sentiment_reasoning": "why",
       "is_tracked": false,
       "asset_type": "stock"
     }
   ],
-  "overall_market_sentiment": 0.2,
-  "market_reasoning": "Overall market sentiment explanation"
+  "overall_market_sentiment": 0.0,
+  "market_reasoning": "overall analysis"
 }
 
-Sentiment scores range from -1 (very negative) to +1 (very positive), where:
-- -1.0 to -0.6: Very negative impact expected
-- -0.5 to -0.1: Somewhat negative impact
-- -0.1 to +0.1: Neutral/minimal impact
-- +0.1 to +0.5: Somewhat positive impact
-- +0.6 to +1.0: Very positive impact expected`;
-
-    const userPrompt = `Analyze the following content for financial asset mentions and sentiment:
-
-Content:
+Content to analyze:
 ${content}
-${url ? `\nSource URL: ${url}` : ""}
+${url ? `\nURL: ${url}` : ""}
 
-Remember to only include assets from the provided whitelist and provide detailed reasoning for sentiment scores.`;
+Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -212,8 +206,8 @@ Remember to only include assets from the provided whitelist and provide detailed
 
     const response = await completion({
       messages,
-      temperature: 0.2, // Lower temperature for more consistent financial analysis
-      maxTokens: 1500,
+      temperature: 0.2,
+      maxTokens: 4000,
       model: getModelForTask('contentAnalysis'),
     });
 
@@ -221,16 +215,49 @@ Remember to only include assets from the provided whitelist and provide detailed
       return { assets: [], tracked_assets: [], discovered_assets: [], overall_market_sentiment: 0, market_reasoning: "No LLM response" };
     }
 
-    // Try to parse JSON response
+    // Try to parse JSON response with improved extraction
     let analysisResult;
     try {
-      // Extract JSON from response if it's wrapped in other text
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : response;
+      let jsonStr = response.trim();
+
+      // Remove markdown code blocks if present
+      if (jsonStr.startsWith('```')) {
+        // Extract content between ```json and ``` or just ``` and ```
+        const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+        if (codeBlockMatch) {
+          jsonStr = codeBlockMatch[1].trim();
+        }
+      }
+
+      // If still not starting with {, try to extract JSON object
+      if (!jsonStr.startsWith('{')) {
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+        jsonStr = jsonMatch ? jsonMatch[0] : jsonStr;
+      }
+
+      // Validate JSON is complete (ends with })
+      if (!jsonStr.endsWith('}')) {
+        console.warn("Financial analysis JSON appears truncated (doesn't end with })");
+        // Try to find the last complete closing brace
+        const lastBrace = jsonStr.lastIndexOf('}');
+        if (lastBrace > 0) {
+          jsonStr = jsonStr.substring(0, lastBrace + 1);
+        } else {
+          throw new Error("JSON is incomplete and cannot be recovered");
+        }
+      }
+
       analysisResult = JSON.parse(jsonStr);
     } catch (parseError) {
       console.warn("Failed to parse financial analysis JSON:", parseError.message);
-      return { assets: [], tracked_assets: [], discovered_assets: [], overall_market_sentiment: 0, market_reasoning: "JSON parsing failed" };
+      console.warn("Response preview:", response.substring(0, 200));
+      return {
+        assets: [],
+        tracked_assets: [],
+        discovered_assets: [],
+        overall_market_sentiment: 0,
+        market_reasoning: `JSON parsing failed: ${parseError.message}`
+      };
     }
 
     // Process tracked assets (validate against whitelist)
