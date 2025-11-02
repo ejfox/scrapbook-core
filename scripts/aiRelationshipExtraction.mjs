@@ -5,21 +5,18 @@ import { getModelForTask } from "../lib/config.mjs";
 function validateRelationship(rel) {
   return rel &&
     typeof rel === 'object' &&
-    rel.source &&
-    typeof rel.source === 'object' &&
-    typeof rel.source.type === 'string' &&
-    typeof rel.source.name === 'string' &&
-    rel.target &&
-    typeof rel.target === 'object' &&
-    typeof rel.target.type === 'string' &&
-    typeof rel.target.name === 'string' &&
-    typeof rel.type === 'string';
+    typeof rel.source === 'string' &&
+    rel.source.length > 0 &&
+    typeof rel.target === 'string' &&
+    rel.target.length > 0 &&
+    typeof rel.relationship === 'string' &&
+    rel.relationship.length > 0;
 }
 
 export async function extractRelationships(content, options = {}) {
   if (!content) return [];
 
-  const { url, isRawText = false } = options;
+  const { url, isRawText = false, model = null } = options;
 
   try {
     // Create properly formatted messages array
@@ -61,7 +58,7 @@ ${url ? `\nURL: ${url}` : ""}`,
       messages,
       temperature: 0.3,
       maxTokens: 1000,
-      model: getModelForTask('contentAnalysis'),
+      model: model || getModelForTask('relationshipAnalysis'),
     });
 
     if (!response) {
@@ -193,16 +190,11 @@ ${url ? `\nURL: ${url}` : ""}`,
           return 'Entity';
         };
 
+        // Return flat structure for database compatibility
         return {
-          source: {
-            type: sourceParsed.type || detectEntityType(sourceParsed.name),
-            name: sourceParsed.name
-          },
-          target: {
-            type: targetParsed.type || detectEntityType(targetParsed.name),
-            name: targetParsed.name
-          },
-          type: relationship.trim()
+          source: sourceParsed.name,
+          target: targetParsed.name,
+          relationship: relationship.trim()
         };
       })
       .filter(Boolean);

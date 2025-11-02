@@ -1,0 +1,636 @@
+/*
+ * SCRAPBOOK DASHBOARD CSS SYSTEM
+ * Swiss Brutalist Design System for Realtime Data
+ * 
+ * Philosophy: Function over form. Every pixel serves a purpose.
+ * Grid: 8px baseline for vertical rhythm (4px for fine adjustments)
+ * Typography: Monospace only. Hierarchy through size and weight.
+ * Color: High contrast. Color means something, not decoration.
+ */
+
+/* ============================================================================
+   DESIGN TOKENS
+   ============================================================================ */
+
+:root {
+  /* Vertical Rhythm - 8px baseline grid */
+  --grid-base: 8px;
+  --grid-half: 4px;
+  
+  /* Spacing Scale (all multiples of base grid) */
+  --space-xs: 4px;   /* 0.5 × base */
+  --space-sm: 8px;   /* 1 × base */
+  --space-md: 16px;  /* 2 × base */
+  --space-lg: 24px;  /* 3 × base */
+  --space-xl: 32px;  /* 4 × base */
+  --space-2xl: 48px; /* 6 × base */
+  
+  /* Typography Scale (sized to maintain 8px rhythm) */
+  --font-xs: 12px;   /* line-height: 16px (2 × base) */
+  --font-sm: 14px;   /* line-height: 24px (3 × base) */
+  --font-base: 16px; /* line-height: 24px (3 × base) */
+  --font-lg: 20px;   /* line-height: 32px (4 × base) */
+  --font-xl: 24px;   /* line-height: 32px (4 × base) */
+  --font-2xl: 32px;  /* line-height: 40px (5 × base) */
+  
+  /* Font Families */
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', 'Cascadia Code', 
+               'Consolas', 'Courier New', monospace;
+  
+  /* Color System - High Contrast Brutalist */
+  --color-bg: #000000;
+  --color-fg: #ffffff;
+  --color-bg-alt: #0a0a0a;
+  --color-border: #333333;
+  --color-border-heavy: #666666;
+  
+  /* Grayscale Hierarchy */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cccccc;
+  --color-text-tertiary: #999999;
+  --color-text-muted: #666666;
+  
+  /* Semantic Colors (Terminal Inspired) */
+  --color-success: #00ff41;
+  --color-error: #ff0040;
+  --color-warning: #ffff00;
+  --color-info: #00d9ff;
+  --color-active: #00ff41;
+  
+  /* Status Backgrounds (muted versions) */
+  --color-success-bg: rgba(0, 255, 65, 0.1);
+  --color-error-bg: rgba(255, 0, 64, 0.1);
+  --color-warning-bg: rgba(255, 255, 0, 0.1);
+  --color-info-bg: rgba(0, 217, 255, 0.1);
+  
+  /* Animation Timing */
+  --duration-instant: 100ms;
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  
+  /* Grid Layout */
+  --grid-gap: var(--space-md);
+  --grid-min-width: 240px;
+  --grid-max-width: 400px;
+}
+
+/* ============================================================================
+   RESET & BASE STYLES
+   ============================================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  /* Enforce 8px baseline grid */
+  font-size: 16px;
+  line-height: 24px; /* 3 × 8px */
+}
+
+body {
+  font-family: var(--font-mono);
+  font-size: var(--font-base);
+  line-height: 24px;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================================
+   TYPOGRAPHY SYSTEM
+   ============================================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: var(--font-2xl);
+  line-height: 40px; /* 5 × 8px */
+  margin-bottom: var(--space-lg);
+}
+
+h2 {
+  font-size: var(--font-xl);
+  line-height: 32px; /* 4 × 8px */
+  margin-bottom: var(--space-md);
+}
+
+h3 {
+  font-size: var(--font-lg);
+  line-height: 32px; /* 4 × 8px */
+  margin-bottom: var(--space-md);
+}
+
+h4 {
+  font-size: var(--font-base);
+  line-height: 24px; /* 3 × 8px */
+  margin-bottom: var(--space-sm);
+}
+
+.text-xs {
+  font-size: var(--font-xs);
+  line-height: 16px; /* 2 × 8px */
+}
+
+.text-sm {
+  font-size: var(--font-sm);
+  line-height: 24px; /* 3 × 8px */
+}
+
+.text-base {
+  font-size: var(--font-base);
+  line-height: 24px; /* 3 × 8px */
+}
+
+.text-lg {
+  font-size: var(--font-lg);
+  line-height: 32px; /* 4 × 8px */
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================================
+   LAYOUT SYSTEM
+   ============================================================================ */
+
+.dashboard {
+  min-height: 100vh;
+  padding: var(--space-xl);
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  margin-bottom: var(--space-2xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.dashboard-title {
+  font-size: var(--font-2xl);
+  line-height: 40px;
+  margin-bottom: var(--space-xs);
+}
+
+.dashboard-subtitle {
+  font-size: var(--font-sm);
+  line-height: 24px;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================================
+   DATA GRID SYSTEM
+   ============================================================================ */
+
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--grid-min-width), 1fr));
+  gap: var(--grid-gap);
+  max-width: 100%;
+}
+
+/* Compact grid for dense data */
+.data-grid--compact {
+  --grid-min-width: 180px;
+  --grid-gap: var(--space-sm);
+}
+
+/* Spacious grid for important metrics */
+.data-grid--spacious {
+  --grid-min-width: 320px;
+  --grid-gap: var(--space-lg);
+}
+
+/* Fixed columns for consistent layout */
+.data-grid--2col {
+  grid-template-columns: repeat(auto-fit, minmax(calc(50% - var(--grid-gap)/2), 1fr));
+}
+
+.data-grid--3col {
+  grid-template-columns: repeat(auto-fit, minmax(calc(33.333% - var(--grid-gap)/2), 1fr));
+}
+
+.data-grid--4col {
+  grid-template-columns: repeat(auto-fit, minmax(calc(25% - var(--grid-gap)/2), 1fr));
+}
+
+/* ============================================================================
+   DATA FIELD COMPONENTS
+   ============================================================================ */
+
+.data-field {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  padding: var(--space-md);
+  transition: border-color var(--duration-fast) var(--ease-out);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.data-field:hover {
+  border-color: var(--color-border-heavy);
+}
+
+/* Field Label */
+.data-field__label {
+  font-size: var(--font-xs);
+  line-height: 16px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* Field Value */
+.data-field__value {
+  font-size: var(--font-lg);
+  line-height: 32px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Smaller value variant */
+.data-field__value--small {
+  font-size: var(--font-base);
+  line-height: 24px;
+}
+
+/* Field Meta (timestamps, etc) */
+.data-field__meta {
+  font-size: var(--font-xs);
+  line-height: 16px;
+  color: var(--color-text-tertiary);
+  margin-top: auto;
+  padding-top: var(--space-xs);
+}
+
+/* Status Indicator Dot */
+.data-field__status {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+/* ============================================================================
+   UPDATE ANIMATIONS
+   ============================================================================ */
+
+/* Flash animation for value updates */
+@keyframes data-flash {
+  0% {
+    background: var(--color-bg-alt);
+  }
+  50% {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  100% {
+    background: var(--color-bg-alt);
+  }
+}
+
+.data-field--updated {
+  animation: data-flash var(--duration-fast) var(--ease-out);
+}
+
+.data-field__value--updated {
+  animation: data-flash var(--duration-fast) var(--ease-out);
+}
+
+/* Pulse animation for critical status */
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+.data-field__status--pulse {
+  animation: status-pulse 2s var(--ease-in-out) infinite;
+}
+
+/* Shimmer loading animation */
+@keyframes data-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.data-field--loading .data-field__value {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-alt) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    var(--color-bg-alt) 100%
+  );
+  background-size: 400px 100%;
+  animation: data-shimmer 1.5s ease-in-out infinite;
+  color: transparent;
+}
+
+/* ============================================================================
+   STATUS VARIANTS
+   ============================================================================ */
+
+.data-field--success {
+  border-color: var(--color-success);
+}
+
+.data-field--success .data-field__status {
+  background: var(--color-success);
+}
+
+.data-field--error {
+  border-color: var(--color-error);
+}
+
+.data-field--error .data-field__status {
+  background: var(--color-error);
+  animation: status-pulse 1s var(--ease-in-out) infinite;
+}
+
+.data-field--warning {
+  border-color: var(--color-warning);
+}
+
+.data-field--warning .data-field__status {
+  background: var(--color-warning);
+}
+
+.data-field--info {
+  border-color: var(--color-info);
+}
+
+.data-field--info .data-field__status {
+  background: var(--color-info);
+}
+
+/* Subtle background variants */
+.data-field--success-bg {
+  background: var(--color-success-bg);
+}
+
+.data-field--error-bg {
+  background: var(--color-error-bg);
+}
+
+.data-field--warning-bg {
+  background: var(--color-warning-bg);
+}
+
+/* ============================================================================
+   SPECIAL DATA FIELD TYPES
+   ============================================================================ */
+
+/* Percentage/Progress Field */
+.data-field--progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.data-field__progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--color-success);
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+/* Metric with Trend Indicator */
+.data-field__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-sm);
+  margin-top: var(--space-xs);
+}
+
+.data-field__trend--up {
+  color: var(--color-success);
+}
+
+.data-field__trend--down {
+  color: var(--color-error);
+}
+
+.data-field__trend--neutral {
+  color: var(--color-text-tertiary);
+}
+
+/* List Data Field */
+.data-field__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.data-field__list-item {
+  font-size: var(--font-sm);
+  line-height: 24px;
+  color: var(--color-text-secondary);
+  padding-left: var(--space-md);
+  position: relative;
+}
+
+.data-field__list-item::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  color: var(--color-text-muted);
+}
+
+/* ============================================================================
+   SECTION GROUPING
+   ============================================================================ */
+
+.data-section {
+  margin-bottom: var(--space-2xl);
+}
+
+.data-section__header {
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.data-section__title {
+  font-size: var(--font-lg);
+  line-height: 32px;
+  font-weight: 600;
+}
+
+.data-section__meta {
+  font-size: var(--font-xs);
+  line-height: 16px;
+  color: var(--color-text-muted);
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+/* Spacing */
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mb-lg { margin-bottom: var(--space-lg); }
+.mb-xl { margin-bottom: var(--space-xl); }
+
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); }
+.mt-xl { margin-top: var(--space-xl); }
+
+.p-sm { padding: var(--space-sm); }
+.p-md { padding: var(--space-md); }
+.p-lg { padding: var(--space-lg); }
+
+/* Text Alignment */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* Font Weight */
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Borders */
+.border { border: 1px solid var(--color-border); }
+.border-heavy { border: 2px solid var(--color-border-heavy); }
+.border-success { border-color: var(--color-success); }
+.border-error { border-color: var(--color-error); }
+
+/* Display */
+.block { display: block; }
+.inline-block { display: inline-block; }
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+
+/* Flexbox */
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 1280px) {
+  :root {
+    --grid-min-width: 200px;
+  }
+  
+  .dashboard {
+    padding: var(--space-lg);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --grid-min-width: 100%;
+    --grid-gap: var(--space-sm);
+  }
+  
+  .dashboard {
+    padding: var(--space-md);
+  }
+  
+  .data-grid--2col,
+  .data-grid--3col,
+  .data-grid--4col {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-title {
+    font-size: var(--font-xl);
+    line-height: 32px;
+  }
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .data-field {
+    border: 1px solid #000;
+    break-inside: avoid;
+  }
+  
+  .data-field__status {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   DARK MODE OVERRIDES (for future light mode support)
+   ============================================================================ */
+
+@media (prefers-color-scheme: light) {
+  /* Currently enforcing dark mode only */
+  /* Uncomment to enable light mode:
+  :root {
+    --color-bg: #ffffff;
+    --color-fg: #000000;
+    --color-bg-alt: #f5f5f5;
+    --color-border: #e0e0e0;
+    --color-border-heavy: #999999;
+    --color-text-primary: #000000;
+    --color-text-secondary: #333333;
+    --color-text-tertiary: #666666;
+    --color-text-muted: #999999;
+  }
+  */
+}

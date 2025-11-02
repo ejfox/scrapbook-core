@@ -237,7 +237,7 @@ export async function generateScreenshot(url) {
     });
 
     const page = await browser.newPage();
-    await page.setViewport({ width: 1200, height: 800 });
+    await page.setViewport({ width: 1080, height: 1920 });
 
     // Set a reasonable timeout
     await page.setDefaultNavigationTimeout(30000);

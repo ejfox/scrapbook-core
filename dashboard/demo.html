@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrapbook Dashboard - Data Monitor</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    /* Demo-specific styles for interactive examples */
+    .demo-controls {
+      margin-bottom: var(--space-xl);
+      padding: var(--space-md);
+      border: 1px solid var(--color-border);
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+    }
+    
+    .demo-button {
+      background: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-primary);
+      padding: var(--space-sm) var(--space-md);
+      font-family: var(--font-mono);
+      font-size: var(--font-sm);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    
+    .demo-button:hover {
+      border-color: var(--color-success);
+      color: var(--color-success);
+    }
+    
+    .demo-button:active {
+      background: var(--color-success);
+      color: var(--color-bg);
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+      <h1 class="dashboard-title">SCRAPBOOK CORE / MONITOR</h1>
+      <div class="dashboard-subtitle">
+        Realtime data processing and archive status
+        <span class="text-muted"> • Last updated: <span id="last-update">--:--:--</span></span>
+      </div>
+    </header>
+
+    <!-- Interactive Demo Controls -->
+    <div class="demo-controls">
+      <button class="demo-button" onclick="simulateUpdate()">Simulate Data Update</button>
+      <button class="demo-button" onclick="simulateError()">Trigger Error State</button>
+      <button class="demo-button" onclick="simulateLoading()">Show Loading State</button>
+      <button class="demo-button" onclick="resetDemo()">Reset Demo</button>
+    </div>
+
+    <!-- Critical Metrics Section -->
+    <section class="data-section">
+      <div class="data-section__header">
+        <h2 class="data-section__title">CRITICAL METRICS</h2>
+        <div class="data-section__meta">Updated every 30s</div>
+      </div>
+      
+      <div class="data-grid data-grid--4col">
+        
+        <div class="data-field data-field--success" id="total-scraps">
+          <span class="data-field__status"></span>
+          <div class="data-field__label">Total Scraps</div>
+          <div class="data-field__value">9,485</div>
+          <div class="data-field__meta">+23 today</div>
+        </div>
+
+        <div class="data-field data-field--warning" id="processing-queue">
+          <span class="data-field__status data-field__status--pulse"></span>
+          <div class="data-field__label">Processing Queue</div>
+          <div class="data-field__value">127</div>
+          <div class="data-field__meta">3 active workers</div>
+        </div>
+
+        <div class="data-field data-field--error" id="failed-jobs">
+          <span class="data-field__status data-field__status--pulse"></span>
+          <div class="data-field__label">Failed Jobs</div>
+          <div class="data-field__value">3</div>
+          <div class="data-field__meta">Requires attention</div>
+        </div>
+
+        <div class="data-field data-field--info" id="api-cost">
+          <span class="data-field__status"></span>
+          <div class="data-field__label">API Cost Today</div>
+          <div class="data-field__value">$2.43</div>
+          <div class="data-field__meta">$13.46 lifetime</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Archive Completeness Section -->
+    <section class="data-section">
+      <div class="data-section__header">
+        <h2 class="data-section__title">ARCHIVE COMPLETENESS</h2>
+        <div class="data-section__meta">Overall health: 16.7%</div>
+      </div>
+      
+      <div class="data-grid data-grid--3col">
+        
+        <div class="data-field data-field--progress data-field--success-bg">
+          <div class="data-field__label">Content</div>
+          <div class="data-field__value">100%</div>
+          <div class="data-field__meta">9,485 / 9,485</div>
+          <div class="data-field__progress-bar" style="width: 100%;"></div>
+        </div>
+
+        <div class="data-field data-field--progress data-field--error-bg">
+          <div class="data-field__label">AI Summaries</div>
+          <div class="data-field__value">0%</div>
+          <div class="data-field__meta">0 / 9,485</div>
+          <div class="data-field__progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <div class="data-field data-field--progress data-field--error-bg">
+          <div class="data-field__label">AI Tags</div>
+          <div class="data-field__value">0%</div>
+          <div class="data-field__meta">0 / 9,485</div>
+          <div class="data-field__progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <div class="data-field data-field--progress data-field--warning-bg">
+          <div class="data-field__label">Relationships</div>
+          <div class="data-field__value">5.9%</div>
+          <div class="data-field__meta">561 / 9,485</div>
+          <div class="data-field__progress-bar" style="width: 5.9%;"></div>
+        </div>
+
+        <div class="data-field data-field--progress data-field--warning-bg">
+          <div class="data-field__label">Screenshots</div>
+          <div class="data-field__value">8.2%</div>
+          <div class="data-field__meta">779 / 9,485</div>
+          <div class="data-field__progress-bar" style="width: 8.2%;"></div>
+        </div>
+
+        <div class="data-field data-field--progress data-field--warning-bg">
+          <div class="data-field__label">Location Data</div>
+          <div class="data-field__value">2.6%</div>
+          <div class="data-field__meta">247 / 9,485</div>
+          <div class="data-field__progress-bar" style="width: 2.6%;"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Processing Performance Section -->
+    <section class="data-section">
+      <div class="data-section__header">
+        <h2 class="data-section__title">PROCESSING PERFORMANCE</h2>
+        <div class="data-section__meta">Real-time metrics</div>
+      </div>
+      
+      <div class="data-grid data-grid--4col">
+        
+        <div class="data-field">
+          <div class="data-field__label">Items / Hour</div>
+          <div class="data-field__value">142</div>
+          <div class="data-field__trend data-field__trend--up">
+            ▲ 12% from avg
+          </div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Avg Processing Time</div>
+          <div class="data-field__value">2.3s</div>
+          <div class="data-field__trend data-field__trend--down">
+            ▼ 0.4s faster
+          </div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Success Rate</div>
+          <div class="data-field__value">97.8%</div>
+          <div class="data-field__trend data-field__trend--neutral">
+            — stable
+          </div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Retry Rate</div>
+          <div class="data-field__value">2.1%</div>
+          <div class="data-field__trend data-field__trend--neutral">
+            — stable
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Source Breakdown Section -->
+    <section class="data-section">
+      <div class="data-section__header">
+        <h2 class="data-section__title">SOURCE BREAKDOWN</h2>
+        <div class="data-section__meta">Last 24 hours</div>
+      </div>
+      
+      <div class="data-grid data-grid--compact">
+        
+        <div class="data-field">
+          <div class="data-field__label">GitHub</div>
+          <div class="data-field__value data-field__value--small">1,247</div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Arena</div>
+          <div class="data-field__value data-field__value--small">892</div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Pinboard</div>
+          <div class="data-field__value data-field__value--small">643</div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Mastodon</div>
+          <div class="data-field__value data-field__value--small">421</div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Manual</div>
+          <div class="data-field__value data-field__value--small">89</div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">Other</div>
+          <div class="data-field__value data-field__value--small">34</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Recent Activity Section -->
+    <section class="data-section">
+      <div class="data-section__header">
+        <h2 class="data-section__title">RECENT ACTIVITY</h2>
+        <div class="data-section__meta">Last 10 operations</div>
+      </div>
+      
+      <div class="data-grid data-grid--2col">
+        
+        <div class="data-field">
+          <div class="data-field__label">Latest Processing Job</div>
+          <div class="data-field__value data-field__value--small">AI Extraction Batch #4821</div>
+          <div class="data-field__list">
+            <div class="data-field__list-item">Processed 47 items</div>
+            <div class="data-field__list-item">Duration: 2m 14s</div>
+            <div class="data-field__list-item">Cost: $0.23</div>
+          </div>
+          <div class="data-field__meta">Completed 3 minutes ago</div>
+        </div>
+
+        <div class="data-field">
+          <div class="data-field__label">System Status</div>
+          <div class="data-field__value data-field__value--small">All Systems Operational</div>
+          <div class="data-field__list">
+            <div class="data-field__list-item">Database: Connected</div>
+            <div class="data-field__list-item">OpenRouter API: Active</div>
+            <div class="data-field__list-item">Supabase: Synced</div>
+          </div>
+          <div class="data-field__meta">Last checked 12s ago</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Error Log Section -->
+    <section class="data-section">
+      <div class="data-section__header">
+        <h2 class="data-section__title">ERROR LOG</h2>
+        <div class="data-section__meta">Recent failures requiring attention</div>
+      </div>
+      
+      <div class="data-grid data-grid--2col">
+        
+        <div class="data-field data-field--error-bg">
+          <div class="data-field__label">Rate Limit Exceeded</div>
+          <div class="data-field__value data-field__value--small">OpenRouter API</div>
+          <div class="data-field__meta">2 hours ago • Retry scheduled</div>
+        </div>
+
+        <div class="data-field data-field--warning-bg">
+          <div class="data-field__label">Timeout</div>
+          <div class="data-field__value data-field__value--small">Screenshot generation</div>
+          <div class="data-field__meta">4 hours ago • Retried successfully</div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Demo JavaScript -->
+  <script>
+    // Update timestamp
+    function updateTimestamp() {
+      const now = new Date();
+      const timestamp = now.toLocaleTimeString('en-US', { hour12: false });
+      document.getElementById('last-update').textContent = timestamp;
+    }
+    
+    updateTimestamp();
+    setInterval(updateTimestamp, 1000);
+
+    // Simulate data update animation
+    function simulateUpdate() {
+      const field = document.getElementById('total-scraps');
+      const value = field.querySelector('.data-field__value');
+      const currentValue = parseInt(value.textContent.replace(',', ''));
+      
+      field.classList.add('data-field--updated');
+      value.textContent = (currentValue + Math.floor(Math.random() * 10)).toLocaleString();
+      
+      setTimeout(() => {
+        field.classList.remove('data-field--updated');
+      }, 200);
+    }
+
+    // Simulate error state
+    function simulateError() {
+      const field = document.getElementById('failed-jobs');
+      const value = field.querySelector('.data-field__value');
+      const currentValue = parseInt(value.textContent);
+      
+      field.classList.add('data-field--error');
+      value.textContent = currentValue + 1;
+      
+      // Flash the field
+      field.classList.add('data-field--updated');
+      setTimeout(() => {
+        field.classList.remove('data-field--updated');
+      }, 200);
+    }
+
+    // Simulate loading state
+    function simulateLoading() {
+      const field = document.getElementById('processing-queue');
+      field.classList.add('data-field--loading');
+      
+      setTimeout(() => {
+        field.classList.remove('data-field--loading');
+        const value = field.querySelector('.data-field__value');
+        value.textContent = Math.floor(Math.random() * 200);
+      }, 2000);
+    }
+
+    // Reset demo to initial state
+    function resetDemo() {
+      location.reload();
+    }
+
+    // Simulate random updates every 5 seconds
+    setInterval(() => {
+      if (Math.random() > 0.5) {
+        simulateUpdate();
+      }
+    }, 5000);
+  </script>
+
+</body>
+</html>
