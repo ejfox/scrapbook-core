@@ -37,15 +37,6 @@
         <div v-if="stats.insertsReceived > 0">
           INS: {{ stats.insertsReceived }} | UPD: {{ stats.updatesReceived }}
         </div>
-
-        <!-- Theme toggle -->
-        <button
-          @click="toggleDark()"
-          class="px-2 py-1 hover:underline"
-          title="Toggle theme"
-        >
-          {{ isDark ? '☀' : '☾' }}
-        </button>
       </div>
     </header>
 
@@ -58,14 +49,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useDark, useToggle } from '@vueuse/core'
 import CurrentScrap from './components/CurrentScrap.vue'
 import { useRealtimeScraps } from './composables/useRealtimeScraps'
 import { createClient } from '@supabase/supabase-js'
-
-// Dark mode
-const isDark = useDark()
-const toggleDark = useToggle(isDark)
 
 // Scraps list and current index
 const scraps = ref([])

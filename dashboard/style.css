@@ -16,6 +16,8 @@
   background: black;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: white;
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    background: white;
+  }
 }
