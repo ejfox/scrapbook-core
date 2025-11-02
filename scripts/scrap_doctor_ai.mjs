@@ -164,6 +164,9 @@ async function repairScrapWithAI(scrap, options) {
 
   // Generate summary if missing
   if (shouldProcessType('summary') && (!scrap.summary || scrap.summary.trim() === '')) {
+    if (!content || content.length < 50) {
+      console.log(chalk.dim('    ⏭️  Skipping summary (insufficient content)'));
+    } else {
     console.log(chalk.dim('    Generating AI summary...'));
     console.log(chalk.gray(`      Input: ${content.length} chars, URL: ${scrap.url}`));
     try {
@@ -193,11 +196,15 @@ async function repairScrapWithAI(scrap, options) {
       console.error(chalk.red(`      Stack: ${error.stack}`));
       throw error; // Re-throw to stop repair
     }
+    } // Close else block for summary content check
   }
 
   // Generate tags if missing or bad (only has 'pinboard')
   const hasBadTags = scrap.tags && scrap.tags.length === 1 && scrap.tags[0] === 'pinboard';
   if (shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags)) {
+    if (!content || content.length < 50) {
+      console.log(chalk.dim('    ⏭️  Skipping tags (insufficient content)'));
+    } else {
     console.log(chalk.dim('    Generating AI tags...'));
     console.log(chalk.gray(`      Input: ${content.length} chars`));
     try {
@@ -218,12 +225,17 @@ async function repairScrapWithAI(scrap, options) {
       console.error(chalk.red(`      Error: ${error.message}`));
       console.error(chalk.red(`      Stack: ${error.stack}`));
     }
+    } // Close else block for tags content check
   }
 
   // Extract relationships if missing
   if (shouldProcessType('relationships') && (!scrap.relationships || scrap.relationships.length === 0)) {
-    console.log(chalk.dim('    Extracting relationships...'));
-    console.log(chalk.gray(`      Input: ${content.length} chars`));
+    // Skip if no content
+    if (!content || content.length < 50) {
+      console.log(chalk.dim('    ⏭️  Skipping relationships (insufficient content)'));
+    } else {
+      console.log(chalk.dim('    Extracting relationships...'));
+      console.log(chalk.gray(`      Input: ${content.length} chars`));
 
     // Try 3 different models for relationship extraction
     const models = [
@@ -272,13 +284,17 @@ async function repairScrapWithAI(scrap, options) {
       console.error(chalk.red(`      Content length: ${content.length}`));
       console.error(chalk.red(`      Models tried: ${models.join(', ')}`));
     }
+    } // Close else block for content check
   }
 
   // Extract locations if missing
   if (shouldProcessType('location') && !scrap.location) {
+    if (!content || content.length < 50) {
+      console.log(chalk.dim('    ⏭️  Skipping location (insufficient content)'));
+    } else {
     console.log(chalk.dim('    Extracting locations...'));
     console.log(chalk.gray(`      Input: ${content.length} chars`));
-    try {
+    try{
       const locationData = await extractLocation(content, {
         scrapId,
         url: scrap.url,
@@ -299,10 +315,14 @@ async function repairScrapWithAI(scrap, options) {
       console.error(chalk.red(`      Error: ${error.message}`));
       console.error(chalk.red(`      Stack: ${error.stack}`));
     }
+    } // Close else block for location content check
   }
 
   // Extract financial analysis if missing
   if (shouldProcessType('financial') && (!scrap.financial_analysis || typeof scrap.financial_analysis === 'undefined')) {
+    if (!content || content.length < 50) {
+      console.log(chalk.dim('    ⏭️  Skipping financial analysis (insufficient content)'));
+    } else {
     console.log(chalk.dim('    Extracting financial analysis...'));
     console.log(chalk.gray(`      Input: ${content.length} chars`));
     try {
@@ -333,9 +353,11 @@ async function repairScrapWithAI(scrap, options) {
       console.error(chalk.red(`      Error: ${error.message}`));
       console.error(chalk.red(`      Stack: ${error.stack}`));
     }
+    } // Close else block for financial content check
   }
 
   // Extract reasoning fields if missing (content_type, concept_tags, extraction_confidence)
+  // Note: reasoning fields require summary, so they implicitly require content
   if (shouldProcessType('reasoning') &&
       scrap.summary &&
       (!scrap.content_type || !scrap.concept_tags || !scrap.extraction_confidence)) {
