@@ -48,6 +48,7 @@ import { processImagesForScrap, getImageDescription } from './imageDescriptions.
 import readline from 'readline'
 import cron from 'node-cron'
 import { run_terminal_cmd } from './utils.mjs'
+import { syncTags as syncTagsToPinboard } from './sync_tags_to_pinboard.mjs'
 
 // Load environment variables from .env file
 const envPath = path.resolve(process.cwd(), '.env')
@@ -2600,6 +2601,34 @@ async function runProcessing() {
       const icon = alert.severity === 'critical' ? '🚨' : '⚠️'
       logger.warn(chalk.yellow(`   ${icon} ${alert.message}`))
     })
+  }
+
+  // Sync tags back to Pinboard if Pinboard was processed
+  if (options.all || options.pinboard) {
+    logger.info(chalk.blue('\n🔄 Syncing AI tags back to Pinboard...'))
+    try {
+      // Get count of recently processed Pinboard scraps
+      const { count: recentCount } = await supabase
+        .from('scraps')
+        .select('*', { count: 'exact', head: true })
+        .eq('source', 'pinboard')
+        .not('tags', 'is', null)
+        .gte('updated_at', new Date(Date.now() - 3600000).toISOString()) // Last hour
+
+      if (recentCount && recentCount > 0) {
+        await syncTagsToPinboard({
+          limit: Math.min(recentCount, 50), // Sync up to 50 recent scraps
+          dryRun: false,
+          source: 'pinboard',
+          reverse: false, // Start with newest
+        })
+        logger.info(chalk.green(`✅ Synced ${recentCount} Pinboard tags`))
+      } else {
+        logger.info(chalk.gray('No recent Pinboard scraps to sync'))
+      }
+    } catch (error) {
+      logger.error(chalk.red(`❌ Pinboard sync failed: ${error.message}`))
+    }
   }
 
   // Print final safety status
