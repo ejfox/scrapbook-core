@@ -3,9 +3,17 @@
     <!-- Live activity ticker -->
     <div class="h-3 overflow-hidden bg-black dark:bg-white text-white dark:text-black text-[10px] leading-3 flex items-center">
       <div class="ticker-content whitespace-nowrap">
-        <span v-for="(activity, i) in activityFeed" :key="i" class="inline-block px-8">
-          {{ activity }}
-        </span>
+        <template v-if="activityFeed.length > 0">
+          <span v-for="(activity, i) in activityFeed" :key="i" class="inline-block px-6">
+            {{ activity }}
+          </span>
+        </template>
+        <template v-else>
+          <span class="inline-block px-2 opacity-50">WAITING FOR ACTIVITY</span>
+          <span class="inline-block px-6 opacity-30">• NO UPDATES YET</span>
+          <span class="inline-block px-6 opacity-30">• MONITORING REALTIME FEED</span>
+          <span class="inline-block px-6 opacity-30">• READY FOR DATA</span>
+        </template>
       </div>
     </div>
 
