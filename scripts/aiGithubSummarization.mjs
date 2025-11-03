@@ -1,4 +1,4 @@
-import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs';
+import { completion, MODELS, PROMPTS, loadCoreTags } from "./llmService.mjs";
 import Bottleneck from "bottleneck";
 
 const DEBUG = process.env.DEBUG === "true";
@@ -9,7 +9,7 @@ function log(...args) {
 // Rate limiting
 const limiter = new Bottleneck({
   maxConcurrent: 1,
-  minTime: 1000
+  minTime: 1000,
 });
 
 // GitHub-specific prompts
@@ -25,13 +25,13 @@ Keep it casual and direct - no need for formal sections or headers.`,
   TAGS: async (content) => {
     const coreTags = await loadCoreTags();
     return `You are tagging GitHub activity. Choose 2-4 most relevant tags from this list:
-${coreTags.join('\n')}
+${coreTags.join("\n")}
 
 Content to tag:
 ${content}
 
 Return only valid tags from the list above, one per line, no explanations.`;
-  }
+  },
 };
 
 export async function summarizeGitHubActivity(activity, options = {}) {
@@ -43,7 +43,7 @@ export async function summarizeGitHubActivity(activity, options = {}) {
   try {
     log("🔍 Formatting GitHub activity for summary...");
     const content = formatGitHubActivityForSummary(activity);
-    
+
     if (!content) {
       log("❌ No content after formatting");
       return null;
@@ -53,13 +53,13 @@ export async function summarizeGitHubActivity(activity, options = {}) {
     log(content.substring(0, 100) + "...");
 
     const summary = await limiter.schedule(() =>
-      summarizeGitHubString(content)
+      summarizeGitHubString(content),
     );
 
     if (options.metaSummary) {
       log("📊 Generating meta summary...");
       return await limiter.schedule(() =>
-        summarizeGitHubString(summary, { meta: true })
+        summarizeGitHubString(summary, { meta: true }),
       );
     }
 
@@ -76,11 +76,11 @@ function formatGitHubActivityForSummary(activity) {
     let formattedContent = "";
     formattedContent += `Type: ${activity.type}\n`;
     formattedContent += `Name: ${activity.name}\n`;
-    formattedContent += `Description: ${activity.description || 'No description'}\n`;
-    formattedContent += `Language: ${activity.language || 'Not specified'}\n`;
+    formattedContent += `Description: ${activity.description || "No description"}\n`;
+    formattedContent += `Language: ${activity.language || "Not specified"}\n`;
     formattedContent += `Stars: ${activity.stargazers_count || 0}\n`;
-    formattedContent += `Topics: ${activity.topics?.join(', ') || 'None'}\n`;
-    formattedContent += `Author: ${activity.user?.login || 'Unknown'}\n`;
+    formattedContent += `Topics: ${activity.topics?.join(", ") || "None"}\n`;
+    formattedContent += `Author: ${activity.user?.login || "Unknown"}\n`;
     formattedContent += `Created: ${activity.created_at}\n`;
     formattedContent += `Updated: ${activity.updated_at}\n`;
 
@@ -93,21 +93,21 @@ function formatGitHubActivityForSummary(activity) {
 
 async function summarizeGitHubString(content, options = {}) {
   const messages = [
-    { 
-      role: "system", 
-      content: GITHUB_PROMPTS.SUMMARIZE 
+    {
+      role: "system",
+      content: GITHUB_PROMPTS.SUMMARIZE,
     },
-    { 
-      role: "user", 
-      content: `${content}\nProvide a concise summary of this GitHub activity.`
-    }
+    {
+      role: "user",
+      content: `${content}\nProvide a concise summary of this GitHub activity.`,
+    },
   ];
 
   return await completion({
     messages,
     model: MODELS.SUMMARIZE,
     temperature: 0.3,
-    max_tokens: options.meta ? 100 : 500
+    max_tokens: options.meta ? 100 : 500,
   });
 }
 
@@ -119,22 +119,22 @@ export async function gitHubSummaryToTags(summary) {
 
   try {
     const messages = [
-      { 
-        role: "system", 
-        content: await GITHUB_PROMPTS.TAGS(summary)
+      {
+        role: "system",
+        content: await GITHUB_PROMPTS.TAGS(summary),
       },
-      { role: "user", content: summary }
+      { role: "user", content: summary },
     ];
 
     const response = await completion({
       messages,
       model: MODELS.GENERATE_TAGS,
       temperature: 0.2,
-      max_tokens: 100
+      max_tokens: 100,
     });
 
     return response
-      .split('\n')
+      .split("\n")
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
 
@@ -153,7 +153,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     language: "JavaScript",
     stargazers_count: 42,
     user: { login: "ejfox" },
-    topics: ["vue", "knowledge-management", "digital-garden"]
+    topics: ["vue", "knowledge-management", "digital-garden"],
   };
 
   console.log("🧪 Testing GitHub summarization...");
@@ -161,7 +161,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .then(async summary => {
       console.log("\n📝 Summary:");
       console.log(summary);
-      
+
       console.log("\n🏷️ Generating tags...");
       const tags = await gitHubSummaryToTags(summary);
       console.log("Tags:", tags);

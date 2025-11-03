@@ -91,7 +91,7 @@ export const getHumanReadableContent = (scrap) => {
   } else if (scrap.starred) {
     return `User starred a repository: ${scrap.full_name}`;
   } else {
-    return `Unknown action`;
+    return "Unknown action";
   }
 };
 
@@ -113,7 +113,7 @@ export function uuidToScrap(uuid, scrapArray) {
   }
 
   const scrap = scrapArray.find(
-    (scrap) => scrap.id === uuid || scrap.metadata?.shortId === uuid
+    (scrap) => scrap.id === uuid || scrap.metadata?.shortId === uuid,
   );
 
   if (!scrap) {
@@ -146,7 +146,7 @@ export function countWords(article) {
         node.tag === "blockquote" ||
         node.tag === "li" ||
         node.tag === "ol" ||
-        node.tag === "ul"
+        node.tag === "ul",
     )
     .map((node) => node.children)
     .flat()
@@ -192,7 +192,7 @@ export function countLinks(article) {
         node.tag === "h2" ||
         node.tag === "h3" ||
         node.tag === "h4" ||
-        node.tag === "blockquote"
+        node.tag === "blockquote",
     )
     .map((node) => node.children)
     .flat()
@@ -212,7 +212,7 @@ export function filterStrongTags(article) {
         node.tag === "h2" ||
         node.tag === "h3" ||
         node.tag === "h4" ||
-        node.tag === "blockquote"
+        node.tag === "blockquote",
     )
     .map((node) => node.children)
     .flat()
@@ -289,7 +289,7 @@ export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
 
   for (const sentence of sentences) {
     const sentenceTokenSize = llamaTokenizer.encode(
-      currentChunk + sentence
+      currentChunk + sentence,
     ).length;
 
     if (sentenceTokenSize > chunkSizeTokens) {

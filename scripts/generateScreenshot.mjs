@@ -64,7 +64,7 @@ async function uploadToCloudinary(buffer) {
   if (!isCloudinaryConfigured) {
     throw new Error("Cloudinary is not configured - screenshot upload skipped");
   }
-  
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -75,7 +75,7 @@ async function uploadToCloudinary(buffer) {
       (error, result) => {
         if (error) reject(error);
         else resolve(result);
-      }
+      },
     );
 
     uploadStream.end(buffer);
@@ -89,7 +89,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.printf(({ timestamp, level, message }) => {
       return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    }),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -170,12 +170,12 @@ const getChromePath = () => {
 
   // Default paths by platform
   switch (process.platform) {
-    case "darwin":
-      return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    case "linux":
-      return "/usr/bin/chromium";
-    default:
-      throw new Error(`Unsupported platform: ${process.platform}`);
+  case "darwin":
+    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  case "linux":
+    return "/usr/bin/chromium";
+  default:
+    throw new Error(`Unsupported platform: ${process.platform}`);
   }
 };
 
@@ -200,7 +200,7 @@ async function takeScreenshotWithRetry(page, retries = 2) {
 
 // Update the screenshot function with better cleanup
 export async function generateScreenshot(url) {
-  if (!url || url === null || url === undefined || url === '') {
+  if (!url || url === null || url === undefined || url === "") {
     logger.warn(`Skipping screenshot generation - invalid URL: ${url}`);
     return null;
   }
@@ -261,17 +261,17 @@ export async function generateScreenshot(url) {
 
     // Read the file and upload to Cloudinary if configured
     const screenshot = await fs.readFile(tempFilePath);
-    
+
     if (!isCloudinaryConfigured) {
       logger.warn("Cloudinary not configured - screenshots will not be uploaded");
       return { url: null, localPath: tempFilePath };
     }
-    
+
     try {
       const result = await uploadToCloudinary(screenshot);
       // Trigger temp file cleanup
       cleanupTempFiles().catch((error) =>
-        logger.error("Background cleanup failed:", error)
+        logger.error("Background cleanup failed:", error),
       );
       return { url: result.secure_url };
     } catch (error) {
@@ -291,7 +291,7 @@ export async function generateScreenshot(url) {
         try {
           const process = browser.process();
           if (process && !process.killed) {
-            process.kill('SIGKILL');
+            process.kill("SIGKILL");
           }
         } catch (killError) {
           logger.error("Failed to kill browser process:", killError);

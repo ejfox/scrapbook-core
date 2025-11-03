@@ -17,7 +17,7 @@ const limiter = new Bottleneck({
 const blacklistPhrases = ["Here is a summary"]; // Add more phrases as needed
 
 export async function summarizeContent(content, options = {}) {
-  const { scrapId, taskType = 'summarization', ...otherOptions } = options;
+  const { scrapId, taskType = "summarization", ...otherOptions } = options;
 
   if (!content) {
     log("❌ No content to summarize");
@@ -62,7 +62,7 @@ export async function summarizeContent(content, options = {}) {
           log(`🔄 Starting chunk ${i + 1} summarization...`);
           const result = await summarizeChunk(chunk, { ...otherOptions, scrapId, taskType });
           log(
-            `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`
+            `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`,
           );
           return result;
         });
@@ -74,7 +74,7 @@ export async function summarizeContent(content, options = {}) {
         }
       } catch (error) {
         console.error(`❌ Error processing chunk ${i + 1}:`, error);
-        log(`⚠️ Continuing with remaining chunks...`);
+        log("⚠️ Continuing with remaining chunks...");
       }
     }
 
@@ -97,7 +97,7 @@ export async function summarizeContent(content, options = {}) {
 }
 
 async function summarizeChunk(chunk, options = {}) {
-  const { scrapId, taskType = 'summarization', ...otherOptions } = options;
+  const { scrapId, taskType = "summarization", ...otherOptions } = options;
   const startTime = performance.now();
   let summary = null;
   let retries = 0;
@@ -142,7 +142,7 @@ ${chunk}`,
         messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
         maxTokens: options.metaSummary ? 2048 : 16384,  // Doubled the output limit
-        model: getModelForTask('summarization'),
+        model: getModelForTask("summarization"),
         scrapId,
         taskType,
       });
@@ -160,7 +160,7 @@ ${chunk}`,
         log(
           `⚠️ Summary contains blacklisted phrase. Retrying... (Attempt ${
             retries + 1
-          })`
+          })`,
         );
         messages.push({
           role: "user",
@@ -177,11 +177,11 @@ ${chunk}`,
       }
     } catch (error) {
       log(
-        `❌ Error during completion (Attempt ${retries + 1}): ${error.message}`
+        `❌ Error during completion (Attempt ${retries + 1}): ${error.message}`,
       );
       if (error.response?.data) {
         log(
-          `API Response Data: ${JSON.stringify(error.response.data, null, 2)}`
+          `API Response Data: ${JSON.stringify(error.response.data, null, 2)}`,
         );
       }
       messages.push({
@@ -206,7 +206,7 @@ ${chunk}`,
     log(`✅ Successfully generated summary in ${duration}ms`);
   } else {
     log(
-      `❌ Failed to generate summary after ${retries} attempts (${duration}ms)`
+      `❌ Failed to generate summary after ${retries} attempts (${duration}ms)`,
     );
   }
 
@@ -251,7 +251,7 @@ Return only valid tags from the list above, one per line, no explanations.`,
       // lets use a cheaper model for this
       model: MODELS.GPT_3_5_TURBO,
       scrapId: options.scrapId,
-      taskType: 'tagging',
+      taskType: "tagging",
     });
     const endTime = performance.now();
     log(`✅ Tags generated in ${endTime - startTime}ms`);

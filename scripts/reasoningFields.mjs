@@ -3,52 +3,52 @@
  * Extracts content_type, concept_tags, and confidence scores for AI reasoning
  */
 
-import { completion } from './llmService.mjs';
+import { completion } from "./llmService.mjs";
 
 /**
  * Infer content type from URL and content patterns
  * This is cheap - no AI needed
  */
 export function inferContentType(url, content, title) {
-  const urlLower = (url || '').toLowerCase();
-  const contentLower = (content || '').toLowerCase();
-  const titleLower = (title || '').toLowerCase();
+  const urlLower = (url || "").toLowerCase();
+  const contentLower = (content || "").toLowerCase();
+  const titleLower = (title || "").toLowerCase();
 
   // News patterns
-  if (urlLower.match(/\/(news|article|story|breaking|politics|world)\//)) return 'news';
-  if (urlLower.match(/(nytimes|washingtonpost|reuters|apnews|cnn|bbc|theguardian|wsj)\.com/)) return 'news';
+  if (urlLower.match(/\/(news|article|story|breaking|politics|world)\//)) return "news";
+  if (urlLower.match(/(nytimes|washingtonpost|reuters|apnews|cnn|bbc|theguardian|wsj)\.com/)) return "news";
 
   // Opinion/blog patterns
-  if (urlLower.match(/\/(opinion|commentary|blog|post)\//)) return 'opinion';
-  if (urlLower.match(/(medium\.com|substack\.com|\/blog\/)/)) return 'opinion';
+  if (urlLower.match(/\/(opinion|commentary|blog|post)\//)) return "opinion";
+  if (urlLower.match(/(medium\.com|substack\.com|\/blog\/)/)) return "opinion";
 
   // Tutorial patterns
-  if (urlLower.match(/\/(tutorial|guide|how-to|howto|learn)\//)) return 'tutorial';
-  if (titleLower.match(/^(how to|tutorial|guide to|learn)/)) return 'tutorial';
+  if (urlLower.match(/\/(tutorial|guide|how-to|howto|learn)\//)) return "tutorial";
+  if (titleLower.match(/^(how to|tutorial|guide to|learn)/)) return "tutorial";
 
   // Research patterns
-  if (urlLower.match(/\/(research|paper|study|journal|arxiv|doi)\//)) return 'research';
-  if (urlLower.match(/\.(pdf)(\?|$)/)) return 'research';
+  if (urlLower.match(/\/(research|paper|study|journal|arxiv|doi)\//)) return "research";
+  if (urlLower.match(/\.(pdf)(\?|$)/)) return "research";
 
   // Product patterns
-  if (urlLower.match(/\/(product|pricing|buy|shop|store)\//)) return 'product';
-  if (urlLower.match(/(amazon\.com|ebay\.com|shopify\.com)/)) return 'product';
+  if (urlLower.match(/\/(product|pricing|buy|shop|store)\//)) return "product";
+  if (urlLower.match(/(amazon\.com|ebay\.com|shopify\.com)/)) return "product";
 
   // Discussion patterns
-  if (urlLower.match(/(reddit\.com|hackernews|news\.ycombinator|discourse|forum)/)) return 'discussion';
-  if (urlLower.match(/\/(comments|thread|discussion)\//)) return 'discussion';
+  if (urlLower.match(/(reddit\.com|hackernews|news\.ycombinator|discourse|forum)/)) return "discussion";
+  if (urlLower.match(/\/(comments|thread|discussion)\//)) return "discussion";
 
   // Social media
-  if (urlLower.match(/(twitter\.com|x\.com|mastodon|threads\.net)/)) return 'discussion';
+  if (urlLower.match(/(twitter\.com|x\.com|mastodon|threads\.net)/)) return "discussion";
 
   // Video
-  if (urlLower.match(/(youtube\.com|vimeo\.com|\/watch\?)/)) return 'video';
+  if (urlLower.match(/(youtube\.com|vimeo\.com|\/watch\?)/)) return "video";
 
   // Documentation
-  if (urlLower.match(/\/(docs|documentation|api|reference)\//)) return 'documentation';
+  if (urlLower.match(/\/(docs|documentation|api|reference)\//)) return "documentation";
 
   // Default
-  return 'article';
+  return "article";
 }
 
 /**
@@ -57,7 +57,7 @@ export function inferContentType(url, content, title) {
  * NOT just better tags, but narrative threads that span multiple pieces of content
  */
 export async function extractConceptTags(summary, existingTags, options = {}) {
-  const { scrapId, taskType = 'concept_extraction' } = options;
+  const { scrapId, taskType = "concept_extraction" } = options;
 
   if (!summary || summary.length < 50) {
     return [];
@@ -102,21 +102,21 @@ Concepts: ["climate_attribution_science", "extreme_weather_trends", "climate_evi
 Now extract THREAD concepts from this summary:
 ${summary}
 
-Existing tags (for context): ${existingTags?.join(', ') || 'none'}
+Existing tags (for context): ${existingTags?.join(", ") || "none"}
 
 Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concept_two", ...]`;
 
   try {
     const response = await completion({
       messages: [
-        { role: 'system', content: 'You extract semantic concepts from content summaries. Return only JSON arrays.' },
-        { role: 'user', content: prompt }
+        { role: "system", content: "You extract semantic concepts from content summaries. Return only JSON arrays." },
+        { role: "user", content: prompt },
       ],
       temperature: 0.3,
       maxTokens: 200,
-      model: 'google/gemini-2.0-flash-exp:free',
+      model: "google/gemini-2.0-flash-exp:free",
       scrapId,
-      taskType
+      taskType,
     });
 
     if (!response) return [];
@@ -125,11 +125,11 @@ Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concep
     const match = response.match(/\[(.*?)\]/s);
     if (!match) return [];
 
-    const concepts = JSON.parse('[' + match[1] + ']');
-    return concepts.filter(c => typeof c === 'string' && c.length > 2);
+    const concepts = JSON.parse("[" + match[1] + "]");
+    return concepts.filter(c => typeof c === "string" && c.length > 2);
 
   } catch (error) {
-    console.error('Error extracting concept tags:', error.message);
+    console.error("Error extracting concept tags:", error.message);
     return [];
   }
 }
@@ -139,15 +139,15 @@ Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concep
  * Ask the AI how confident it is in its extractions
  */
 export async function extractConfidenceScores(scrapObj, options = {}) {
-  const { scrapId, taskType = 'confidence_assessment' } = options;
+  const { scrapId, taskType = "confidence_assessment" } = options;
 
   const prompt = `Assess the extraction quality for this content:
 
 SUMMARY (${scrapObj.summary?.length || 0} chars):
-${scrapObj.summary?.substring(0, 500) || 'none'}
+${scrapObj.summary?.substring(0, 500) || "none"}
 
 TAGS:
-${scrapObj.tags?.join(', ') || 'none'}
+${scrapObj.tags?.join(", ") || "none"}
 
 RELATIONSHIPS:
 ${scrapObj.relationships?.length || 0} extracted
@@ -169,14 +169,14 @@ Return ONLY a JSON object with scores:
   try {
     const response = await completion({
       messages: [
-        { role: 'system', content: 'You assess extraction quality and return confidence scores as JSON.' },
-        { role: 'user', content: prompt }
+        { role: "system", content: "You assess extraction quality and return confidence scores as JSON." },
+        { role: "user", content: prompt },
       ],
       temperature: 0.1,
       maxTokens: 100,
-      model: 'google/gemini-2.0-flash-exp:free',
+      model: "google/gemini-2.0-flash-exp:free",
       scrapId,
-      taskType
+      taskType,
     });
 
     if (!response) {
@@ -195,11 +195,11 @@ Return ONLY a JSON object with scores:
     return {
       summary: Math.max(0, Math.min(1, scores.summary || 0.5)),
       tags: Math.max(0, Math.min(1, scores.tags || 0.5)),
-      relationships: Math.max(0, Math.min(1, scores.relationships || 0.5))
+      relationships: Math.max(0, Math.min(1, scores.relationships || 0.5)),
     };
 
   } catch (error) {
-    console.error('Error extracting confidence scores:', error.message);
+    console.error("Error extracting confidence scores:", error.message);
     return { summary: 0.5, tags: 0.5, relationships: 0.5 };
   }
 }
@@ -215,7 +215,7 @@ export async function enrichWithReasoningFields(scrapObj, options = {}) {
   scrapObj.content_type = inferContentType(
     scrapObj.url,
     scrapObj.content,
-    scrapObj.title
+    scrapObj.title,
   );
 
   // 2. Extract concept tags (requires AI if we have summary)
@@ -223,7 +223,7 @@ export async function enrichWithReasoningFields(scrapObj, options = {}) {
     scrapObj.concept_tags = await extractConceptTags(
       scrapObj.summary,
       scrapObj.tags,
-      { scrapId, taskType: 'concept_extraction' }
+      { scrapId, taskType: "concept_extraction" },
     );
   } else {
     scrapObj.concept_tags = [];
@@ -233,7 +233,7 @@ export async function enrichWithReasoningFields(scrapObj, options = {}) {
   if (scrapObj.summary) {
     scrapObj.extraction_confidence = await extractConfidenceScores(
       scrapObj,
-      { scrapId, taskType: 'confidence_assessment' }
+      { scrapId, taskType: "confidence_assessment" },
     );
   } else {
     scrapObj.extraction_confidence = null;

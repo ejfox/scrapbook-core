@@ -1,4 +1,4 @@
-import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs';
+import { completion, MODELS, PROMPTS, loadCoreTags } from "./llmService.mjs";
 import Bottleneck from "bottleneck";
 
 const DEBUG = process.env.DEBUG === "true";
@@ -9,7 +9,7 @@ function log(...args) {
 // Rate limiting
 const limiter = new Bottleneck({
   maxConcurrent: 1,
-  minTime: 1000
+  minTime: 1000,
 });
 
 // Mastodon-specific prompts
@@ -24,14 +24,14 @@ Be specific but concise, preserving key details while removing noise.`,
   TAGS: async (content) => {
     const coreTags = await loadCoreTags();
     return `You are tagging a Mastodon status. Choose 2-3 most relevant tags from this list:
-${coreTags.join('\n')}
+${coreTags.join("\n")}
 
 Content to tag:
 ${content}
 
 Return only valid tags from the list above, one per line, no explanations.
 Include any relevant hashtags from the original post.`;
-  }
+  },
 };
 
 export async function generateMastodonTags(status) {
@@ -43,15 +43,15 @@ export async function generateMastodonTags(status) {
   try {
     log("🔍 Formatting Mastodon status for tagging...");
     const content = formatMastodonStatusForTagging(status);
-    
+
     if (!content) {
       log("❌ No content after formatting");
       return [];
     }
 
     log(`📝 Content prepared (${content.length} chars)`);
-    return await limiter.schedule(() => 
-      generateTagsForMastodonStatus(content)
+    return await limiter.schedule(() =>
+      generateTagsForMastodonStatus(content),
     );
 
   } catch (error) {
@@ -77,13 +77,13 @@ export function formatMastodonStatusForTagging(status) {
 
     // Add existing tags
     if (status.tags?.length > 0) {
-      formattedContent += "Existing tags: " + 
+      formattedContent += "Existing tags: " +
         status.tags.map(tag => tag.name).join(", ") + "\n";
     }
 
     // Add visibility and language
     formattedContent += `Visibility: ${status.visibility}\n`;
-    formattedContent += `Language: ${status.language || 'unknown'}\n`;
+    formattedContent += `Language: ${status.language || "unknown"}\n`;
 
     return formattedContent;
   } catch (error) {
@@ -95,23 +95,23 @@ export function formatMastodonStatusForTagging(status) {
 async function generateTagsForMastodonStatus(content) {
   try {
     const messages = [
-      { 
-        role: "system", 
-        content: await MASTODON_PROMPTS.TAGS(content)
+      {
+        role: "system",
+        content: await MASTODON_PROMPTS.TAGS(content),
       },
-      { role: "user", content }
+      { role: "user", content },
     ];
 
     const response = await completion({
       messages,
       model: MODELS.GENERATE_TAGS,
       temperature: 0.3,
-      max_tokens: 100
+      max_tokens: 100,
     });
 
     const tags = response
-      .split('\n')
-      .map(tag => tag.replace('#', '').trim())
+      .split("\n")
+      .map(tag => tag.replace("#", "").trim())
       .filter(tag => tag.length > 0);
 
     log(`✅ Generated ${tags.length} tags:`, tags);
@@ -129,11 +129,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     content: "Just released a new version of our Vue component library! #vuejs #webdev",
     created_at: new Date().toISOString(),
     media_attachments: [
-      { type: "image", description: "Screenshot of the Vue component library" }
+      { type: "image", description: "Screenshot of the Vue component library" },
     ],
     tags: [{ name: "vuejs" }, { name: "webdev" }],
     visibility: "public",
-    language: "en"
+    language: "en",
   };
 
   console.log("🧪 Testing Mastodon tag generation...");

@@ -13,13 +13,13 @@ if (process.env.SENDGRID_API_KEY?.startsWith("SG.")) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 } else {
   console.log(
-    chalk.yellow("⚠️ SendGrid API key not configured - email reports disabled")
+    chalk.yellow("⚠️ SendGrid API key not configured - email reports disabled"),
   );
 }
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 );
 
 console.log(
@@ -28,7 +28,7 @@ console.log(
 ║      DATABASE INTEGRITY CHECKER        ║
 ║  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾  ║
 ╚═══════════════════════════════════════╝
-`)
+`),
 );
 
 // Check for invalid source/type combinations
@@ -49,25 +49,25 @@ async function checkStuckProcessing() {
     .not("processing_instance_id", "is", null)
     .lt(
       "processing_started_at",
-      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString(),
     );
 
   if (stuckScraps?.length) {
     console.log(
-      chalk.red(`Found ${stuckScraps.length} scraps stuck in processing`)
+      chalk.red(`Found ${stuckScraps.length} scraps stuck in processing`),
     );
     stuckScraps.slice(0, 5).forEach((scrap) => {
       console.log(
         chalk.gray(
-          `  ${scrap.scrap_id} - Instance: ${scrap.processing_instance_id}`
-        )
+          `  ${scrap.scrap_id} - Instance: ${scrap.processing_instance_id}`,
+        ),
       );
       console.log(
         chalk.gray(
           `    Started: ${new Date(
-            scrap.processing_started_at
-          ).toLocaleString()}`
-        )
+            scrap.processing_started_at,
+          ).toLocaleString()}`,
+        ),
       );
     });
 
@@ -80,7 +80,7 @@ async function checkStuckProcessing() {
       })
       .in(
         "id",
-        stuckScraps.map((s) => s.id)
+        stuckScraps.map((s) => s.id),
       );
 
     if (error) {
@@ -134,8 +134,8 @@ async function checkFieldIntegrity() {
   if (!totalRecords) {
     console.log(
       chalk.yellow(
-        "ℹ️ No records found in database. Skipping field integrity check."
-      )
+        "ℹ️ No records found in database. Skipping field integrity check.",
+      ),
     );
     return {
       required: {},
@@ -172,15 +172,15 @@ async function checkFieldIntegrity() {
 
         if (samples?.length) {
           console.log(
-            chalk.gray(`    Missing in ${samples.length} records, examples:`)
+            chalk.gray(`    Missing in ${samples.length} records, examples:`),
           );
           samples.forEach((sample) => {
             console.log(
               chalk.gray(
                 `    - ${sample.source}/${sample.type} (${new Date(
-                  sample.created_at
-                ).toLocaleDateString()})`
-              )
+                  sample.created_at,
+                ).toLocaleDateString()})`,
+              ),
             );
           });
         }
@@ -230,8 +230,8 @@ async function checkVectorDimensions() {
       console.log(
         chalk.red(
           `Found ${invalidDims.length} ${field} vectors with incorrect dimensions ` +
-            `(expected ${expectedDim})`
-        )
+            `(expected ${expectedDim})`,
+        ),
       );
     }
   }
@@ -293,7 +293,7 @@ async function checkDateConsistency() {
     .or(
       "created_at.gt.updated_at",
       "published_at.gt.created_at",
-      "updated_at.gt.current_timestamp"
+      "updated_at.gt.current_timestamp",
     );
 
   return {
@@ -328,13 +328,13 @@ async function checkGeoData() {
 
   if (incomplete?.length) {
     console.log(
-      chalk.red(`Found ${incomplete.length} records with inconsistent geo data`)
+      chalk.red(`Found ${incomplete.length} records with inconsistent geo data`),
     );
     incomplete.slice(0, 5).forEach((scrap) => {
       console.log(`  ${scrap.scrap_id}:`);
       console.log(`    Location: ${scrap.location || "missing"}`);
       console.log(
-        `    Coords: ${scrap.latitude},${scrap.longitude || "missing"}`
+        `    Coords: ${scrap.latitude},${scrap.longitude || "missing"}`,
       );
     });
   }
@@ -357,80 +357,80 @@ async function sendEmailReport(report, claimSection) {
 
     <h2>📊 Field Coverage</h2>
     ${Object.entries(fields)
-      .map(
-        ([category, stats]) => `
+    .map(
+      ([category, stats]) => `
       <h3>${category.toUpperCase()}</h3>
       <ul>
         ${Object.entries(stats)
-          .map(([field, data]) => {
-            const coverage = ((1 - data.null_count / data.total) * 100).toFixed(
-              1
-            );
-            const color =
+    .map(([field, data]) => {
+      const coverage = ((1 - data.null_count / data.total) * 100).toFixed(
+        1,
+      );
+      const color =
               coverage > 90 ? "green" : coverage > 70 ? "orange" : "red";
-            return `<li style="color: ${color}">${field}: ${coverage}% coverage (${data.null_count} null)</li>`;
-          })
-          .join("")}
+      return `<li style="color: ${color}">${field}: ${coverage}% coverage (${data.null_count} null)</li>`;
+    })
+    .join("")}
       </ul>
-    `
-      )
-      .join("")}
+    `,
+    )
+    .join("")}
 
     <h2>📐 Vector Embeddings Summary</h2>
     ${Object.entries(vectors)
-      .map(
-        ([field, stats]) => `
+    .map(
+      ([field, stats]) => `
       <h3>${field}</h3>
       <p>Total vectors: ${stats.total_vectors}</p>
       ${
-        stats.invalid_dimensions > 0
-          ? `
+  stats.invalid_dimensions > 0
+    ? `
         <p style="color: red">⚠️ Found ${stats.invalid_dimensions} vectors with incorrect dimensions</p>
       `
-          : '<p style="color: green">✓ All vectors have correct dimensions</p>'
-      }
-    `
-      )
-      .join("")}
+    : '<p style="color: green">✓ All vectors have correct dimensions</p>'
+}
+    `,
+    )
+    .join("")}
 
     <h2>🏷️ Source/Type Distribution</h2>
     <ul>
       ${sourceTypes.combinations
-        ?.map((combo) => {
-          const isValid = VALID_COMBINATIONS[combo.source]?.includes(
-            combo.type
-          );
-          return `<li style="color: ${isValid ? "green" : "red"}">
+    ?.map((combo) => {
+      const isValid = VALID_COMBINATIONS[combo.source]?.includes(
+        combo.type,
+      );
+      return `<li style="color: ${isValid ? "green" : "red"}">
           ${combo.source}/${combo.type}: ${combo.count} records
         </li>`;
-        })
-        .join("")}
+    })
+    .join("")}
     </ul>
 
     <h2>📅 Date Issues</h2>
     ${
-      dates.invalid_dates.length > 0
-        ? `
+  dates.invalid_dates.length > 0
+    ? `
       <p style="color: red">Found ${
-        dates.invalid_dates.length
-      } records with date issues</p>
+  dates.invalid_dates.length
+} records with date issues</p>
       <ul>
         ${dates.issues
-          .slice(0, 5)
-          .map(
-            (issue) => `
+    .slice(0, 5)
+    .map(
+      (issue) => `
           <li>${issue.id}:
             <ul>
               ${issue.issues.map((i) => `<li>${i}</li>`).join("")}
             </ul>
           </li>
-        `
-          )
-          .join("")}
+        `,
+    )
+    .join("")}
       </ul>
     `
-        : '<p style="color: green">No date issues found</p>'
-    }
+    : '<p style="color: green">No date issues found</p>'
+}
 
     <h2>🌍 Geo Data</h2>
     <p>Total records with geo data: ${geo.total_geo}</p>
@@ -482,7 +482,7 @@ async function fixVectorDimensions() {
     } catch (error) {
       console.error(
         chalk.red(`✗ Failed to generate embedding for ${scrap.scrap_id}:`),
-        error
+        error,
       );
     }
   }
@@ -500,7 +500,7 @@ async function checkCriticalFields() {
 
   if (scraps?.length) {
     console.log(
-      chalk.red(`Found ${scraps.length} records with missing critical fields`)
+      chalk.red(`Found ${scraps.length} records with missing critical fields`),
     );
     // Log sample of problematic records
     scraps.slice(0, 5).forEach((scrap) => {
@@ -598,28 +598,28 @@ async function validateClaimStates() {
     .not("processing_instance_id", "is", null)
     .lt(
       "processing_started_at",
-      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString(),
     );
 
   if (stuckScraps?.length) {
     issues.stuck = stuckScraps;
     console.log(
-      chalk.red(`Found ${stuckScraps.length} scraps stuck in processing`)
+      chalk.red(`Found ${stuckScraps.length} scraps stuck in processing`),
     );
     stuckScraps.slice(0, 5).forEach((scrap) => {
       const duration = Math.round(
         (Date.now() - new Date(scrap.processing_started_at).getTime()) /
           1000 /
-          60
+          60,
       );
       console.log(chalk.gray(`  ${scrap.scrap_id}:`));
       console.log(chalk.gray(`    Instance: ${scrap.processing_instance_id}`));
       console.log(
         chalk.gray(
           `    Started: ${new Date(
-            scrap.processing_started_at
-          ).toLocaleString()}`
-        )
+            scrap.processing_started_at,
+          ).toLocaleString()}`,
+        ),
       );
       console.log(chalk.gray(`    Duration: ${duration} minutes`));
     });
@@ -631,15 +631,15 @@ async function validateClaimStates() {
     .select("id, scrap_id, processing_instance_id, processing_started_at")
     .or(
       "and(processing_instance_id.is.null,processing_started_at.not.is.null)",
-      "and(processing_instance_id.not.is.null,processing_started_at.is.null)"
+      "and(processing_instance_id.not.is.null,processing_started_at.is.null)",
     );
 
   if (invalidScraps?.length) {
     issues.invalid = invalidScraps;
     console.log(
       chalk.red(
-        `Found ${invalidScraps.length} scraps with invalid claim states`
-      )
+        `Found ${invalidScraps.length} scraps with invalid claim states`,
+      ),
     );
   }
 
@@ -651,7 +651,7 @@ async function validateClaimStates() {
     .not("processing_instance_id", "is", null)
     .gt(
       "processing_started_at",
-      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString()
+      new Date(Date.now() - STUCK_THRESHOLD_MINS * 60 * 1000).toISOString(),
     );
 
   if (error) {
@@ -676,14 +676,14 @@ async function validateClaimStates() {
       issues.suspicious = suspiciousInstances;
       console.log(
         chalk.yellow(
-          `Found ${suspiciousInstances.length} instances with high claim counts`
-        )
+          `Found ${suspiciousInstances.length} instances with high claim counts`,
+        ),
       );
       suspiciousInstances.forEach((claim) => {
         console.log(
           chalk.gray(
-            `  ${claim.processing_instance_id}: ${claim.count} active claims`
-          )
+            `  ${claim.processing_instance_id}: ${claim.count} active claims`,
+          ),
         );
       });
     } else {
@@ -715,7 +715,7 @@ async function clearProblematicClaims(issues) {
       console.error("Failed to clear problematic claims:", error);
     } else {
       console.log(
-        chalk.green(`Cleared ${claimsToClean.length} problematic claims`)
+        chalk.green(`Cleared ${claimsToClean.length} problematic claims`),
       );
     }
   }
@@ -742,14 +742,14 @@ async function cleanupOrphanedScraps() {
       .delete()
       .in(
         "id",
-        orphanedScraps.map((s) => s.id)
+        orphanedScraps.map((s) => s.id),
       );
 
     if (error) {
       console.error("Failed to delete orphaned scraps:", error);
     } else {
       console.log(
-        chalk.green(`Deleted ${orphanedScraps.length} orphaned scraps`)
+        chalk.green(`Deleted ${orphanedScraps.length} orphaned scraps`),
       );
     }
   } else {
@@ -775,8 +775,8 @@ async function cleanupProcessingScraps() {
   if (processingScraps?.length) {
     console.log(
       chalk.red(
-        `Found ${processingScraps.length} scraps stuck in Processing... state`
-      )
+        `Found ${processingScraps.length} scraps stuck in Processing... state`,
+      ),
     );
 
     // Delete them
@@ -785,14 +785,14 @@ async function cleanupProcessingScraps() {
       .delete()
       .in(
         "id",
-        processingScraps.map((s) => s.id)
+        processingScraps.map((s) => s.id),
       );
 
     if (error) {
       console.error("Failed to delete Processing... scraps:", error);
     } else {
       console.log(
-        chalk.green(`Deleted ${processingScraps.length} Processing... scraps`)
+        chalk.green(`Deleted ${processingScraps.length} Processing... scraps`),
       );
     }
   } else {
@@ -803,7 +803,7 @@ async function cleanupProcessingScraps() {
 // Update main function to include orphaned cleanup
 async function main() {
   console.log(
-    chalk.green("Starting comprehensive database integrity check...")
+    chalk.green("Starting comprehensive database integrity check..."),
   );
   const startTime = Date.now();
 
@@ -815,7 +815,7 @@ async function main() {
 
     if (!totalRecords) {
       console.log(
-        chalk.yellow("\n⚠️ Database is empty. No integrity checks needed.")
+        chalk.yellow("\n⚠️ Database is empty. No integrity checks needed."),
       );
       return;
     }
@@ -850,8 +850,8 @@ async function main() {
           coverage > 90 ? "green" : coverage > 70 ? "yellow" : "red";
         console.log(
           chalk[color](
-            `  ${field}: ${coverage}% coverage (${data.null_count} null)`
-          )
+            `  ${field}: ${coverage}% coverage (${data.null_count} null)`,
+          ),
         );
       });
     });
@@ -873,7 +873,7 @@ async function main() {
       const isValid = VALID_COMBINATIONS[combo.source]?.includes(combo.type);
       const color = isValid ? "green" : "red";
       console.log(
-        chalk[color](`  ${combo.source}/${combo.type}: ${combo.count} records`)
+        chalk[color](`  ${combo.source}/${combo.type}: ${combo.count} records`),
       );
     });
 
@@ -882,8 +882,8 @@ async function main() {
     if (report.dates.invalid_dates.length > 0) {
       console.log(
         chalk.red(
-          `Found ${report.dates.invalid_dates.length} records with date issues`
-        )
+          `Found ${report.dates.invalid_dates.length} records with date issues`,
+        ),
       );
       report.dates.issues.slice(0, 5).forEach((issue) => {
         console.log(`  ${issue.id}:`);
@@ -919,7 +919,7 @@ async function main() {
     console.log(chalk.red(`  Stuck Claims: ${report.claims.stuck}`));
     console.log(chalk.red(`  Invalid States: ${report.claims.invalid}`));
     console.log(
-      chalk.yellow(`  Suspicious Patterns: ${report.claims.suspicious}`)
+      chalk.yellow(`  Suspicious Patterns: ${report.claims.suspicious}`),
     );
     console.log(chalk.green(`  Claims Cleared: ${report.claims.cleared}`));
 

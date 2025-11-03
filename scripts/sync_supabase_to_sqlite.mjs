@@ -69,8 +69,8 @@ async function syncData(db) {
   ) {
     console.error(
       chalk.red(
-        "Error: SUPABASE_URL, SUPABASE_KEY, and PINBOARD_TOKEN must be set in your .env file in the parent directory."
-      )
+        "Error: SUPABASE_URL, SUPABASE_KEY, and PINBOARD_TOKEN must be set in your .env file in the parent directory.",
+      ),
     );
     process.exit(1);
   }
@@ -79,7 +79,7 @@ async function syncData(db) {
   log("Initializing Supabase client...");
   const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    process.env.SUPABASE_KEY,
   );
   log("Supabase client initialized.");
 
@@ -92,7 +92,7 @@ async function syncData(db) {
     if (error) throw error;
     spinner.succeed(`Fetched ${supabaseScraps.length} scraps from Supabase`);
     log(
-      `Supabase scraps: ${JSON.stringify(supabaseScraps.slice(0, 2), null, 2)}`
+      `Supabase scraps: ${JSON.stringify(supabaseScraps.slice(0, 2), null, 2)}`,
     );
 
     spinner.text = "Fetching bookmarks from Pinboard";
@@ -100,14 +100,14 @@ async function syncData(db) {
     log("Fetching bookmarks from Pinboard...");
     const pinboardBookmarks = await fetchBookmarksWithCache();
     spinner.succeed(
-      `Fetched ${pinboardBookmarks.length} bookmarks from Pinboard`
+      `Fetched ${pinboardBookmarks.length} bookmarks from Pinboard`,
     );
     log(
       `Pinboard bookmarks: ${JSON.stringify(
         pinboardBookmarks.slice(0, 2),
         null,
-        2
-      )}`
+        2,
+      )}`,
     );
 
     const allScraps = [...supabaseScraps, ...pinboardBookmarks];
@@ -129,8 +129,8 @@ async function syncData(db) {
         } catch (error) {
           console.warn(
             chalk.yellow(
-              `Warning: Failed to summarize content for scrap ${scrap.id}: ${error.message}`
-            )
+              `Warning: Failed to summarize content for scrap ${scrap.id}: ${error.message}`,
+            ),
           );
         }
       }
@@ -160,22 +160,22 @@ async function syncData(db) {
             scrap.latitude || scrap.metadata?.latitude,
             scrap.longitude || scrap.metadata?.longitude,
             scrap.published_at || scrap.created_at,
-            scrap.shared || false
-          ]
+            scrap.shared || false,
+          ],
         );
         log(`Inserted scrap ${scrap.id} into database`);
 
         // Verify the insert
         const verifyResult = await db.get(
           "SELECT * FROM scraps WHERE id = ?",
-          scrap.id
+          scrap.id,
         );
         log(`Verification result: ${JSON.stringify(verifyResult, null, 2)}`);
       } catch (error) {
         console.error(
           chalk.red(
-            `Error inserting scrap ${scrap.id}: ${error.message}`
-          )
+            `Error inserting scrap ${scrap.id}: ${error.message}`,
+          ),
         );
       }
 
@@ -215,7 +215,7 @@ async function main() {
     log("Database connection closed.");
   } catch (error) {
     console.error(
-      chalk.red(`Failed to open or initialize database: ${error.message}`)
+      chalk.red(`Failed to open or initialize database: ${error.message}`),
     );
     process.exit(1);
   } finally {
@@ -233,12 +233,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 // Helper function to determine type
 function getTypeFromSource(scrap) {
   switch(scrap.source) {
-    case 'pinboard': return 'bookmark';
-    case 'mastodon': return 'status';
-    case 'arena': return 'block';
-    case 'github': 
-      return scrap.metadata?.type || 'repo';
-    default: 
-      return scrap.source;
+  case "pinboard": return "bookmark";
+  case "mastodon": return "status";
+  case "arena": return "block";
+  case "github":
+    return scrap.metadata?.type || "repo";
+  default:
+    return scrap.source;
   }
 }

@@ -1,13 +1,13 @@
-import { completion } from './scripts/llmService.mjs';
+import { completion } from "./scripts/llmService.mjs";
 
 // Test models
 const models = [
-  'mistralai/mistral-large-2411',
-  'openai/gpt-4o',
-  'google/gemini-2.5-flash',
-  'deepseek/deepseek-chat-v3.1',
-  'qwen/qwen-2.5-72b-instruct',
-  'anthropic/claude-3.5-haiku'
+  "mistralai/mistral-large-2411",
+  "openai/gpt-4o",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-chat-v3.1",
+  "qwen/qwen-2.5-72b-instruct",
+  "anthropic/claude-3.5-haiku",
 ];
 
 // Rich content with many relationships
@@ -36,28 +36,28 @@ Include people, organizations, countries, and concepts.
 Be specific about the relationship type.
 Extract as many relationships as possible.`;
 
-console.log('🔗 DETAILED RELATIONSHIP EXTRACTION COMPARISON');
-console.log('=' .repeat(80));
-console.log('\nContent: Mongolia/Israel Security Deal Article\n');
+console.log("🔗 DETAILED RELATIONSHIP EXTRACTION COMPARISON");
+console.log("=" .repeat(80));
+console.log("\nContent: Mongolia/Israel Security Deal Article\n");
 
 for (const model of models) {
-  const modelName = model.split('/')[1].toUpperCase();
+  const modelName = model.split("/")[1].toUpperCase();
 
-  console.log('\n' + '='.repeat(80));
+  console.log("\n" + "=".repeat(80));
   console.log(`🤖 ${modelName}`);
-  console.log('='.repeat(80));
+  console.log("=".repeat(80));
 
   try {
     const response = await completion({
       model,
-      prompt: content + '\n\n' + prompt,
+      prompt: content + "\n\n" + prompt,
       max_tokens: 800,
-      temperature: 0.3
+      temperature: 0.3,
     });
 
-    const relationships = (response?.content || response || '')
-      .split('\n')
-      .filter(line => line.includes('→'))
+    const relationships = (response?.content || response || "")
+      .split("\n")
+      .filter(line => line.includes("→"))
       .map(line => line.trim());
 
     console.log(`\nFound ${relationships.length} relationships:\n`);
@@ -72,11 +72,11 @@ for (const model of models) {
     }
 
     // Show interesting patterns
-    const epsteinRels = relationships.filter(r => r.includes('Epstein')).length;
-    const barakRels = relationships.filter(r => r.includes('Barak')).length;
-    const mongoliaRels = relationships.filter(r => r.toLowerCase().includes('mongolia')).length;
+    const epsteinRels = relationships.filter(r => r.includes("Epstein")).length;
+    const barakRels = relationships.filter(r => r.includes("Barak")).length;
+    const mongoliaRels = relationships.filter(r => r.toLowerCase().includes("mongolia")).length;
 
-    console.log(`\n📊 Focus areas:`);
+    console.log("\n📊 Focus areas:");
     console.log(`   • Epstein relationships: ${epsteinRels}`);
     console.log(`   • Barak relationships: ${barakRels}`);
     console.log(`   • Mongolia-related: ${mongoliaRels}`);
@@ -86,9 +86,9 @@ for (const model of models) {
   }
 }
 
-console.log('\n' + '='.repeat(80));
-console.log('\n🎯 ANALYSIS:');
-console.log('• Notice how different models structure relationships differently');
-console.log('• Some models extract more granular connections');
-console.log('• Others focus on high-level relationships');
-console.log('• Quality varies in specificity of relationship types');
+console.log("\n" + "=".repeat(80));
+console.log("\n🎯 ANALYSIS:");
+console.log("• Notice how different models structure relationships differently");
+console.log("• Some models extract more granular connections");
+console.log("• Others focus on high-level relationships");
+console.log("• Quality varies in specificity of relationship types");

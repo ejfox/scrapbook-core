@@ -42,8 +42,8 @@ async function saveBenchmarks() {
       .map(
         (result) =>
           `[${result.timestamp}] ${result.label}: ${result.duration.toFixed(
-            2
-          )}ms`
+            2,
+          )}ms`,
       )
       .join("\n") + "\n\n";
 
@@ -326,175 +326,175 @@ async function validateSource(source, count = 5) {
 
   try {
     switch (source) {
-      case "pinboard":
-        process.stdout.write("Fetching bookmarks from Pinboard API...");
-        // Use recent endpoint for validation instead of all
-        const pinboardResponse = await axios.get(
-          "https://api.pinboard.in/v1/posts/recent",
-          {
-            params: {
-              auth_token: process.env.PINBOARD_TOKEN,
-              format: "json",
-              count: 5, // Just get 5 most recent
-            },
+    case "pinboard":
+      process.stdout.write("Fetching bookmarks from Pinboard API...");
+      // Use recent endpoint for validation instead of all
+      const pinboardResponse = await axios.get(
+        "https://api.pinboard.in/v1/posts/recent",
+        {
+          params: {
+            auth_token: process.env.PINBOARD_TOKEN,
+            format: "json",
+            count: 5, // Just get 5 most recent
+          },
+        },
+      );
+
+      if (!pinboardResponse?.data?.posts) {
+        console.log(chalk.red(" No valid data received from Pinboard API"));
+        return { totalErrors: 1, totalWarnings: 0, processed: 0 };
+      }
+
+      const bookmarks = pinboardResponse.data.posts;
+      console.log(chalk.green(` Found ${bookmarks.length} recent bookmarks`));
+
+      process.stdout.write("Processing bookmarks...\n");
+      scraps = await Promise.all(
+        bookmarks.map(async (bookmark, i) => {
+          try {
+            process.stdout.write(
+              `  [${i + 1}/${
+                bookmarks.length
+              }] Processing bookmark: ${bookmark.href?.substring(0, 40)}...\r`,
+            );
+            return await processBookmark(bookmark, isValidation);
+          } catch (err) {
+            console.log(
+              chalk.red(`\n  Error processing bookmark: ${err.message}`),
+            );
+            return null;
           }
+        }),
+      );
+
+      // Filter out null values
+      scraps = scraps.filter(Boolean);
+      console.log("\n");
+      break;
+
+    case "mastodon":
+      process.stdout.write("Fetching statuses...");
+      try {
+        // Use the statuses/home endpoint directly with test mode
+        const mastodonResponse = await axios.get(
+          `${process.env.MASTODON_API_URL}/api/v1/timelines/home`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.MASTODON_ACCESS_TOKEN}`,
+            },
+            params: {
+              limit: 5, // Just get 5 for validation
+            },
+          },
         );
 
-        if (!pinboardResponse?.data?.posts) {
-          console.log(chalk.red(" No valid data received from Pinboard API"));
+        if (!mastodonResponse.data) {
+          console.log(chalk.red(" No data received from Mastodon API"));
           return { totalErrors: 1, totalWarnings: 0, processed: 0 };
         }
 
-        const bookmarks = pinboardResponse.data.posts;
-        console.log(chalk.green(` Found ${bookmarks.length} recent bookmarks`));
+        const statuses = mastodonResponse.data;
+        console.log(chalk.green(` Found ${statuses.length} statuses`));
 
-        process.stdout.write("Processing bookmarks...\n");
+        process.stdout.write("Processing statuses...\n");
         scraps = await Promise.all(
-          bookmarks.map(async (bookmark, i) => {
+          statuses.map(async (status, i) => {
             try {
               process.stdout.write(
-                `  [${i + 1}/${
-                  bookmarks.length
-                }] Processing bookmark: ${bookmark.href?.substring(0, 40)}...\r`
+                `  [${i + 1}/${statuses.length}] Processing status: ${
+                  status.id
+                }\r`,
               );
-              return await processBookmark(bookmark, isValidation);
-            } catch (err) {
-              console.log(
-                chalk.red(`\n  Error processing bookmark: ${err.message}`)
-              );
-              return null;
-            }
-          })
-        );
-
-        // Filter out null values
-        scraps = scraps.filter(Boolean);
-        console.log("\n");
-        break;
-
-      case "mastodon":
-        process.stdout.write("Fetching statuses...");
-        try {
-          // Use the statuses/home endpoint directly with test mode
-          const mastodonResponse = await axios.get(
-            `${process.env.MASTODON_API_URL}/api/v1/timelines/home`,
-            {
-              headers: {
-                Authorization: `Bearer ${process.env.MASTODON_ACCESS_TOKEN}`,
-              },
-              params: {
-                limit: 5, // Just get 5 for validation
-              },
-            }
-          );
-
-          if (!mastodonResponse.data) {
-            console.log(chalk.red(" No data received from Mastodon API"));
-            return { totalErrors: 1, totalWarnings: 0, processed: 0 };
-          }
-
-          const statuses = mastodonResponse.data;
-          console.log(chalk.green(` Found ${statuses.length} statuses`));
-
-          process.stdout.write("Processing statuses...\n");
-          scraps = await Promise.all(
-            statuses.map(async (status, i) => {
-              try {
-                process.stdout.write(
-                  `  [${i + 1}/${statuses.length}] Processing status: ${
-                    status.id
-                  }\r`
-                );
-                const processedStatus = await processStatus(status, true);
-                if (!processedStatus) {
-                  console.log(
-                    chalk.yellow(
-                      `\n  Warning: Status ${status.id} processing returned null`
-                    )
-                  );
-                  return null;
-                }
-                return processedStatus;
-              } catch (err) {
+              const processedStatus = await processStatus(status, true);
+              if (!processedStatus) {
                 console.log(
-                  chalk.red(
-                    `\n  Error processing status ${status.id}: ${err.message}`
-                  )
+                  chalk.yellow(
+                    `\n  Warning: Status ${status.id} processing returned null`,
+                  ),
                 );
                 return null;
               }
-            })
-          );
-
-          // Filter out null values
-          scraps = scraps.filter((scrap) => scrap !== null);
-          console.log("\n");
-        } catch (error) {
-          console.error(
-            chalk.red(`\nError fetching Mastodon data: ${error.message}`)
-          );
-          if (error.response) {
-            console.error(
-              chalk.yellow(
-                "API Response:",
-                JSON.stringify(error.response.data, null, 2)
-              )
-            );
-          }
-          return { totalErrors: 1, totalWarnings: 0, processed: 0 };
-        }
-        break;
-
-      case "arena":
-        process.stdout.write("Fetching blocks...");
-        const blocks = await fetchAllBlocks(true);
-        console.log(chalk.green(` Found ${blocks.length} blocks`));
-
-        process.stdout.write("Processing first 5 blocks...\n");
-        scraps = await Promise.all(
-          blocks.slice(0, count).map(async (block, i) => {
-            process.stdout.write(
-              `  [${i + 1}/${count}] Processing block: ${
-                block.title || block.id
-              }\r`
-            );
-            return await processBlock(block);
-          })
+              return processedStatus;
+            } catch (err) {
+              console.log(
+                chalk.red(
+                  `\n  Error processing status ${status.id}: ${err.message}`,
+                ),
+              );
+              return null;
+            }
+          }),
         );
+
+        // Filter out null values
+        scraps = scraps.filter((scrap) => scrap !== null);
         console.log("\n");
-        break;
-
-      case "github":
-        process.stdout.write("Fetching GitHub data...");
-        const githubData = await fetchGithubData();
-
-        if (!githubData || Object.values(githubData).flat().length === 0) {
-          console.log(chalk.yellow(" No data available"));
-          return { totalErrors: 0, totalWarnings: 1, processed: 0 };
+      } catch (error) {
+        console.error(
+          chalk.red(`\nError fetching Mastodon data: ${error.message}`),
+        );
+        if (error.response) {
+          console.error(
+            chalk.yellow(
+              "API Response:",
+              JSON.stringify(error.response.data, null, 2),
+            ),
+          );
         }
+        return { totalErrors: 1, totalWarnings: 0, processed: 0 };
+      }
+      break;
 
-        const totalItems = Object.values(githubData).flat().length;
-        console.log(chalk.green(` Found ${totalItems} items`));
+    case "arena":
+      process.stdout.write("Fetching blocks...");
+      const blocks = await fetchAllBlocks(true);
+      console.log(chalk.green(` Found ${blocks.length} blocks`));
 
-        // Make sure we have valid scraps before processing
-        const validGithubScraps = Object.values(githubData)
-          .flat()
-          .filter(Boolean)
-          .slice(0, count);
+      process.stdout.write("Processing first 5 blocks...\n");
+      scraps = await Promise.all(
+        blocks.slice(0, count).map(async (block, i) => {
+          process.stdout.write(
+            `  [${i + 1}/${count}] Processing block: ${
+              block.title || block.id
+            }\r`,
+          );
+          return await processBlock(block);
+        }),
+      );
+      console.log("\n");
+      break;
 
-        if (validGithubScraps.length === 0) {
-          console.log(chalk.yellow("\nNo valid GitHub items to process"));
-          return { totalErrors: 0, totalWarnings: 1, processed: 0 };
-        }
+    case "github":
+      process.stdout.write("Fetching GitHub data...");
+      const githubData = await fetchGithubData();
 
-        scraps = validGithubScraps;
-        console.log(`Processing first ${scraps.length} items...\n`);
-        break;
+      if (!githubData || Object.values(githubData).flat().length === 0) {
+        console.log(chalk.yellow(" No data available"));
+        return { totalErrors: 0, totalWarnings: 1, processed: 0 };
+      }
+
+      const totalItems = Object.values(githubData).flat().length;
+      console.log(chalk.green(` Found ${totalItems} items`));
+
+      // Make sure we have valid scraps before processing
+      const validGithubScraps = Object.values(githubData)
+        .flat()
+        .filter(Boolean)
+        .slice(0, count);
+
+      if (validGithubScraps.length === 0) {
+        console.log(chalk.yellow("\nNo valid GitHub items to process"));
+        return { totalErrors: 0, totalWarnings: 1, processed: 0 };
+      }
+
+      scraps = validGithubScraps;
+      console.log(`Processing first ${scraps.length} items...\n`);
+      break;
     }
 
     const fetchDuration = endBenchmark(`fetch_${source}`);
     console.log(
-      chalk.blue(`\nFetching ${source} took ${fetchDuration.toFixed(2)}ms`)
+      chalk.blue(`\nFetching ${source} took ${fetchDuration.toFixed(2)}ms`),
     );
 
     if (!Array.isArray(scraps)) {
@@ -517,7 +517,7 @@ async function validateSource(source, count = 5) {
 
       const processDuration = endBenchmark(`process_${source}`);
       console.log(
-        chalk.blue(`Processing ${source} took ${processDuration.toFixed(2)}ms`)
+        chalk.blue(`Processing ${source} took ${processDuration.toFixed(2)}ms`),
       );
 
       console.log("\n+------------------------+");
@@ -551,7 +551,7 @@ async function main() {
   const results = {};
 
   console.log(
-    chalk.blue("\nStarting validation at:", new Date().toISOString())
+    chalk.blue("\nStarting validation at:", new Date().toISOString()),
   );
 
   for (const source of sources) {
@@ -562,7 +562,7 @@ async function main() {
 
     startBenchmark(`total_${source}`);
     const { totalErrors, totalWarnings, processed } = await validateSource(
-      source
+      source,
     );
     const sourceDuration = endBenchmark(`total_${source}`);
 
@@ -582,14 +582,14 @@ async function main() {
         totalErrors === 0 ? chalk.green("PASS") : chalk.red("FAIL");
       console.log(
         `${status} ${source}: ${processed} scraps, ${totalErrors} errors, ` +
-          `${totalWarnings} warnings (${duration.toFixed(2)}ms)`
+          `${totalWarnings} warnings (${duration.toFixed(2)}ms)`,
       );
-    }
+    },
   );
 
   const totalDuration = performance.now() - benchmarks.startTime;
   console.log(
-    chalk.blue(`\nTotal validation time: ${totalDuration.toFixed(2)}ms`)
+    chalk.blue(`\nTotal validation time: ${totalDuration.toFixed(2)}ms`),
   );
 
   // Save benchmarks to log file

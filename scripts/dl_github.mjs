@@ -29,7 +29,7 @@ const supabase = createClient(
   {
     auth: { persistSession: false },
     db: { schema: "public" },
-  }
+  },
 );
 
 // Improve logger setup
@@ -37,7 +37,7 @@ const logger = winston.createLogger({
   level: process.env.DEBUG === "true" ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -108,19 +108,19 @@ export async function processGithubItem(item, type) {
       // Get best available content
       const content = (() => {
         switch (type) {
-          case "repo":
-            return item.description || "No description";
-          case "pr":
-          case "issue":
-            return item.body || "No content";
-          case "gist":
-            return item.description || "No description";
-          case "release":
-            return item.body || "No content";
-          case "starred":
-            return item.description || "No description";
-          default:
-            return "No content";
+        case "repo":
+          return item.description || "No description";
+        case "pr":
+        case "issue":
+          return item.body || "No content";
+        case "gist":
+          return item.description || "No description";
+        case "release":
+          return item.body || "No content";
+        case "starred":
+          return item.description || "No description";
+        default:
+          return "No content";
         }
       })();
 
@@ -308,22 +308,22 @@ export const fetchGithubData = async (testMode = false) => {
     const processStartTime = Date.now();
     const processed = {
       userGists: await Promise.all(
-        userGists.data.map((g) => processGithubItem(g, "gist"))
+        userGists.data.map((g) => processGithubItem(g, "gist")),
       ),
       userRepos: await Promise.all(
-        userRepos.data.map((r) => processGithubItem(r, "repo"))
+        userRepos.data.map((r) => processGithubItem(r, "repo")),
       ),
       userReleases: await Promise.all(
-        userReleases.data.items.map((r) => processGithubItem(r, "release"))
+        userReleases.data.items.map((r) => processGithubItem(r, "release")),
       ),
       userPRs: await Promise.all(
-        userPRs.data.items.map((p) => processGithubItem(p, "pr"))
+        userPRs.data.items.map((p) => processGithubItem(p, "pr")),
       ),
       starredRepos: await Promise.all(
-        starredRepos.data.map((s) => processGithubItem(s, "starred"))
+        starredRepos.data.map((s) => processGithubItem(s, "starred")),
       ),
       userIssues: await Promise.all(
-        userIssues.data.items.map((i) => processGithubItem(i, "issue"))
+        userIssues.data.items.map((i) => processGithubItem(i, "issue")),
       ),
     };
 

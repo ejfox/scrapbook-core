@@ -20,47 +20,47 @@ const logger = winston.createLogger({
       return `${timestamp} [${level.toUpperCase()}]: ${message} ${
         Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ""
       }`;
-    })
+    }),
   ),
   transports: [new winston.transports.Console()],
 });
 
 // Initialize smart rate limiter
-const testLimiter = new SmartRateLimiter('aiServices', { name: 'TestLimiter' });
+const testLimiter = new SmartRateLimiter("aiServices", { name: "TestLimiter" });
 
 // Mock API call that simulates 429 errors
 let callCount = 0;
 const mockApiCall = async (shouldFail = false) => {
   callCount++;
   logger.info(`🔄 Making API call #${callCount}`);
-  
+
   // Simulate some API calls failing with 429
   if (shouldFail || (callCount > 5 && callCount < 15 && Math.random() < 0.7)) {
     const error = new Error("Rate limit exceeded");
     error.response = { status: 429, statusText: "Too Many Requests" };
     throw error;
   }
-  
+
   // Simulate some API calls being slow
   await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
-  
+
   return {
     success: true,
     callNumber: callCount,
-    message: "API call successful"
+    message: "API call successful",
   };
 };
 
 async function testSmartRateLimiter() {
   logger.info("🚀 Testing SmartRateLimiter with 429 detection...");
   logger.info("📊 Initial status:", testLimiter.getStatus());
-  
+
   const results = {
     successful: 0,
     failed: 0,
-    rateErrors: 0
+    rateErrors: 0,
   };
-  
+
   // Make 25 API calls to simulate load
   const promises = [];
   for (let i = 0; i < 25; i++) {
@@ -80,9 +80,9 @@ async function testSmartRateLimiter() {
         }
         return { error: error.message };
       });
-    
+
     promises.push(promise);
-    
+
     // Log status every 5 calls
     if ((i + 1) % 5 === 0) {
       setTimeout(() => {
@@ -90,24 +90,24 @@ async function testSmartRateLimiter() {
       }, 100);
     }
   }
-  
+
   // Wait for all calls to complete
   await Promise.all(promises);
-  
+
   // Final results
   logger.info("\n🏁 TEST COMPLETE");
   logger.info("📊 Final Results:", results);
   logger.info("🎛️ Final Rate Limiter Status:", testLimiter.getStatus());
-  
+
   // Test manual level forcing
   logger.info("\n🧪 Testing manual level control...");
   testLimiter.forceLevel(5); // Force to glacial mode
   logger.info("🐌 Forced to glacial mode - making slow test call...");
-  
+
   const start = Date.now();
   await testLimiter.schedule(mockApiCall);
   const duration = Date.now() - start;
-  
+
   logger.info(`⏱️ Glacial call took ${duration}ms (should be ~10+ seconds)`);
   logger.info("✅ Smart Rate Limiter test complete!");
 }

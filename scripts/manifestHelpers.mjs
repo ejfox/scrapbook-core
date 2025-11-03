@@ -39,7 +39,7 @@ export async function updateManifest(service, { lastFetch, errors = [] }) {
     } catch (readError) {
       console.error(
         "Error reading the manifest, initializing new data:",
-        readError
+        readError,
       );
       data = {
         arena: { lastFetch: null, errors: [] },

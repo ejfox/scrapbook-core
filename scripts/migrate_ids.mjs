@@ -1,23 +1,23 @@
-import { createClient } from '@supabase/supabase-js';
-import * as helpers from '../helpers.js';
-import dotenv from 'dotenv';
+import { createClient } from "@supabase/supabase-js";
+import * as helpers from "../helpers.js";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 );
 
 async function migrateIds() {
-  console.log('Starting ID migration...');
-  
+  console.log("Starting ID migration...");
+
   const { data: scraps, error } = await supabase
-    .from('scraps')
-    .select('*');
-    
+    .from("scraps")
+    .select("*");
+
   if (error) {
-    console.error('Failed to fetch scraps:', error);
+    console.error("Failed to fetch scraps:", error);
     return;
   }
 
@@ -30,23 +30,23 @@ async function migrateIds() {
     // Ensure metadata exists and contains shortId
     scrap.metadata = {
       ...scrap.metadata,
-      shortId: helpers.generateShortId(scrap.id)
+      shortId: helpers.generateShortId(scrap.id),
     };
 
     const { error: updateError } = await supabase
-      .from('scraps')
+      .from("scraps")
       .update({
         id: scrap.id,
-        metadata: scrap.metadata
+        metadata: scrap.metadata,
       })
-      .eq('scrap_id', scrap.scrap_id);
+      .eq("scrap_id", scrap.scrap_id);
 
     if (updateError) {
       console.error(`Failed to update scrap ${scrap.scrap_id}:`, updateError);
     }
   }
 
-  console.log('Migration complete');
+  console.log("Migration complete");
 }
 
-migrateIds().catch(console.error); 
+migrateIds().catch(console.error);

@@ -35,7 +35,7 @@ const supabase = createClient(
   {
     auth: { persistSession: false },
     db: { schema: "public" },
-  }
+  },
 );
 
 // Rate limiters
@@ -65,7 +65,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.printf(({ timestamp, level, message }) => {
       return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    }),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -162,7 +162,7 @@ async function checkForUpdates() {
     const response = await limiters.standard.schedule(() =>
       axios.get("https://api.pinboard.in/v1/posts/update", {
         params: { auth_token: apiToken, format: "json" },
-      })
+      }),
     );
     return response.data.update_time;
   } catch (error) {
@@ -176,7 +176,7 @@ async function fetchRecentBookmarks(count = 5) {
     const response = await limiters.recentPosts.schedule(() =>
       axios.get("https://api.pinboard.in/v1/posts/recent", {
         params: { auth_token: apiToken, format: "json", count },
-      })
+      }),
     );
     return response.data.posts;
   } catch (error) {
@@ -192,10 +192,10 @@ function contentChanged(bookmark, existingData) {
     return Array.isArray(tags)
       ? tags.sort().join(",")
       : tags
-          .split(/[\s,]+/)
-          .filter(Boolean)
-          .sort()
-          .join(",");
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .sort()
+        .join(",");
   };
 
   // Helper to normalize dates - convert to UTC and compare only date parts
@@ -381,7 +381,7 @@ export async function processBookmark(bookmark) {
       type: "bookmark",
       url: bookmark.href,
       title: bookmark.description,
-      content: bookmark.extended || bookmark.description || '',
+      content: bookmark.extended || bookmark.description || "",
       tags: bookmark.tags ? bookmark.tags.split(" ") : [],
       published_at: bookmark.time,
       created_at: bookmark.time,
@@ -400,7 +400,7 @@ export async function processBookmark(bookmark) {
       try {
         const screenshotStartTime = Date.now();
         const screenshot = await screenshotLimiter.schedule(() =>
-          generateScreenshot(bookmark.href)
+          generateScreenshot(bookmark.href),
         );
 
         if (screenshot?.url) {
@@ -470,7 +470,7 @@ async function handleInitialFetch(lastPinboardUpdate) {
   const response = await limiters.allPosts.schedule(() =>
     axios.get("https://api.pinboard.in/v1/posts/all", {
       params: { auth_token: apiToken, format: "json" },
-    })
+    }),
   );
 
   const bookmarks = response.data;
@@ -527,7 +527,7 @@ export async function fetchBookmarksWithCache(testMode = false) {
     if (cachedBookmarks.length) {
       logStatus(
         "warn",
-        `⚠️ Fetch failed, using ${cachedBookmarks.length} cached bookmarks`
+        `⚠️ Fetch failed, using ${cachedBookmarks.length} cached bookmarks`,
       );
       return cachedBookmarks;
     }
@@ -568,7 +568,7 @@ async function generateEmbedding(text) {
 
     if (response.data[0]?.embedding) {
       logger.debug(
-        `Generated embedding with ${response.data[0].embedding.length} dimensions`
+        `Generated embedding with ${response.data[0].embedding.length} dimensions`,
       );
       return response.data[0].embedding;
     }

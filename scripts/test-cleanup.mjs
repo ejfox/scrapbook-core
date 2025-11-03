@@ -47,7 +47,7 @@ async function runTests() {
     console.log(
       exists
         ? chalk.green("✓ Temp directory created successfully")
-        : chalk.red("✗ Failed to create temp directory")
+        : chalk.red("✗ Failed to create temp directory"),
     );
 
     // Test 2: Screenshot generation
@@ -59,14 +59,14 @@ async function runTests() {
     console.log(
       result.url
         ? chalk.green("✓ Screenshot generated successfully")
-        : chalk.red("✗ Failed to generate screenshot")
+        : chalk.red("✗ Failed to generate screenshot"),
     );
     console.log(
       beforeCount === afterCount
         ? chalk.green("✓ Temp files cleaned up after screenshot")
         : chalk.red(
-            `✗ Temp files not cleaned up (before: ${beforeCount}, after: ${afterCount})`
-          )
+          `✗ Temp files not cleaned up (before: ${beforeCount}, after: ${afterCount})`,
+        ),
     );
 
     // Test 3: Cleanup of old files
@@ -79,7 +79,7 @@ async function runTests() {
     console.log(
       newFileCount < oldFileCount
         ? chalk.green("✓ Old files cleaned up successfully")
-        : chalk.red("✗ Failed to clean up old files")
+        : chalk.red("✗ Failed to clean up old files"),
     );
 
     // Test 4: Retention of new files
@@ -92,7 +92,7 @@ async function runTests() {
     console.log(
       beforeCleanup === afterCleanup
         ? chalk.green("✓ New files retained correctly")
-        : chalk.red("✗ New files were incorrectly cleaned")
+        : chalk.red("✗ New files were incorrectly cleaned"),
     );
 
     // Test 5: Error handling

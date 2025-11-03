@@ -3,58 +3,58 @@
  * Tracks token usage and calculates costs across all AI services
  */
 
-import fs from 'fs';
-import path from 'path';
-import winston from 'winston';
-import chalk from 'chalk';
+import fs from "fs";
+import path from "path";
+import winston from "winston";
+import chalk from "chalk";
 
 // Initialize logger
 const logger = winston.createLogger({
-  level: 'info',
+  level: "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
   ),
   transports: [
-    new winston.transports.File({ filename: 'logs/cost-tracking.log' }),
-    new winston.transports.Console({ format: winston.format.simple() })
-  ]
+    new winston.transports.File({ filename: "logs/cost-tracking.log" }),
+    new winston.transports.Console({ format: winston.format.simple() }),
+  ],
 });
 
 // Model pricing data (costs per token)
 const MODEL_PRICING = {
   // OpenRouter models
-  'deepseek/deepseek-chat-v3.1:free': { prompt: 0, completion: 0, request: 0 },
-  'deepseek/deepseek-chat:free': { prompt: 0, completion: 0, request: 0 },
-  'nousresearch/hermes-3-llama-3.1-405b:free': { prompt: 0, completion: 0, request: 0 },
-  'mistralai/mistral-small-3.2-24b-instruct:free': { prompt: 0, completion: 0, request: 0 },
-  'google/gemini-2.0-flash-exp:free': { prompt: 0, completion: 0, request: 0 },
-  'meta-llama/llama-3.1-8b-instruct:free': { prompt: 0, completion: 0, request: 0 },
+  "deepseek/deepseek-chat-v3.1:free": { prompt: 0, completion: 0, request: 0 },
+  "deepseek/deepseek-chat:free": { prompt: 0, completion: 0, request: 0 },
+  "nousresearch/hermes-3-llama-3.1-405b:free": { prompt: 0, completion: 0, request: 0 },
+  "mistralai/mistral-small-3.2-24b-instruct:free": { prompt: 0, completion: 0, request: 0 },
+  "google/gemini-2.0-flash-exp:free": { prompt: 0, completion: 0, request: 0 },
+  "meta-llama/llama-3.1-8b-instruct:free": { prompt: 0, completion: 0, request: 0 },
 
   // Paid models
-  'deepseek/deepseek-chat-v3.1': { prompt: 0.00000027, completion: 0.000001, request: 0 },
-  'google/gemini-2.5-flash-preview-09-2025': { prompt: 0.0000003, completion: 0.0000025, request: 0 },
-  'google/gemini-2.5-flash': { prompt: 0.0000003, completion: 0.0000025, request: 0 }, // $0.30/$2.50 per 1M tokens
-  'google/gemini-2.0-flash-001': { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
-  'google/gemini-2.5-flash-lite': { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
+  "deepseek/deepseek-chat-v3.1": { prompt: 0.00000027, completion: 0.000001, request: 0 },
+  "google/gemini-2.5-flash-preview-09-2025": { prompt: 0.0000003, completion: 0.0000025, request: 0 },
+  "google/gemini-2.5-flash": { prompt: 0.0000003, completion: 0.0000025, request: 0 }, // $0.30/$2.50 per 1M tokens
+  "google/gemini-2.0-flash-001": { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
+  "google/gemini-2.5-flash-lite": { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
 
   // Claude models
-  'anthropic/claude-3.5-sonnet': { prompt: 0.000003, completion: 0.000015, request: 0 }, // $3/$15 per 1M tokens
-  'anthropic/claude-3.5-haiku': { prompt: 0.0000008, completion: 0.000004, request: 0 }, // $0.80/$4 per 1M tokens
-  'openai/gpt-4o': { prompt: 0.0000025, completion: 0.00001, request: 0 }, // $2.50/$10 per 1M tokens
-  'openai/gpt-4o-mini': { prompt: 0.00000015, completion: 0.0000006, request: 0 }, // $0.15/$0.60 per 1M tokens
+  "anthropic/claude-3.5-sonnet": { prompt: 0.000003, completion: 0.000015, request: 0 }, // $3/$15 per 1M tokens
+  "anthropic/claude-3.5-haiku": { prompt: 0.0000008, completion: 0.000004, request: 0 }, // $0.80/$4 per 1M tokens
+  "openai/gpt-4o": { prompt: 0.0000025, completion: 0.00001, request: 0 }, // $2.50/$10 per 1M tokens
+  "openai/gpt-4o-mini": { prompt: 0.00000015, completion: 0.0000006, request: 0 }, // $0.15/$0.60 per 1M tokens
 
   // OpenAI models (static pricing from documentation)
-  'text-embedding-3-small': { prompt: 0.00002, completion: 0, request: 0 }, // $0.02 per 1M tokens
-  'text-embedding-3-large': { prompt: 0.00013, completion: 0, request: 0 }, // $0.13 per 1M tokens
-  'text-embedding-ada-002': { prompt: 0.0001, completion: 0, request: 0 },  // $0.10 per 1M tokens
+  "text-embedding-3-small": { prompt: 0.00002, completion: 0, request: 0 }, // $0.02 per 1M tokens
+  "text-embedding-3-large": { prompt: 0.00013, completion: 0, request: 0 }, // $0.13 per 1M tokens
+  "text-embedding-ada-002": { prompt: 0.0001, completion: 0, request: 0 },  // $0.10 per 1M tokens
 
   // Nomic models
-  'nomic-embed-text-v1.5': { prompt: 0, completion: 0, request: 0 }, // Free tier available
-  'nomic-embed-vision-v1.5': { prompt: 0, completion: 0, request: 0 }, // Free tier available
+  "nomic-embed-text-v1.5": { prompt: 0, completion: 0, request: 0 }, // Free tier available
+  "nomic-embed-vision-v1.5": { prompt: 0, completion: 0, request: 0 }, // Free tier available
 
   // Default fallback for unknown models
-  'unknown': { prompt: 0.00001, completion: 0.00001, request: 0 }
+  "unknown": { prompt: 0.00001, completion: 0.00001, request: 0 },
 };
 
 // Cost tracking state
@@ -66,7 +66,7 @@ let costTracking = {
     startTime: new Date().toISOString(),
     byModel: {},
     byTask: {},
-    byScrap: {}
+    byScrap: {},
   },
   historical: {
     totalLifetimeCost: 0,
@@ -74,27 +74,27 @@ let costTracking = {
     totalLifetimeRequests: 0,
     dailyStats: {},
     weeklyStats: {},
-    monthlyStats: {}
-  }
+    monthlyStats: {},
+  },
 };
 
 // Load historical data on startup
 function loadHistoricalData() {
-  const costFile = path.join(process.cwd(), 'data', 'cost-history.json');
+  const costFile = path.join(process.cwd(), "data", "cost-history.json");
   try {
     if (fs.existsSync(costFile)) {
-      const data = JSON.parse(fs.readFileSync(costFile, 'utf8'));
+      const data = JSON.parse(fs.readFileSync(costFile, "utf8"));
       costTracking.historical = { ...costTracking.historical, ...data };
       logger.info(`Loaded historical cost data: $${costTracking.historical.totalLifetimeCost.toFixed(4)} lifetime`);
     }
   } catch (error) {
-    logger.warn('Could not load historical cost data:', error.message);
+    logger.warn("Could not load historical cost data:", error.message);
   }
 }
 
 // Save historical data
 function saveHistoricalData() {
-  const costFile = path.join(process.cwd(), 'data', 'cost-history.json');
+  const costFile = path.join(process.cwd(), "data", "cost-history.json");
   const dataDir = path.dirname(costFile);
 
   // Ensure data directory exists
@@ -105,13 +105,13 @@ function saveHistoricalData() {
   try {
     fs.writeFileSync(costFile, JSON.stringify(costTracking.historical, null, 2));
   } catch (error) {
-    logger.error('Could not save historical cost data:', error.message);
+    logger.error("Could not save historical cost data:", error.message);
   }
 }
 
 // Calculate cost for a specific model and usage
 export function calculateCost(modelId, usage) {
-  const pricing = MODEL_PRICING[modelId] || MODEL_PRICING['unknown'];
+  const pricing = MODEL_PRICING[modelId] || MODEL_PRICING["unknown"];
 
   const promptCost = (usage.prompt_tokens || 0) * pricing.prompt;
   const completionCost = (usage.completion_tokens || 0) * pricing.completion;
@@ -127,8 +127,8 @@ export function calculateCost(modelId, usage) {
     breakdown: {
       promptTokens: usage.prompt_tokens || 0,
       completionTokens: usage.completion_tokens || 0,
-      totalTokens: usage.total_tokens || (usage.prompt_tokens || 0) + (usage.completion_tokens || 0)
-    }
+      totalTokens: usage.total_tokens || (usage.prompt_tokens || 0) + (usage.completion_tokens || 0),
+    },
   };
 }
 
@@ -138,7 +138,7 @@ export function trackCost(modelId, usage, options = {}) {
 
   const cost = calculateCost(modelId, usage);
   const timestamp = new Date().toISOString();
-  const dateKey = timestamp.split('T')[0]; // YYYY-MM-DD format
+  const dateKey = timestamp.split("T")[0]; // YYYY-MM-DD format
 
   // Update session tracking
   costTracking.session.totalCost += cost.totalCost;
@@ -150,7 +150,7 @@ export function trackCost(modelId, usage, options = {}) {
     costTracking.session.byModel[modelId] = {
       cost: 0,
       tokens: 0,
-      requests: 0
+      requests: 0,
     };
   }
   costTracking.session.byModel[modelId].cost += cost.totalCost;
@@ -163,7 +163,7 @@ export function trackCost(modelId, usage, options = {}) {
       costTracking.session.byTask[taskType] = {
         cost: 0,
         tokens: 0,
-        requests: 0
+        requests: 0,
       };
     }
     costTracking.session.byTask[taskType].cost += cost.totalCost;
@@ -179,7 +179,7 @@ export function trackCost(modelId, usage, options = {}) {
         tokens: 0,
         requests: 0,
         tasks: [],
-        source: source
+        source: source,
       };
     }
     costTracking.session.byScrap[scrapId].cost += cost.totalCost;
@@ -203,7 +203,7 @@ export function trackCost(modelId, usage, options = {}) {
       requests: 0,
       scrapCount: 0,
       byModel: {},
-      byTask: {}
+      byTask: {},
     };
   }
   costTracking.historical.dailyStats[dateKey].cost += cost.totalCost;
@@ -215,13 +215,13 @@ export function trackCost(modelId, usage, options = {}) {
   }
 
   // Log the cost tracking
-  logger.info('Cost tracked', {
+  logger.info("Cost tracked", {
     modelId,
     scrapId,
     taskType,
     cost: cost.totalCost,
     tokens: cost.breakdown.totalTokens,
-    timestamp
+    timestamp,
   });
 
   // Save historical data periodically (every 10 requests)
@@ -241,7 +241,7 @@ export function getSessionStats() {
     duration: duration,
     avgCostPerScrap: costTracking.session.totalCost / Object.keys(costTracking.session.byScrap).length || 0,
     avgCostPerRequest: costTracking.session.totalCost / costTracking.session.requestCount || 0,
-    avgTokensPerRequest: costTracking.session.totalTokens / costTracking.session.requestCount || 0
+    avgTokensPerRequest: costTracking.session.totalTokens / costTracking.session.requestCount || 0,
   };
 }
 
@@ -266,19 +266,19 @@ export function getCostSummary() {
       totalTokens: session.totalTokens,
       requestCount: session.requestCount,
       avgCostPerScrap: session.avgCostPerScrap,
-      duration: Math.round(session.duration / 1000) // seconds
+      duration: Math.round(session.duration / 1000), // seconds
     },
     historical: {
       totalLifetimeCost: historical.totalLifetimeCost,
       totalLifetimeTokens: historical.totalLifetimeTokens,
-      totalLifetimeRequests: historical.totalLifetimeRequests
+      totalLifetimeRequests: historical.totalLifetimeRequests,
     },
     topExpensiveModels: Object.entries(session.byModel)
       .sort(([,a], [,b]) => b.cost - a.cost)
       .slice(0, 5),
     topExpensiveTasks: Object.entries(session.byTask)
       .sort(([,a], [,b]) => b.cost - a.cost)
-      .slice(0, 5)
+      .slice(0, 5),
   };
 }
 
@@ -286,36 +286,36 @@ export function getCostSummary() {
 export function printCostSummary() {
   const summary = getCostSummary();
 
-  console.log(chalk.cyan('\n📊 COST TRACKING SUMMARY'));
-  console.log(chalk.cyan('━'.repeat(50)));
+  console.log(chalk.cyan("\n📊 COST TRACKING SUMMARY"));
+  console.log(chalk.cyan("━".repeat(50)));
 
-  console.log(chalk.yellow('\n💰 Session Costs:'));
-  console.log(`Total Cost: ${chalk.green('$' + summary.session.totalCost.toFixed(6))}`);
+  console.log(chalk.yellow("\n💰 Session Costs:"));
+  console.log(`Total Cost: ${chalk.green("$" + summary.session.totalCost.toFixed(6))}`);
   console.log(`Total Tokens: ${chalk.blue(summary.session.totalTokens.toLocaleString())}`);
   console.log(`Requests: ${chalk.blue(summary.session.requestCount)}`);
-  console.log(`Avg Cost/Scrap: ${chalk.green('$' + summary.session.avgCostPerScrap.toFixed(6))}`);
-  console.log(`Duration: ${chalk.gray(summary.session.duration + 's')}`);
+  console.log(`Avg Cost/Scrap: ${chalk.green("$" + summary.session.avgCostPerScrap.toFixed(6))}`);
+  console.log(`Duration: ${chalk.gray(summary.session.duration + "s")}`);
 
-  console.log(chalk.yellow('\n📈 Lifetime Totals:'));
-  console.log(`Total Cost: ${chalk.green('$' + summary.historical.totalLifetimeCost.toFixed(4))}`);
+  console.log(chalk.yellow("\n📈 Lifetime Totals:"));
+  console.log(`Total Cost: ${chalk.green("$" + summary.historical.totalLifetimeCost.toFixed(4))}`);
   console.log(`Total Tokens: ${chalk.blue(summary.historical.totalLifetimeTokens.toLocaleString())}`);
   console.log(`Total Requests: ${chalk.blue(summary.historical.totalLifetimeRequests.toLocaleString())}`);
 
   if (summary.topExpensiveModels.length > 0) {
-    console.log(chalk.yellow('\n🏆 Top Models by Cost:'));
+    console.log(chalk.yellow("\n🏆 Top Models by Cost:"));
     summary.topExpensiveModels.forEach(([model, stats], i) => {
-      console.log(`${i + 1}. ${chalk.blue(model)}: ${chalk.green('$' + stats.cost.toFixed(6))} (${stats.tokens.toLocaleString()} tokens)`);
+      console.log(`${i + 1}. ${chalk.blue(model)}: ${chalk.green("$" + stats.cost.toFixed(6))} (${stats.tokens.toLocaleString()} tokens)`);
     });
   }
 
   if (summary.topExpensiveTasks.length > 0) {
-    console.log(chalk.yellow('\n📋 Top Tasks by Cost:'));
+    console.log(chalk.yellow("\n📋 Top Tasks by Cost:"));
     summary.topExpensiveTasks.forEach(([task, stats], i) => {
-      console.log(`${i + 1}. ${chalk.blue(task)}: ${chalk.green('$' + stats.cost.toFixed(6))} (${stats.tokens.toLocaleString()} tokens)`);
+      console.log(`${i + 1}. ${chalk.blue(task)}: ${chalk.green("$" + stats.cost.toFixed(6))} (${stats.tokens.toLocaleString()} tokens)`);
     });
   }
 
-  console.log(chalk.cyan('━'.repeat(50)));
+  console.log(chalk.cyan("━".repeat(50)));
 }
 
 // Cost checking with circuit breaker support
@@ -323,7 +323,7 @@ export function checkCostAlerts(thresholds = {}) {
   const {
     sessionCostLimit = 1.0,    // $1.00 per session
     dailyCostLimit = 5.0,      // $5.00 per day
-    scrapCostLimit = 0.10      // $0.10 per scrap
+    scrapCostLimit = 0.10,      // $0.10 per scrap
   } = thresholds;
 
   const alerts = [];
@@ -332,20 +332,20 @@ export function checkCostAlerts(thresholds = {}) {
   // Session cost alert - this is the primary circuit breaker
   if (session.totalCost > sessionCostLimit) {
     alerts.push({
-      type: 'session_limit',
+      type: "session_limit",
       message: `Session cost $${session.totalCost.toFixed(4)} exceeds limit $${sessionCostLimit}`,
-      severity: 'critical',
-      shouldStop: true
+      severity: "critical",
+      shouldStop: true,
     });
   }
 
   // Warning at 80% of session limit
   if (session.totalCost > sessionCostLimit * 0.8) {
     alerts.push({
-      type: 'session_warning',
+      type: "session_warning",
       message: `Session cost $${session.totalCost.toFixed(4)} approaching limit $${sessionCostLimit}`,
-      severity: 'warning',
-      shouldStop: false
+      severity: "warning",
+      shouldStop: false,
     });
   }
 
@@ -353,11 +353,11 @@ export function checkCostAlerts(thresholds = {}) {
   Object.entries(session.byScrap).forEach(([scrapId, stats]) => {
     if (stats.cost > scrapCostLimit) {
       alerts.push({
-        type: 'scrap_cost',
+        type: "scrap_cost",
         message: `Scrap ${scrapId} cost $${stats.cost.toFixed(4)} exceeds limit $${scrapCostLimit}`,
         scrapId,
-        severity: 'warning',
-        shouldStop: false
+        severity: "warning",
+        shouldStop: false,
       });
     }
   });
@@ -370,13 +370,13 @@ export function generateQuickReport() {
   const session = getSessionStats();
   const historical = getHistoricalStats();
 
-  console.log(chalk.cyan('\n💰 COST SUMMARY'));
-  console.log(chalk.cyan('━'.repeat(30)));
-  console.log(`Session: ${chalk.green('$' + session.totalCost.toFixed(4))} (${session.totalTokens.toLocaleString()} tokens)`);
-  console.log(`Lifetime: ${chalk.green('$' + historical.totalLifetimeCost.toFixed(4))} (${historical.totalLifetimeTokens.toLocaleString()} tokens)`);
+  console.log(chalk.cyan("\n💰 COST SUMMARY"));
+  console.log(chalk.cyan("━".repeat(30)));
+  console.log(`Session: ${chalk.green("$" + session.totalCost.toFixed(4))} (${session.totalTokens.toLocaleString()} tokens)`);
+  console.log(`Lifetime: ${chalk.green("$" + historical.totalLifetimeCost.toFixed(4))} (${historical.totalLifetimeTokens.toLocaleString()} tokens)`);
 
   if (session.requestCount > 0) {
-    console.log(`Avg/Request: ${chalk.green('$' + (session.totalCost / session.requestCount).toFixed(6))}`);
+    console.log(`Avg/Request: ${chalk.green("$" + (session.totalCost / session.requestCount).toFixed(6))}`);
   }
 
   // Show expensive scraps
@@ -386,9 +386,9 @@ export function generateQuickReport() {
     .slice(0, 3);
 
   if (expensiveScraps.length > 0) {
-    console.log(chalk.yellow('\nTop expensive scraps:'));
+    console.log(chalk.yellow("\nTop expensive scraps:"));
     expensiveScraps.forEach(([scrapId, stats]) => {
-      console.log(`  ${scrapId.substring(0, 20)}: ${chalk.red('$' + stats.cost.toFixed(4))}`);
+      console.log(`  ${scrapId.substring(0, 20)}: ${chalk.red("$" + stats.cost.toFixed(4))}`);
     });
   }
 }
@@ -402,10 +402,10 @@ export function resetSession() {
     startTime: new Date().toISOString(),
     byModel: {},
     byTask: {},
-    byScrap: {}
+    byScrap: {},
   };
 
-  logger.info('Cost tracking session reset');
+  logger.info("Cost tracking session reset");
 }
 
 // Initialize cost tracking
@@ -413,24 +413,24 @@ export function initializeCostTracking() {
   loadHistoricalData();
 
   // Set up graceful shutdown to save data
-  process.on('SIGINT', () => {
+  process.on("SIGINT", () => {
     saveHistoricalData();
     printCostSummary();
     process.exit(0);
   });
 
-  process.on('SIGTERM', () => {
+  process.on("SIGTERM", () => {
     saveHistoricalData();
     process.exit(0);
   });
 
-  logger.info('Cost tracking initialized');
+  logger.info("Cost tracking initialized");
 }
 
 // Update model pricing (for when API pricing changes)
 export function updateModelPricing(newPricing) {
   Object.assign(MODEL_PRICING, newPricing);
-  logger.info('Model pricing updated', { newModels: Object.keys(newPricing) });
+  logger.info("Model pricing updated", { newModels: Object.keys(newPricing) });
 }
 
 // Initialize on import

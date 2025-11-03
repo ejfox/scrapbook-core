@@ -1,22 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 );
 
 async function migrateSchema() {
-  console.log('Starting schema v2 migration...');
-  
+  console.log("Starting schema v2 migration...");
+
   const { data: scraps, error } = await supabase
-    .from('scraps')
-    .select('*');
-    
+    .from("scraps")
+    .select("*");
+
   if (error) {
-    console.error('Failed to fetch scraps:', error);
+    console.error("Failed to fetch scraps:", error);
     return;
   }
 
@@ -29,20 +29,20 @@ async function migrateSchema() {
       latitude: scrap.metadata?.latitude,
       longitude: scrap.metadata?.longitude,
       published_at: scrap.metadata?.published_at || scrap.created_at,
-      shared: false
+      shared: false,
     };
 
     const { error: updateError } = await supabase
-      .from('scraps')
+      .from("scraps")
       .update(updates)
-      .eq('id', scrap.id);
+      .eq("id", scrap.id);
 
     if (updateError) {
       console.error(`Failed to update scrap ${scrap.id}:`, updateError);
     }
   }
 
-  console.log('Migration complete');
+  console.log("Migration complete");
 }
 
-migrateSchema().catch(console.error); 
+migrateSchema().catch(console.error);

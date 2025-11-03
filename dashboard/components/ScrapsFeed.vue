@@ -3,29 +3,29 @@
     <!-- Connection Status Indicator -->
     <div class="status-bar" :class="statusClass">
       <div class="status-indicator">
-        <span class="status-dot" :class="{ 'pulse': isReconnecting }"></span>
+        <span class="status-dot" :class="{ 'pulse': isReconnecting }" />
         <span class="status-text">
           {{ statusText }}
         </span>
       </div>
 
-      <div class="stats" v-if="isConnected">
+      <div v-if="isConnected" class="stats">
         <span class="stat">
           {{ stats.insertsReceived }} new
         </span>
         <span class="stat">
           {{ stats.updatesReceived }} updated
         </span>
-        <span class="stat" v-if="queueSize > 0">
+        <span v-if="queueSize > 0" class="stat">
           {{ queueSize }} queued
         </span>
       </div>
 
       <button
         v-if="hasError"
-        @click="clearError"
         class="btn-dismiss"
         aria-label="Dismiss error"
+        @click="clearError"
       >
         ×
       </button>
@@ -46,7 +46,9 @@
           </div>
 
           <div class="scrap-content">
-            <h3 v-if="scrap.title" class="scrap-title">{{ scrap.title }}</h3>
+            <h3 v-if="scrap.title" class="scrap-title">
+              {{ scrap.title }}
+            </h3>
             <p v-if="scrap.ai_summary" class="scrap-summary">
               {{ scrap.ai_summary }}
             </p>
@@ -66,21 +68,23 @@
 
       <div v-if="recentScraps.length === 0" class="empty-state">
         <p>Waiting for scraps to flow in...</p>
-        <p class="hint">The stream is quiet. New items will appear here in real-time.</p>
+        <p class="hint">
+          The stream is quiet. New items will appear here in real-time.
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRealtimeScraps } from '../composables/useRealtimeScraps'
+import { ref, computed } from "vue";
+import { useRealtimeScraps } from "../composables/useRealtimeScraps";
 
 // Maximum scraps to show in the feed
-const MAX_FEED_SIZE = 50
+const MAX_FEED_SIZE = 50;
 
 // State
-const recentScraps = ref([])
+const recentScraps = ref([]);
 
 // Initialize realtime subscription
 const {
@@ -90,88 +94,88 @@ const {
   hasError,
   stats,
   queueSize,
-  clearError
+  clearError,
 } = useRealtimeScraps({
   enableBatching: true,
 
   // Handle new scraps
   onInsert: (scraps) => {
-    console.log(`[Feed] Received ${scraps.length} new scraps`)
+    console.log(`[Feed] Received ${scraps.length} new scraps`);
 
     // Add to beginning of feed
     recentScraps.value = [
       ...scraps,
-      ...recentScraps.value
-    ].slice(0, MAX_FEED_SIZE)
+      ...recentScraps.value,
+    ].slice(0, MAX_FEED_SIZE);
   },
 
   // Handle updated scraps
   onUpdate: (updates) => {
-    console.log(`[Feed] Received ${updates.length} scrap updates`)
+    console.log(`[Feed] Received ${updates.length} scrap updates`);
 
     updates.forEach(({ old, new: updated }) => {
-      const index = recentScraps.value.findIndex(s => s.id === updated.id)
+      const index = recentScraps.value.findIndex(s => s.id === updated.id);
 
       if (index !== -1) {
         // Update existing scrap in feed
-        recentScraps.value[index] = updated
+        recentScraps.value[index] = updated;
       } else {
         // Add to feed if not present (might have been added before we subscribed)
         recentScraps.value = [
           updated,
-          ...recentScraps.value
-        ].slice(0, MAX_FEED_SIZE)
+          ...recentScraps.value,
+        ].slice(0, MAX_FEED_SIZE);
       }
-    })
+    });
   },
 
   // Handle errors
   onError: (err) => {
-    console.error('[Feed] Realtime error:', err)
-  }
-})
+    console.error("[Feed] Realtime error:", err);
+  },
+});
 
 // Computed status
 const statusClass = computed(() => {
-  if (hasError.value) return 'status-error'
-  if (isReconnecting.value) return 'status-reconnecting'
-  if (isConnected.value) return 'status-connected'
-  return 'status-disconnected'
-})
+  if (hasError.value) return "status-error";
+  if (isReconnecting.value) return "status-reconnecting";
+  if (isConnected.value) return "status-connected";
+  return "status-disconnected";
+});
 
 const statusText = computed(() => {
-  if (hasError.value) return `Error: ${error.value.message}`
-  if (isReconnecting.value) return 'Reconnecting...'
-  if (isConnected.value) return 'Live'
-  return 'Disconnected'
-})
+  if (hasError.value) return `Error: ${error.value.message}`;
+  if (isReconnecting.value) return "Reconnecting...";
+  if (isConnected.value) return "Live";
+  return "Disconnected";
+});
 
 // Format timestamp
 const formatTime = (timestamp) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now - date
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now - date;
 
   // Less than a minute
   if (diff < 60000) {
-    return 'just now'
+    return "just now";
   }
 
   // Less than an hour
   if (diff < 3600000) {
-    const minutes = Math.floor(diff / 60000)
-    return `${minutes}m ago`
+    const minutes = Math.floor(diff / 60000);
+    return `${minutes}m ago`;
   }
 
   // Less than a day
   if (diff < 86400000) {
-    const hours = Math.floor(diff / 3600000)
-    return `${hours}h ago`
+    const hours = Math.floor(diff / 3600000);
+    return `${hours}h ago`;
   }
 
   // Older - show date
-  return date.toLocaleDateString()
-}
+  return date.toLocaleDateString();
+};
 </script>
 
 <style scoped>

@@ -4,23 +4,23 @@
  * Prevents wasting money on broken services
  */
 
-import winston from 'winston';
+import winston from "winston";
 
 const logger = winston.createLogger({
-  level: 'info',
+  level: "info",
   format: winston.format.json(),
   transports: [new winston.transports.Console()],
 });
 
 class CircuitBreaker {
   constructor(options = {}) {
-    this.name = options.name || 'default';
+    this.name = options.name || "default";
     this.failureThreshold = options.failureThreshold || 3; // Failures before tripping
     this.successThreshold = options.successThreshold || 2; // Successes to reset
     this.timeout = options.timeout || 60000; // 1 minute cooldown
     this.monitorWindow = options.monitorWindow || 10; // Track last N operations
 
-    this.state = 'CLOSED'; // CLOSED = healthy, OPEN = failing, HALF_OPEN = testing
+    this.state = "CLOSED"; // CLOSED = healthy, OPEN = failing, HALF_OPEN = testing
     this.failures = [];
     this.successes = [];
     this.lastFailureTime = null;
@@ -35,9 +35,9 @@ class CircuitBreaker {
     }
 
     // If in HALF_OPEN state and got enough successes, reset
-    if (this.state === 'HALF_OPEN' && this.successes.length >= this.successThreshold) {
+    if (this.state === "HALF_OPEN" && this.successes.length >= this.successThreshold) {
       this.reset();
-    } else if (this.state === 'OPEN') {
+    } else if (this.state === "OPEN") {
       // Don't reset from OPEN until we enter HALF_OPEN
       return;
     }
@@ -65,9 +65,9 @@ class CircuitBreaker {
     this.successes = [];
 
     // Check if we should trip
-    if (this.state === 'CLOSED' && this.failures.length >= this.failureThreshold) {
+    if (this.state === "CLOSED" && this.failures.length >= this.failureThreshold) {
       this.trip();
-    } else if (this.state === 'HALF_OPEN') {
+    } else if (this.state === "HALF_OPEN") {
       // Failed during testing, go back to OPEN
       this.trip();
     }
@@ -81,7 +81,7 @@ class CircuitBreaker {
   }
 
   trip() {
-    this.state = 'OPEN';
+    this.state = "OPEN";
     this.tripCount++;
     this.successes = [];
 
@@ -93,14 +93,14 @@ class CircuitBreaker {
 
     // Set timeout to attempt recovery
     setTimeout(() => {
-      if (this.state === 'OPEN') {
+      if (this.state === "OPEN") {
         this.attemptReset();
       }
     }, this.timeout);
   }
 
   attemptReset() {
-    this.state = 'HALF_OPEN';
+    this.state = "HALF_OPEN";
     logger.info(`CircuitBreaker[${this.name}]: Attempting reset (HALF_OPEN)`, {
       tripCount: this.tripCount,
     });
@@ -111,24 +111,24 @@ class CircuitBreaker {
       totalTrips: this.tripCount,
     });
 
-    this.state = 'CLOSED';
+    this.state = "CLOSED";
     this.failures = [];
     this.successes = [];
     this.lastFailureTime = null;
   }
 
   isOpen() {
-    return this.state === 'OPEN';
+    return this.state === "OPEN";
   }
 
   async call(fn) {
-    if (this.state === 'OPEN') {
+    if (this.state === "OPEN") {
       const timeSinceFailure = Date.now() - this.lastFailureTime;
       throw new Error(
         `CircuitBreaker[${this.name}] is OPEN. Service is failing. ` +
         `Last failure ${Math.floor(timeSinceFailure / 1000)}s ago. ` +
         `${this.failures.length} recent failures. ` +
-        `Will retry in ${Math.floor((this.timeout - timeSinceFailure) / 1000)}s.`
+        `Will retry in ${Math.floor((this.timeout - timeSinceFailure) / 1000)}s.`,
       );
     }
 
@@ -158,25 +158,25 @@ class CircuitBreaker {
 // Create breakers for each service
 export const breakers = {
   summarization: new CircuitBreaker({
-    name: 'summarization',
+    name: "summarization",
     failureThreshold: 3,
     successThreshold: 2,
     timeout: 120000, // 2 minutes
   }),
   embedding: new CircuitBreaker({
-    name: 'embedding',
+    name: "embedding",
     failureThreshold: 3,
     successThreshold: 2,
     timeout: 120000,
   }),
   relationships: new CircuitBreaker({
-    name: 'relationships',
+    name: "relationships",
     failureThreshold: 5,
     successThreshold: 2,
     timeout: 120000,
   }),
   screenshot: new CircuitBreaker({
-    name: 'screenshot',
+    name: "screenshot",
     failureThreshold: 5,
     successThreshold: 3,
     timeout: 60000,
@@ -185,7 +185,7 @@ export const breakers = {
 
 // Check if any critical breaker is open
 export function isCriticalSystemDown() {
-  const criticalBreakers = ['summarization', 'embedding'];
+  const criticalBreakers = ["summarization", "embedding"];
   for (const name of criticalBreakers) {
     if (breakers[name].isOpen()) {
       return true;

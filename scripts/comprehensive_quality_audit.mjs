@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-import chalk from 'chalk';
-import { performance } from 'perf_hooks';
+import { createClient } from "@supabase/supabase-js";
+import * as dotenv from "dotenv";
+import chalk from "chalk";
+import { performance } from "perf_hooks";
 
 dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
 console.log(chalk.cyan(`
@@ -26,26 +26,26 @@ console.log(chalk.cyan(`
 const QUALITY_THRESHOLDS = {
   summary: {
     minLength: 500,
-    requiredElements: ['content overview', 'key points'],
-    avoid: ['unknown', 'error', 'failed']
+    requiredElements: ["content overview", "key points"],
+    avoid: ["unknown", "error", "failed"],
   },
   tags: {
     minCount: 3,
-    avoid: ['pinboard', 'bookmark', 'link'],
-    preferSpecific: true
+    avoid: ["pinboard", "bookmark", "link"],
+    preferSpecific: true,
   },
   relationships: {
     minCount: 1,
-    requiredFields: ['source', 'target', 'type']
+    requiredFields: ["source", "target", "type"],
   },
   location: {
-    avoid: ['unknown', 'n/a', 'none', ''],
-    requireSpecific: true
+    avoid: ["unknown", "n/a", "none", ""],
+    requireSpecific: true,
   },
   financial_analysis: {
-    triggers: ['$', 'price', 'cost', 'revenue', 'investment', 'fund'],
-    requiredFields: ['amount', 'currency', 'context']
-  }
+    triggers: ["$", "price", "cost", "revenue", "investment", "fund"],
+    requiredFields: ["amount", "currency", "context"],
+  },
 };
 
 class QualityAnalyzer {
@@ -56,13 +56,13 @@ class QualityAnalyzer {
       relationships: { passed: 0, total: 0, issues: [] },
       location: { passed: 0, total: 0, issues: [] },
       financial_analysis: { passed: 0, total: 0, issues: [] },
-      overall: { passed: 0, total: 0 }
+      overall: { passed: 0, total: 0 },
     };
     this.scrapExamples = {
       excellent: [],
       good: [],
       needs_improvement: [],
-      failed: []
+      failed: [],
     };
   }
 
@@ -73,7 +73,7 @@ class QualityAnalyzer {
       this.results.summary.issues.push({
         scrapId,
         issue: `Summary too short: ${summary?.length || 0} chars (min: ${QUALITY_THRESHOLDS.summary.minLength})`,
-        severity: 'high'
+        severity: "high",
       });
       return 0;
     }
@@ -87,21 +87,21 @@ class QualityAnalyzer {
         this.results.summary.issues.push({
           scrapId,
           issue: `Contains prohibited term: "${term}"`,
-          severity: 'high'
+          severity: "high",
         });
       }
     }
 
     // Check for structure (bullets, paragraphs)
-    const hasBullets = summary.includes('•') || summary.includes('- ');
-    const hasMultipleParagraphs = summary.split('\n\n').length > 1;
+    const hasBullets = summary.includes("•") || summary.includes("- ");
+    const hasMultipleParagraphs = summary.split("\n\n").length > 1;
 
     if (!hasBullets && !hasMultipleParagraphs) {
       score -= 20;
       this.results.summary.issues.push({
         scrapId,
-        issue: 'Summary lacks structure (no bullets or multiple paragraphs)',
-        severity: 'medium'
+        issue: "Summary lacks structure (no bullets or multiple paragraphs)",
+        severity: "medium",
       });
     }
 
@@ -110,15 +110,15 @@ class QualityAnalyzer {
       const summaryWords = summary.toLowerCase().split(/\s+/);
       const contentWords = content.toLowerCase().split(/\s+/).slice(0, 100); // First 100 words
       const overlap = summaryWords.filter(word =>
-        word.length > 3 && contentWords.includes(word)
+        word.length > 3 && contentWords.includes(word),
       ).length;
 
       if (overlap < 5) {
         score -= 25;
         this.results.summary.issues.push({
           scrapId,
-          issue: 'Summary may not be relevant to content',
-          severity: 'medium'
+          issue: "Summary may not be relevant to content",
+          severity: "medium",
         });
       }
     }
@@ -134,7 +134,7 @@ class QualityAnalyzer {
       this.results.tags.issues.push({
         scrapId,
         issue: `Insufficient tags: ${tags?.length || 0} (min: ${QUALITY_THRESHOLDS.tags.minCount})`,
-        severity: 'high'
+        severity: "high",
       });
       return 0;
     }
@@ -143,7 +143,7 @@ class QualityAnalyzer {
 
     // Check for generic/prohibited tags
     const genericCount = tags.filter(tag =>
-      QUALITY_THRESHOLDS.tags.avoid.includes(tag.toLowerCase())
+      QUALITY_THRESHOLDS.tags.avoid.includes(tag.toLowerCase()),
     ).length;
 
     if (genericCount > 0) {
@@ -151,23 +151,23 @@ class QualityAnalyzer {
       this.results.tags.issues.push({
         scrapId,
         issue: `Contains ${genericCount} generic tags: ${tags.filter(tag =>
-          QUALITY_THRESHOLDS.tags.avoid.includes(tag.toLowerCase())
-        ).join(', ')}`,
-        severity: 'medium'
+          QUALITY_THRESHOLDS.tags.avoid.includes(tag.toLowerCase()),
+        ).join(", ")}`,
+        severity: "medium",
       });
     }
 
     // Check for specificity
     const specificTags = tags.filter(tag =>
-      tag.length > 3 && !QUALITY_THRESHOLDS.tags.avoid.includes(tag.toLowerCase())
+      tag.length > 3 && !QUALITY_THRESHOLDS.tags.avoid.includes(tag.toLowerCase()),
     );
 
     if (specificTags.length < 2) {
       score -= 20;
       this.results.tags.issues.push({
         scrapId,
-        issue: 'Lacks specific, descriptive tags',
-        severity: 'medium'
+        issue: "Lacks specific, descriptive tags",
+        severity: "medium",
       });
     }
 
@@ -181,8 +181,8 @@ class QualityAnalyzer {
     if (!Array.isArray(relationships) || relationships.length === 0) {
       this.results.relationships.issues.push({
         scrapId,
-        issue: 'No relationships extracted',
-        severity: 'medium'
+        issue: "No relationships extracted",
+        severity: "medium",
       });
       return 50; // Not always applicable, so medium score
     }
@@ -195,23 +195,23 @@ class QualityAnalyzer {
         score -= 30;
         this.results.relationships.issues.push({
           scrapId,
-          issue: 'Malformed relationship structure',
-          severity: 'high'
+          issue: "Malformed relationship structure",
+          severity: "high",
         });
       }
     }
 
     // Check for meaningful relationships
     const meaningfulRels = relationships.filter(rel =>
-      rel.source?.name?.length > 2 && rel.target?.name?.length > 2
+      rel.source?.name?.length > 2 && rel.target?.name?.length > 2,
     );
 
     if (meaningfulRels.length === 0) {
       score -= 40;
       this.results.relationships.issues.push({
         scrapId,
-        issue: 'No meaningful relationships found',
-        severity: 'medium'
+        issue: "No meaningful relationships found",
+        severity: "medium",
       });
     }
 
@@ -223,17 +223,17 @@ class QualityAnalyzer {
     this.results.location.total++;
 
     // Check if content likely contains location info
-    const locationKeywords = ['in ', 'at ', 'from ', 'located', 'city', 'country', 'street', 'avenue'];
+    const locationKeywords = ["in ", "at ", "from ", "located", "city", "country", "street", "avenue"];
     const hasLocationContext = content && locationKeywords.some(keyword =>
-      content.toLowerCase().includes(keyword)
+      content.toLowerCase().includes(keyword),
     );
 
     if (!location || QUALITY_THRESHOLDS.location.avoid.includes(location.toLowerCase())) {
       if (hasLocationContext) {
         this.results.location.issues.push({
           scrapId,
-          issue: `Failed to extract location despite location context in content`,
-          severity: 'high'
+          issue: "Failed to extract location despite location context in content",
+          severity: "high",
         });
         return 0;
       } else {
@@ -250,8 +250,8 @@ class QualityAnalyzer {
       score -= 20;
       this.results.location.issues.push({
         scrapId,
-        issue: 'Location name provided but missing coordinates',
-        severity: 'low'
+        issue: "Location name provided but missing coordinates",
+        severity: "low",
       });
     }
 
@@ -260,8 +260,8 @@ class QualityAnalyzer {
       score -= 30;
       this.results.location.issues.push({
         scrapId,
-        issue: 'Location too generic or short',
-        severity: 'medium'
+        issue: "Location too generic or short",
+        severity: "medium",
       });
     }
 
@@ -274,15 +274,15 @@ class QualityAnalyzer {
 
     // Check if content contains financial triggers
     const hasFinancialContent = content && QUALITY_THRESHOLDS.financial_analysis.triggers.some(trigger =>
-      content.toLowerCase().includes(trigger)
+      content.toLowerCase().includes(trigger),
     );
 
     if (!financial_analysis) {
       if (hasFinancialContent) {
         this.results.financial_analysis.issues.push({
           scrapId,
-          issue: 'Financial content detected but no analysis provided',
-          severity: 'medium'
+          issue: "Financial content detected but no analysis provided",
+          severity: "medium",
         });
         return 30;
       } else {
@@ -295,12 +295,12 @@ class QualityAnalyzer {
     let score = 100;
 
     // Validate financial analysis structure
-    if (typeof financial_analysis !== 'object') {
+    if (typeof financial_analysis !== "object") {
       score -= 50;
       this.results.financial_analysis.issues.push({
         scrapId,
-        issue: 'Financial analysis not properly structured',
-        severity: 'high'
+        issue: "Financial analysis not properly structured",
+        severity: "high",
       });
     }
 
@@ -313,11 +313,11 @@ class QualityAnalyzer {
 
     const example = {
       id: scrap.id,
-      title: scrap.title?.substring(0, 60) + '...',
+      title: scrap.title?.substring(0, 60) + "...",
       url: scrap.url,
       source: scrap.source,
       avgScore: Math.round(avgScore),
-      scores
+      scores,
     };
 
     if (avgScore >= 90) {
@@ -337,11 +337,11 @@ class QualityAnalyzer {
       summary: {
         totalScraps: this.results.summary.total,
         overallSuccessRate: this.calculateOverallSuccessRate(),
-        fieldSuccessRates: this.calculateFieldSuccessRates()
+        fieldSuccessRates: this.calculateFieldSuccessRates(),
       },
       detailed: this.results,
       examples: this.scrapExamples,
-      recommendations: this.generateRecommendations()
+      recommendations: this.generateRecommendations(),
     };
 
     return report;
@@ -349,10 +349,10 @@ class QualityAnalyzer {
 
   calculateOverallSuccessRate() {
     const totalChecks = Object.values(this.results).reduce((sum, field) =>
-      sum + (field.total || 0), 0
+      sum + (field.total || 0), 0,
     );
     const totalPassed = Object.values(this.results).reduce((sum, field) =>
-      sum + (field.passed || 0), 0
+      sum + (field.passed || 0), 0,
     );
 
     return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : 0;
@@ -373,13 +373,13 @@ class QualityAnalyzer {
 
     // Analyze patterns in issues
     const allIssues = Object.values(this.results).flatMap(field => field.issues || []);
-    const highSeverityCount = allIssues.filter(issue => issue && issue.severity === 'high').length;
+    const highSeverityCount = allIssues.filter(issue => issue && issue.severity === "high").length;
 
     if (highSeverityCount > 5) {
       recommendations.push({
-        priority: 'high',
-        issue: 'High number of critical AI extraction failures',
-        action: 'Review and retrain AI models, check prompt engineering'
+        priority: "high",
+        issue: "High number of critical AI extraction failures",
+        action: "Review and retrain AI models, check prompt engineering",
       });
     }
 
@@ -389,9 +389,9 @@ class QualityAnalyzer {
 
       if (successRate < 70) {
         recommendations.push({
-          priority: successRate < 50 ? 'high' : 'medium',
+          priority: successRate < 50 ? "high" : "medium",
           issue: `${field} extraction success rate below threshold (${Math.round(successRate)}%)`,
-          action: `Focus on improving ${field} extraction logic and validation`
+          action: `Focus on improving ${field} extraction logic and validation`,
         });
       }
     });
@@ -404,13 +404,13 @@ async function fetchRecentScraps(limit = 10) {
   console.log(chalk.blue(`🔍 Fetching ${limit} most recent scraps with AI fields...`));
 
   const { data, error } = await supabase
-    .from('scraps')
+    .from("scraps")
     .select(`
       id, title, url, content, source, type,
       summary, tags, relationships, location, latitude, longitude,
       metadata, created_at, updated_at, published_at
     `)
-    .order('updated_at', { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(limit);
 
   if (error) {
@@ -422,18 +422,18 @@ async function fetchRecentScraps(limit = 10) {
 }
 
 async function testSpecificCases() {
-  console.log(chalk.blue('\n🎯 Testing specific content types...'));
+  console.log(chalk.blue("\n🎯 Testing specific content types..."));
 
   const results = {};
 
   // Test news articles
   try {
     const { data: newsData, error: newsError } = await supabase
-      .from('scraps')
-      .select('id, title, url, content, summary, tags, location, relationships')
-      .or('content.ilike.%news%,content.ilike.%report%,url.ilike.%news%,url.ilike.%reuters%,url.ilike.%bbc%')
-      .not('summary', 'is', null)
-      .order('updated_at', { ascending: false })
+      .from("scraps")
+      .select("id, title, url, content, summary, tags, location, relationships")
+      .or("content.ilike.%news%,content.ilike.%report%,url.ilike.%news%,url.ilike.%reuters%,url.ilike.%bbc%")
+      .not("summary", "is", null)
+      .order("updated_at", { ascending: false })
       .limit(3);
 
     results.news = newsData || [];
@@ -446,11 +446,11 @@ async function testSpecificCases() {
   // Test technical content
   try {
     const { data: techData, error: techError } = await supabase
-      .from('scraps')
-      .select('id, title, url, content, summary, tags, relationships')
-      .or('content.ilike.%code%,content.ilike.%programming%,content.ilike.%software%,url.ilike.%github%')
-      .not('summary', 'is', null)
-      .order('updated_at', { ascending: false })
+      .from("scraps")
+      .select("id, title, url, content, summary, tags, relationships")
+      .or("content.ilike.%code%,content.ilike.%programming%,content.ilike.%software%,url.ilike.%github%")
+      .not("summary", "is", null)
+      .order("updated_at", { ascending: false })
       .limit(3);
 
     results.technical = techData || [];
@@ -463,11 +463,11 @@ async function testSpecificCases() {
   // Test financial content
   try {
     const { data: financeData, error: financeError } = await supabase
-      .from('scraps')
-      .select('id, title, url, content, summary, tags, metadata')
-      .or('content.ilike.%$%,content.ilike.%price%,content.ilike.%investment%,content.ilike.%revenue%')
-      .not('summary', 'is', null)
-      .order('updated_at', { ascending: false })
+      .from("scraps")
+      .select("id, title, url, content, summary, tags, metadata")
+      .or("content.ilike.%$%,content.ilike.%price%,content.ilike.%investment%,content.ilike.%revenue%")
+      .not("summary", "is", null)
+      .order("updated_at", { ascending: false })
       .limit(3);
 
     results.finance = financeData || [];
@@ -481,39 +481,39 @@ async function testSpecificCases() {
 }
 
 function displayQualityReport(report) {
-  console.log(chalk.cyan('\n' + '='.repeat(80)));
-  console.log(chalk.cyan('                           QUALITY AUDIT REPORT'));
-  console.log(chalk.cyan('='.repeat(80)));
+  console.log(chalk.cyan("\n" + "=".repeat(80)));
+  console.log(chalk.cyan("                           QUALITY AUDIT REPORT"));
+  console.log(chalk.cyan("=".repeat(80)));
 
   // Overall Summary
-  console.log(chalk.white('\n📊 OVERALL SUMMARY'));
-  console.log(chalk.white('━'.repeat(50)));
+  console.log(chalk.white("\n📊 OVERALL SUMMARY"));
+  console.log(chalk.white("━".repeat(50)));
   console.log(`Total Scraps Analyzed: ${chalk.yellow(report.summary.totalScraps)}`);
   console.log(`Overall Success Rate: ${
     report.summary.overallSuccessRate >= 80
-      ? chalk.green(report.summary.overallSuccessRate + '%')
+      ? chalk.green(report.summary.overallSuccessRate + "%")
       : report.summary.overallSuccessRate >= 60
-        ? chalk.yellow(report.summary.overallSuccessRate + '%')
-        : chalk.red(report.summary.overallSuccessRate + '%')
+        ? chalk.yellow(report.summary.overallSuccessRate + "%")
+        : chalk.red(report.summary.overallSuccessRate + "%")
   }`);
 
   // Field Success Rates
-  console.log(chalk.white('\n📈 FIELD SUCCESS RATES'));
-  console.log(chalk.white('━'.repeat(50)));
+  console.log(chalk.white("\n📈 FIELD SUCCESS RATES"));
+  console.log(chalk.white("━".repeat(50)));
   Object.entries(report.summary.fieldSuccessRates).forEach(([field, rate]) => {
     const color = rate >= 80 ? chalk.green : rate >= 60 ? chalk.yellow : chalk.red;
     const total = report.detailed[field]?.total || 0;
-    console.log(`${field.padEnd(20)}: ${color(rate + '%')} (${total} tested)`);
+    console.log(`${field.padEnd(20)}: ${color(rate + "%")} (${total} tested)`);
   });
 
   // Critical Issues
   const criticalIssues = Object.values(report.detailed).flatMap(field =>
-    field.issues?.filter(issue => issue.severity === 'high') || []
+    field.issues?.filter(issue => issue.severity === "high") || [],
   );
 
   if (criticalIssues.length > 0) {
-    console.log(chalk.red('\n🚨 CRITICAL ISSUES'));
-    console.log(chalk.red('━'.repeat(50)));
+    console.log(chalk.red("\n🚨 CRITICAL ISSUES"));
+    console.log(chalk.red("━".repeat(50)));
     criticalIssues.slice(0, 5).forEach(issue => {
       console.log(chalk.red(`• ${issue.issue} (Scrap: ${issue.scrapId})`));
     });
@@ -523,11 +523,11 @@ function displayQualityReport(report) {
   }
 
   // Examples
-  console.log(chalk.white('\n🎯 PERFORMANCE EXAMPLES'));
-  console.log(chalk.white('━'.repeat(50)));
+  console.log(chalk.white("\n🎯 PERFORMANCE EXAMPLES"));
+  console.log(chalk.white("━".repeat(50)));
 
   if (report.examples.excellent.length > 0) {
-    console.log(chalk.green('\n✨ EXCELLENT (90%+ quality):'));
+    console.log(chalk.green("\n✨ EXCELLENT (90%+ quality):"));
     report.examples.excellent.slice(0, 2).forEach(example => {
       console.log(chalk.green(`  • ${example.title} (${example.avgScore}%)`));
       console.log(chalk.gray(`    ${example.url?.substring(0, 60)}...`));
@@ -535,7 +535,7 @@ function displayQualityReport(report) {
   }
 
   if (report.examples.failed.length > 0) {
-    console.log(chalk.red('\n❌ NEEDS ATTENTION (<50% quality):'));
+    console.log(chalk.red("\n❌ NEEDS ATTENTION (<50% quality):"));
     report.examples.failed.slice(0, 2).forEach(example => {
       console.log(chalk.red(`  • ${example.title} (${example.avgScore}%)`));
       console.log(chalk.gray(`    ${example.url?.substring(0, 60)}...`));
@@ -544,16 +544,16 @@ function displayQualityReport(report) {
 
   // Recommendations
   if (report.recommendations.length > 0) {
-    console.log(chalk.white('\n💡 RECOMMENDATIONS'));
-    console.log(chalk.white('━'.repeat(50)));
+    console.log(chalk.white("\n💡 RECOMMENDATIONS"));
+    console.log(chalk.white("━".repeat(50)));
     report.recommendations.forEach(rec => {
-      const priorityColor = rec.priority === 'high' ? chalk.red : chalk.yellow;
-      console.log(`${priorityColor('[' + rec.priority.toUpperCase() + ']')} ${rec.issue}`);
+      const priorityColor = rec.priority === "high" ? chalk.red : chalk.yellow;
+      console.log(`${priorityColor("[" + rec.priority.toUpperCase() + "]")} ${rec.issue}`);
       console.log(chalk.gray(`  → ${rec.action}`));
     });
   }
 
-  console.log(chalk.cyan('\n' + '='.repeat(80)));
+  console.log(chalk.cyan("\n" + "=".repeat(80)));
 }
 
 async function main() {
@@ -566,7 +566,7 @@ async function main() {
     // Fetch recent scraps
     const scraps = await fetchRecentScraps(10);
 
-    console.log(chalk.blue('\n🔬 Analyzing AI extraction quality...'));
+    console.log(chalk.blue("\n🔬 Analyzing AI extraction quality..."));
 
     // Analyze each scrap
     for (const scrap of scraps) {
@@ -580,7 +580,7 @@ async function main() {
         tags: analyzer.analyzeTags(scrap.tags, scrap.content, scrap.id),
         relationships: analyzer.analyzeRelationships(scrap.relationships, scrap.content, scrap.id),
         location: analyzer.analyzeLocation(scrap.location, scrap.latitude, scrap.longitude, scrap.content, scrap.id),
-        financial_analysis: analyzer.analyzeFinancialAnalysis(financial_analysis, scrap.content, scrap.id)
+        financial_analysis: analyzer.analyzeFinancialAnalysis(financial_analysis, scrap.content, scrap.id),
       };
 
       analyzer.categorizeScrap(scores, scrap);
@@ -597,8 +597,8 @@ async function main() {
 
     // Save detailed report
     const reportPath = `/tmp/quality_audit_${Date.now()}.json`;
-    await import('fs/promises').then(fs =>
-      fs.writeFile(reportPath, JSON.stringify(report, null, 2))
+    await import("fs/promises").then(fs =>
+      fs.writeFile(reportPath, JSON.stringify(report, null, 2)),
     );
 
     const duration = performance.now() - startTime;
@@ -610,7 +610,7 @@ async function main() {
     process.exit(overallSuccess ? 0 : 1);
 
   } catch (error) {
-    console.error(chalk.red('\n❌ Audit failed:'), error.message);
+    console.error(chalk.red("\n❌ Audit failed:"), error.message);
     if (error.stack) {
       console.error(chalk.gray(error.stack));
     }
