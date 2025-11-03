@@ -469,6 +469,15 @@ async function repairScrapWithAI(scrap, options) {
       if (tempScrap.concept_tags) updates.concept_tags = tempScrap.concept_tags
       if (tempScrap.extraction_confidence) updates.extraction_confidence = tempScrap.extraction_confidence
 
+      // Auto-add !news tag for news articles
+      if (tempScrap.content_type === 'news' && (updates.tags || scrap.tags)) {
+        const currentTags = updates.tags || scrap.tags || []
+        if (!currentTags.includes('!news')) {
+          updates.tags = ['!news', ...currentTags]
+          console.log(chalk.dim(`    ✓ Auto-added !news tag`))
+        }
+      }
+
       const conceptCount = (tempScrap.concept_tags || []).length
       console.log(chalk.dim(`    ✓ ${tempScrap.content_type}, ${conceptCount} concepts`))
       if (conceptCount > 0) {
