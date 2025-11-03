@@ -13,7 +13,7 @@ console.log(
 |  ------------------------------------  |
 |    [STATUS: INITIALIZING TESTS]     |
 +====================================+
-`)
+`),
 );
 
 // Add command line options
@@ -51,7 +51,7 @@ async function validateEmbedding(input, type = "text") {
 
   if (type === "text") {
     console.log(
-      `Input: ${input.substring(0, 100)}${input.length > 100 ? "..." : ""}`
+      `Input: ${input.substring(0, 100)}${input.length > 100 ? "..." : ""}`,
     );
   } else {
     console.log(`Image URL: ${input}`);
@@ -83,8 +83,8 @@ async function validateEmbedding(input, type = "text") {
     } else {
       console.log(
         chalk.red(
-          `❌ Invalid dimensions: got ${dimensions}, expected ${expectedDim}`
-        )
+          `❌ Invalid dimensions: got ${dimensions}, expected ${expectedDim}`,
+        ),
       );
     }
 
@@ -106,7 +106,7 @@ async function validateEmbedding(input, type = "text") {
   } catch (error) {
     console.error(
       chalk.red(`❌ Error generating ${type} embedding:`),
-      error.message
+      error.message,
     );
     if (DEBUG) {
       console.error(chalk.gray("Full error:"), error);
@@ -161,7 +161,7 @@ async function runTests() {
       console.log(
         `Text Embeddings: ${chalk.green(results.text.passed)}/${
           results.text.total
-        } passed`
+        } passed`,
       );
     }
 
@@ -169,7 +169,7 @@ async function runTests() {
       console.log(
         `Image Embeddings: ${chalk.green(results.image.passed)}/${
           results.image.total
-        } passed`
+        } passed`,
       );
     }
 

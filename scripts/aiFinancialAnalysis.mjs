@@ -5,39 +5,39 @@ import { getModelForTask } from "../lib/config.mjs";
 const FINANCE_PRISM_ASSETS = {
   // Major Indexes
   "^GSPC": "S&P 500",
-  "^DJI": "Dow Jones", 
+  "^DJI": "Dow Jones",
   "^IXIC": "Nasdaq",
   "^RUT": "Russell 2000",
-  
+
   // Big Tech
   "AAPL": "Apple",
-  "MSFT": "Microsoft", 
+  "MSFT": "Microsoft",
   "AMZN": "Amazon",
   "NVDA": "Nvidia",
   "GOOGL": "Alphabet",
   "META": "Meta",
   "TSLA": "Tesla",
   "NFLX": "Netflix",
-  
+
   // ETFs
   "SPY": "S&P 500 ETF",
-  "QQQ": "Nasdaq 100 ETF", 
+  "QQQ": "Nasdaq 100 ETF",
   "IWM": "Russell 2000 ETF",
   "VTI": "Total Stock Market",
-  
+
   // Crypto
   "BTC-USD": "Bitcoin",
-  "ETH-USD": "Ethereum", 
+  "ETH-USD": "Ethereum",
   "SOL-USD": "Solana",
-  
+
   // Commodities
   "CL=F": "Crude Oil",
   "GC=F": "Gold",
   "SI=F": "Silver",
-  
+
   // Forex
   "JPY=X": "USD/JPY",
-  "EUR=X": "EUR/USD"
+  "EUR=X": "EUR/USD",
 };
 
 // Use finance-prism canonical list as our tracked assets
@@ -47,16 +47,16 @@ const TRACKED_ASSETS = FINANCE_PRISM_ASSETS;
 const ASSET_ALIASES = {
   // Big Tech common names
   "Apple": "AAPL",
-  "Microsoft": "MSFT", 
+  "Microsoft": "MSFT",
   "Amazon": "AMZN",
   "Nvidia": "NVDA",
   "Google": "GOOGL",
-  "Alphabet": "GOOGL", 
+  "Alphabet": "GOOGL",
   "Meta": "META",
   "Facebook": "META",
   "Tesla": "TSLA",
   "Netflix": "NFLX",
-  
+
   // Indexes
   "S&P 500": "^GSPC",
   "S&P": "^GSPC",
@@ -66,36 +66,36 @@ const ASSET_ALIASES = {
   "Nasdaq": "^IXIC",
   "Russell 2000": "^RUT",
   "Russell": "^RUT",
-  
+
   // ETFs
   "S&P 500 ETF": "SPY",
-  "Nasdaq ETF": "QQQ", 
+  "Nasdaq ETF": "QQQ",
   "Nasdaq 100": "QQQ",
   "Small Cap ETF": "IWM",
   "Total Market": "VTI",
-  
+
   // Crypto (without -USD suffix for common usage)
   "Bitcoin": "BTC-USD",
   "BTC": "BTC-USD",
-  "Ethereum": "ETH-USD", 
+  "Ethereum": "ETH-USD",
   "ETH": "ETH-USD",
   "Solana": "SOL-USD",
   "SOL": "SOL-USD",
-  
+
   // Commodities
   "Oil": "CL=F",
   "Crude": "CL=F",
   "Crude Oil": "CL=F",
   "Gold": "GC=F",
   "Silver": "SI=F",
-  
+
   // Forex
   "USD/JPY": "JPY=X",
   "USDJPY": "JPY=X",
   "Yen": "JPY=X",
-  "EUR/USD": "EUR=X", 
+  "EUR/USD": "EUR=X",
   "EURUSD": "EUR=X",
-  "Euro": "EUR=X"
+  "Euro": "EUR=X",
 };
 
 /**
@@ -105,39 +105,39 @@ const ASSET_ALIASES = {
  */
 function determineAssetType(ticker) {
   if (!ticker) return "unknown";
-  
+
   const upperTicker = ticker.toUpperCase();
-  
+
   // Crypto patterns
-  if (upperTicker.includes("-USD") || upperTicker.includes("USDT") || 
+  if (upperTicker.includes("-USD") || upperTicker.includes("USDT") ||
       ["BTC", "ETH", "ADA", "DOT", "SOL", "MATIC", "AVAX", "DOGE"].includes(upperTicker)) {
     return "crypto";
   }
-  
+
   // Forex patterns
   if (upperTicker.includes("=X") || upperTicker.includes("/")) {
     return "forex";
   }
-  
+
   // Index patterns
   if (upperTicker.startsWith("^") || ["SPX", "NDX", "DJX"].includes(upperTicker)) {
     return "index";
   }
-  
+
   // ETF patterns
   if (upperTicker.length === 3 && (
-    upperTicker.includes("ETF") || 
+    upperTicker.includes("ETF") ||
     ["SPY", "QQQ", "VTI", "IWM", "GLD", "SLV"].includes(upperTicker) ||
     upperTicker.endsWith("Y")
   )) {
     return "etf";
   }
-  
+
   // Commodity futures patterns
   if (upperTicker.includes("=F") || ["GC", "SI", "CL", "NG"].includes(upperTicker.split("=")[0])) {
     return "commodity";
   }
-  
+
   // Default to stock for standard tickers
   return "stock";
 }
@@ -201,14 +201,14 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      { role: "user", content: userPrompt },
     ];
 
     const response = await completion({
       messages,
       temperature: 0.2,
       maxTokens: 4000,
-      model: getModelForTask('contentAnalysis'),
+      model: getModelForTask("contentAnalysis"),
     });
 
     if (!response) {
@@ -221,7 +221,7 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
       let jsonStr = response.trim();
 
       // Remove markdown code blocks if present
-      if (jsonStr.startsWith('```')) {
+      if (jsonStr.startsWith("```")) {
         // Extract content between ```json and ``` or just ``` and ```
         const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
         if (codeBlockMatch) {
@@ -230,16 +230,16 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
       }
 
       // If still not starting with {, try to extract JSON object
-      if (!jsonStr.startsWith('{')) {
+      if (!jsonStr.startsWith("{")) {
         const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
         jsonStr = jsonMatch ? jsonMatch[0] : jsonStr;
       }
 
       // Validate JSON is complete (ends with })
-      if (!jsonStr.endsWith('}')) {
+      if (!jsonStr.endsWith("}")) {
         console.warn("Financial analysis JSON appears truncated (doesn't end with })");
         // Try to find the last complete closing brace
-        const lastBrace = jsonStr.lastIndexOf('}');
+        const lastBrace = jsonStr.lastIndexOf("}");
         if (lastBrace > 0) {
           jsonStr = jsonStr.substring(0, lastBrace + 1);
         } else {
@@ -256,7 +256,7 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
         tracked_assets: [],
         discovered_assets: [],
         overall_market_sentiment: 0,
-        market_reasoning: `JSON parsing failed: ${parseError.message}`
+        market_reasoning: `JSON parsing failed: ${parseError.message}`,
       };
     }
 
@@ -268,7 +268,7 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
         sentiment_score: Math.max(-1, Math.min(1, asset.sentiment_score || 0)), // Clamp to [-1, 1]
         name: asset.name || TRACKED_ASSETS[asset.ticker], // Ensure we have the name
         mentions: asset.mentions || [asset.ticker],
-        is_tracked: true
+        is_tracked: true,
       }));
 
     // Process discovered assets (any assets not in our whitelist)
@@ -279,7 +279,7 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
         sentiment_score: Math.max(-1, Math.min(1, asset.sentiment_score || 0)), // Clamp to [-1, 1]
         mentions: asset.mentions || [asset.ticker],
         is_tracked: false,
-        asset_type: asset.asset_type || determineAssetType(asset.ticker)
+        asset_type: asset.asset_type || determineAssetType(asset.ticker),
       }))
       .slice(0, 10); // Limit discovered assets to prevent spam
 
@@ -292,7 +292,7 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`;
       discovered_assets: discoveredAssets,
       overall_market_sentiment: Math.max(-1, Math.min(1, analysisResult.overall_market_sentiment || 0)),
       market_reasoning: analysisResult.market_reasoning || "No overall market analysis provided",
-      analysis_timestamp: new Date().toISOString()
+      analysis_timestamp: new Date().toISOString(),
     };
 
   } catch (error) {
@@ -324,12 +324,12 @@ export async function extractAndAddFinancialAnalysis(scrapData) {
 
   const analysis = await extractFinancialAnalysis(contentToAnalyze, {
     url: scrapData.url,
-    isRawText: false
+    isRawText: false,
   });
 
   return {
     ...scrapData,
-    financial_analysis: analysis
+    financial_analysis: analysis,
   };
 }
 

@@ -8,7 +8,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.printf(({ timestamp, level, message }) => {
       return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    }),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -21,8 +21,8 @@ export class SmartRateLimiter {
   constructor(serviceName, config = {}) {
     this.serviceName = serviceName;
     this.baseConfig = config.baseConfig || getRateLimitConfig(serviceName);
-    this.freeModelConfig = getRateLimitConfig('freeModels');
-    
+    this.freeModelConfig = getRateLimitConfig("freeModels");
+
     // Backoff levels - each level is more conservative
     this.backoffLevels = [
       { level: 0, name: "normal", minTime: this.baseConfig.minTimeBetweenRequests, maxConcurrent: this.baseConfig.maxConcurrent },
@@ -30,31 +30,31 @@ export class SmartRateLimiter {
       { level: 2, name: "conservative", minTime: this.baseConfig.minTimeBetweenRequests * 4, maxConcurrent: 1 },
       { level: 3, name: "free-model", minTime: this.freeModelConfig.minTimeBetweenRequests, maxConcurrent: 1 },
       { level: 4, name: "super-polite", minTime: this.freeModelConfig.minTimeBetweenRequests * 2, maxConcurrent: 1 },
-      { level: 5, name: "glacial", minTime: 10000, maxConcurrent: 1 } // 10 second delays
+      { level: 5, name: "glacial", minTime: 10000, maxConcurrent: 1 }, // 10 second delays
     ];
-    
+
     this.currentLevel = 0;
     this.consecutive429s = 0;
     this.lastBackoffTime = 0;
     this.successCount = 0;
-    
+
     this.createLimiter();
-    
+
     logger.info(`🚀 SmartRateLimiter initialized for ${serviceName}`, {
       baseMinTime: this.baseConfig.minTimeBetweenRequests,
       baseConcurrent: this.baseConfig.maxConcurrent,
-      backoffLevels: this.backoffLevels.length
+      backoffLevels: this.backoffLevels.length,
     });
   }
-  
+
   createLimiter() {
     const level = this.backoffLevels[this.currentLevel];
-    
+
     if (this.limiter) {
       // Gracefully update existing limiter
       this.limiter.updateSettings({
         minTime: level.minTime,
-        maxConcurrent: level.maxConcurrent
+        maxConcurrent: level.maxConcurrent,
       });
     } else {
       this.limiter = new Bottleneck({
@@ -65,14 +65,14 @@ export class SmartRateLimiter {
         reservoirRefreshInterval: 60 * 1000, // 1 minute
       });
     }
-    
+
     logger.info(`🔧 Rate limiter updated to level ${this.currentLevel} (${level.name})`, {
       minTime: level.minTime,
       maxConcurrent: level.maxConcurrent,
-      service: this.serviceName
+      service: this.serviceName,
     });
   }
-  
+
   async schedule(fn, ...args) {
     return this.limiter.schedule(async () => {
       try {
@@ -85,24 +85,24 @@ export class SmartRateLimiter {
       }
     });
   }
-  
+
   onSuccess() {
     this.successCount++;
     this.consecutive429s = 0;
-    
+
     // After 10 consecutive successes, try backing off to a less conservative level
     if (this.successCount >= 10 && this.currentLevel > 0) {
       this.currentLevel = Math.max(0, this.currentLevel - 1);
       this.successCount = 0;
       this.createLimiter();
-      
+
       logger.info(`📈 Rate limiter recovery - moving to level ${this.currentLevel}`, {
         service: this.serviceName,
-        consecutiveSuccesses: 10
+        consecutiveSuccesses: 10,
       });
     }
   }
-  
+
   onError(error) {
     if (this.is429Error(error)) {
       this.handle429();
@@ -111,42 +111,42 @@ export class SmartRateLimiter {
       this.successCount = 0;
     }
   }
-  
+
   is429Error(error) {
     return (
       error.response?.status === 429 ||
       error.status === 429 ||
       error.code === 429 ||
-      (error.message && error.message.includes('rate limit')) ||
-      (error.message && error.message.includes('429')) ||
-      (error.message && error.message.toLowerCase().includes('too many requests'))
+      (error.message && error.message.includes("rate limit")) ||
+      (error.message && error.message.includes("429")) ||
+      (error.message && error.message.toLowerCase().includes("too many requests"))
     );
   }
-  
+
   handle429() {
     this.consecutive429s++;
     this.successCount = 0;
     this.lastBackoffTime = Date.now();
-    
+
     // Escalate backoff level based on consecutive 429s
     if (this.consecutive429s >= 3 && this.currentLevel < this.backoffLevels.length - 1) {
       this.currentLevel++;
       this.createLimiter();
-      
+
       const level = this.backoffLevels[this.currentLevel];
       logger.warn(`🚨 429 Rate limit hit - escalating to level ${this.currentLevel} (${level.name})`, {
         service: this.serviceName,
         consecutive429s: this.consecutive429s,
         newMinTime: level.minTime,
-        newConcurrent: level.maxConcurrent
+        newConcurrent: level.maxConcurrent,
       });
     } else {
       logger.warn(`⚠️ 429 Rate limit hit (${this.consecutive429s} consecutive)`, {
         service: this.serviceName,
-        currentLevel: this.currentLevel
+        currentLevel: this.currentLevel,
       });
     }
-    
+
     // If we're at free model level or higher, add extra delay
     if (this.currentLevel >= 3) {
       const extraDelay = Math.min(30000, 5000 * this.consecutive429s); // Up to 30s extra delay
@@ -154,7 +154,7 @@ export class SmartRateLimiter {
       return new Promise(resolve => setTimeout(resolve, extraDelay));
     }
   }
-  
+
   getStatus() {
     const level = this.backoffLevels[this.currentLevel];
     return {
@@ -165,10 +165,10 @@ export class SmartRateLimiter {
       maxConcurrent: level.maxConcurrent,
       consecutive429s: this.consecutive429s,
       successCount: this.successCount,
-      timeSinceLastBackoff: Date.now() - this.lastBackoffTime
+      timeSinceLastBackoff: Date.now() - this.lastBackoffTime,
     };
   }
-  
+
   // Method to manually force a specific backoff level (useful for testing)
   forceLevel(level) {
     if (level >= 0 && level < this.backoffLevels.length) {
@@ -180,9 +180,9 @@ export class SmartRateLimiter {
 }
 
 // Export singleton instances for common services
-export const openRouterLimiter = new SmartRateLimiter('aiServices');
-export const nomicLimiter = new SmartRateLimiter('nomic');
-export const generalLimiter = new SmartRateLimiter('general');
+export const openRouterLimiter = new SmartRateLimiter("aiServices");
+export const nomicLimiter = new SmartRateLimiter("nomic");
+export const generalLimiter = new SmartRateLimiter("general");
 
 // Helper function to wrap API calls with smart rate limiting
 export async function withSmartRateLimit(limiter, apiCall, ...args) {

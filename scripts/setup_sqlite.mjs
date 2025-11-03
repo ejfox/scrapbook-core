@@ -21,7 +21,7 @@ async function setupDatabase() {
   const defaultPath = dbPath;
 
   const useDefault = await question(
-    `Do you want to use the default database location (${defaultPath})? [Y/n] `
+    `Do you want to use the default database location (${defaultPath})? [Y/n] `,
   );
 
   if (useDefault.toLowerCase() !== "y" && useDefault !== "") {

@@ -60,30 +60,30 @@ export async function extractLocation(content, options = {}) {
     // Extract additional context from URL and metadata
     let urlContext = "";
     let metaInfo = "";
-    
+
     if (url) {
       urlContext = `URL: ${url}\n`;
-      
+
       // Extract domain hints
       const domainInfo = extractDomainInfo(url);
       if (domainInfo.domain) {
         urlContext += `Domain: ${domainInfo.domain}.${domainInfo.tld}\n`;
       }
-      
+
       // Check for location-related URL segments
       const locationHints = extractUrlLocationHints(url);
       if (locationHints.length > 0) {
-        urlContext += `URL Location Hints: ${locationHints.join(', ')}\n`;
+        urlContext += `URL Location Hints: ${locationHints.join(", ")}\n`;
       }
     }
-    
+
     if (rawHtml) {
       metaInfo = extractMetaInfo(rawHtml);
       if (metaInfo) {
         metaInfo = `Metadata:\n${metaInfo}\n`;
       }
     }
-    
+
     // Combine all context for comprehensive analysis
     const enhancedContent = `${urlContext}${metaInfo}
 Content to analyze:
@@ -115,7 +115,7 @@ ${cleanContent}`;
     if (locations.primary && process.env.OPENCAGE_API_KEY) {
       log("🌍 Getting coordinates for primary location...");
       primaryCoords = await limiter.schedule(() =>
-        reverseGeocode(locations.primary)
+        reverseGeocode(locations.primary),
       );
     }
 
@@ -124,7 +124,7 @@ ${cleanContent}`;
         locations.others.map(async (loc) => ({
           location: loc,
           ...(await limiter.schedule(() => reverseGeocode(loc))),
-        }))
+        })),
       );
     }
 
@@ -136,7 +136,7 @@ ${cleanContent}`;
 
     // Filter other locations to only those with coordinates
     const validOthers = otherLocationsWithCoords.filter(
-      (l) => l.latitude && l.longitude
+      (l) => l.latitude && l.longitude,
     );
 
     // If primary didn't geocode but we have valid others, use the first one as primary
@@ -150,7 +150,7 @@ ${cleanContent}`;
 
     // If primary didn't geocode and no valid others, set location to null
     if (!finalLat && !finalLon) {
-      log(`⚠️ No locations successfully geocoded`);
+      log("⚠️ No locations successfully geocoded");
       finalLocation = null;
     }
 
@@ -238,7 +238,7 @@ ${content}`,
       messages,
       temperature: 0.3,
       maxTokens: 1000,
-      model: getModelForTask('geolocation'),
+      model: getModelForTask("geolocation"),
     });
 
     if (!response) {
@@ -283,7 +283,7 @@ ${content}`,
           typeof loc === "object" &&
           typeof loc.name === "string" &&
           loc.name.trim().length > 0 &&
-          (loc.confidence || 0) >= 0.3 // Minimum confidence threshold
+          (loc.confidence || 0) >= 0.3, // Minimum confidence threshold
         )
         .sort((a, b) => (b.confidence || 0) - (a.confidence || 0)); // Sort by confidence descending
 
@@ -344,18 +344,18 @@ function extractMetaInfo(rawHtml) {
     // Look for location-related meta tags
     const locationTags = [
       "place:location",
-      "geo.placename", 
+      "geo.placename",
       "geo.position",
       "geo.region",
       "og:locality",
-      "og:region", 
+      "og:region",
       "og:country",
       "twitter:place",
       "geo:lat",
       "geo:lon",
       "geo:location",
       "location",
-      "address"
+      "address",
     ];
 
     $("meta").each((i, elem) => {
@@ -373,8 +373,8 @@ function extractMetaInfo(rawHtml) {
         if (jsonData.address || jsonData.location || jsonData.geo) {
           metaInfo += `Structured Data: ${JSON.stringify({
             address: jsonData.address,
-            location: jsonData.location, 
-            geo: jsonData.geo
+            location: jsonData.location,
+            geo: jsonData.geo,
           })}\n`;
         }
       } catch (e) {
@@ -391,42 +391,42 @@ function extractMetaInfo(rawHtml) {
 
 function extractUrlLocationHints(url) {
   if (!url) return [];
-  
+
   const hints = [];
   const lowerUrl = url.toLowerCase();
-  
+
   // Check for common location-related path segments
   const locationSegments = [
-    'local', 'city', 'region', 'metro', 'area', 'location',
-    'weather', 'news', 'events', 'places', 'venue', 'address'
+    "local", "city", "region", "metro", "area", "location",
+    "weather", "news", "events", "places", "venue", "address",
   ];
-  
+
   for (const segment of locationSegments) {
     if (lowerUrl.includes(`/${segment}/`) || lowerUrl.includes(`-${segment}-`)) {
       hints.push(segment);
     }
   }
-  
+
   // Check for geographic TLDs
-  const geoTlds = ['.us', '.uk', '.ca', '.au', '.fr', '.de', '.jp', '.in'];
+  const geoTlds = [".us", ".uk", ".ca", ".au", ".fr", ".de", ".jp", ".in"];
   for (const tld of geoTlds) {
     if (lowerUrl.includes(tld)) {
       hints.push(`geographic domain (${tld})`);
     }
   }
-  
+
   // Check for common location-indicating domains
   const locationDomains = [
-    'patch.com', 'weather.com', 'yelp.com', 'foursquare.com', 
-    'maps.google.com', 'local.', 'city.', '.gov'
+    "patch.com", "weather.com", "yelp.com", "foursquare.com",
+    "maps.google.com", "local.", "city.", ".gov",
   ];
-  
+
   for (const domain of locationDomains) {
     if (lowerUrl.includes(domain)) {
       hints.push(`location-focused domain (${domain})`);
     }
   }
-  
+
   return [...new Set(hints)]; // Remove duplicates
 }
 
@@ -440,8 +440,8 @@ async function reverseGeocode(location) {
     log(`🌍 Geocoding location: ${location}`);
     const response = await axios.get(
       `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-        location
-      )}&key=${process.env.OPENCAGE_API_KEY}&no_annotations=1&limit=1`
+        location,
+      )}&key=${process.env.OPENCAGE_API_KEY}&no_annotations=1&limit=1`,
     );
 
     if (response.data.results && response.data.results.length > 0) {

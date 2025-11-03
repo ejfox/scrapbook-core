@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,32 +16,32 @@ const PORT = process.env.PORT || 3001;
 // Initialize Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 );
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static("."));
 
 // API Routes
-app.get('/api/scraps', async (req, res) => {
+app.get("/api/scraps", async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('scraps')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("scraps")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(1000);
 
     if (error) throw error;
 
     res.json(data || []);
   } catch (error) {
-    console.error('Error fetching scraps:', error);
-    res.status(500).json({ error: 'Failed to fetch scraps' });
+    console.error("Error fetching scraps:", error);
+    res.status(500).json({ error: "Failed to fetch scraps" });
   }
 });
 
-app.get('/api/search', async (req, res) => {
+app.get("/api/search", async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -49,27 +49,27 @@ app.get('/api/search', async (req, res) => {
     }
 
     const { data, error } = await supabase
-      .from('scraps')
-      .select('*')
+      .from("scraps")
+      .select("*")
       .or(`title.ilike.%${q}%,summary.ilike.%${q}%,content.ilike.%${q}%`)
-      .order('created_at', { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(50);
 
     if (error) throw error;
 
     res.json(data || []);
   } catch (error) {
-    console.error('Error searching scraps:', error);
-    res.status(500).json({ error: 'Search failed' });
+    console.error("Error searching scraps:", error);
+    res.status(500).json({ error: "Search failed" });
   }
 });
 
-app.get('/api/stats', async (req, res) => {
+app.get("/api/stats", async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('scraps')
-      .select('source, created_at')
-      .order('created_at', { ascending: false });
+      .from("scraps")
+      .select("source, created_at")
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
 
@@ -85,22 +85,22 @@ app.get('/api/stats', async (req, res) => {
       bySource: data.reduce((acc, scrap) => {
         acc[scrap.source] = (acc[scrap.source] || 0) + 1;
         return acc;
-      }, {})
+      }, {}),
     };
 
     res.json(stats);
   } catch (error) {
-    console.error('Error getting stats:', error);
-    res.status(500).json({ error: 'Failed to get stats' });
+    console.error("Error getting stats:", error);
+    res.status(500).json({ error: "Failed to get stats" });
   }
 });
 
 // Serve the dashboard
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "dashboard.html"));
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 Scrapbook Dashboard running at http://localhost:${PORT}`);
-  console.log(`📊 Real-time search and analytics for your digital memory`);
+  console.log("📊 Real-time search and analytics for your digital memory");
 });

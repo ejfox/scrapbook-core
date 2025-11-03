@@ -12,7 +12,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.printf(({ timestamp, level, message }) => {
       return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    }),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -20,16 +20,16 @@ const logger = winston.createLogger({
 // Initialize Supabase with service role for vector operations
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-// Initialize Smart Rate Limiter for Gemini Vision API  
-const geminiLimiter = new SmartRateLimiter('gemini', {
-  name: 'Gemini Vision API',
+// Initialize Smart Rate Limiter for Gemini Vision API
+const geminiLimiter = new SmartRateLimiter("gemini", {
+  name: "Gemini Vision API",
   baseConfig: {
     maxConcurrent: 2,
-    minTimeBetweenRequests: 1000 // Gemini is cheaper and more generous
-  }
+    minTimeBetweenRequests: 1000, // Gemini is cheaper and more generous
+  },
 });
 
 /**
@@ -40,15 +40,15 @@ export async function processImagesForScrap(scrap) {
     let imageUrls = [];
 
     switch (scrap.source) {
-      case "arena":
-        imageUrls = extractArenaImages(scrap);
-        break;
-      case "mastodon":
-        imageUrls = extractMastodonImages(scrap);
-        break;
-      default:
-        logger.debug(`No image processing for source: ${scrap.source} (only Arena and Mastodon supported)`);
-        return scrap;
+    case "arena":
+      imageUrls = extractArenaImages(scrap);
+      break;
+    case "mastodon":
+      imageUrls = extractMastodonImages(scrap);
+      break;
+    default:
+      logger.debug(`No image processing for source: ${scrap.source} (only Arena and Mastodon supported)`);
+      return scrap;
     }
 
     if (!imageUrls.length) {
@@ -96,7 +96,7 @@ function extractMastodonImages(scrap) {
 
 function extractArenaImages(scrap) {
   const imageUrls = [];
-  
+
   // Priority order: display > cloudinary > original > screenshot
   if (scrap.metadata?.image_data?.display) {
     imageUrls.push(scrap.metadata.image_data.display);
@@ -111,7 +111,7 @@ function extractArenaImages(scrap) {
     imageUrls.push(scrap.screenshot_url);
     logger.info(`Found Arena screenshot: ${scrap.screenshot_url}`);
   }
-  
+
   logger.info(`Found ${imageUrls.length} Arena images`);
   return imageUrls;
 }
@@ -140,16 +140,16 @@ Keep the description informative but under 200 words.`;
             {
               parts: [
                 {
-                  text: prompt
+                  text: prompt,
                 },
                 {
                   inline_data: {
                     mime_type: "image/jpeg", // Gemini handles various formats
-                    data: await getImageAsBase64(imageUrl)
-                  }
-                }
-              ]
-            }
+                    data: await getImageAsBase64(imageUrl),
+                  },
+                },
+              ],
+            },
           ],
           generationConfig: {
             temperature: 0.4,
@@ -160,14 +160,14 @@ Keep the description informative but under 200 words.`;
         },
         {
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           timeout: 30000,
-        }
+        },
       );
 
       const description = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
+
       if (description) {
         logger.info(`Generated description: ${description.substring(0, 100)}...`);
         return description.trim();
@@ -196,11 +196,11 @@ Keep the description informative but under 200 words.`;
 async function getImageAsBase64(imageUrl) {
   try {
     const response = await axios.get(imageUrl, {
-      responseType: 'arraybuffer',
+      responseType: "arraybuffer",
       timeout: 15000,
     });
-    
-    return Buffer.from(response.data, 'binary').toString('base64');
+
+    return Buffer.from(response.data, "binary").toString("base64");
   } catch (error) {
     logger.error(`Error fetching image from ${imageUrl}:`, error.message);
     throw error;

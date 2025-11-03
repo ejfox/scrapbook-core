@@ -5,13 +5,13 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
     "./**/*.{vue,js,ts,jsx,tsx}",
   ],
-  darkMode: 'media',
+  darkMode: "media",
   theme: {
     extend: {
       fontFamily: {
-        mono: ['Courier New', 'Courier', 'monospace'],
+        mono: ["Courier New", "Courier", "monospace"],
       },
     },
   },
   plugins: [],
-}
+};

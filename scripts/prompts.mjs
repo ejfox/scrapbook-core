@@ -56,7 +56,7 @@ Format as a list of clear, independent facts.`,
 Content to tag:
 {CONTENT}
 
-Return only valid tags from the list above, one per line, no explanations.`
+Return only valid tags from the list above, one per line, no explanations.`,
   },
 
   GITHUB: {
@@ -79,5 +79,5 @@ Format as a concise summary.`,
 - Names/organizations
 
 Return as a JSON array of strings.`,
-  }
-}; 
+  },
+};

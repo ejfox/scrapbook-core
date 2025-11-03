@@ -4,12 +4,12 @@ import { getModelForTask } from "../lib/config.mjs";
 // Validate relationship structure before returning
 function validateRelationship(rel) {
   return rel &&
-    typeof rel === 'object' &&
-    typeof rel.source === 'string' &&
+    typeof rel === "object" &&
+    typeof rel.source === "string" &&
     rel.source.length > 0 &&
-    typeof rel.target === 'string' &&
+    typeof rel.target === "string" &&
     rel.target.length > 0 &&
-    typeof rel.relationship === 'string' &&
+    typeof rel.relationship === "string" &&
     rel.relationship.length > 0;
 }
 
@@ -58,7 +58,7 @@ ${url ? `\nURL: ${url}` : ""}`,
       messages,
       temperature: 0.3,
       maxTokens: 1000,
-      model: model || getModelForTask('relationshipAnalysis'),
+      model: model || getModelForTask("relationshipAnalysis"),
     });
 
     if (!response) {
@@ -80,17 +80,17 @@ ${url ? `\nURL: ${url}` : ""}`,
 
         // Parse entity and type from format "Entity:Type" or just "Entity"
         const parseEntity = (entityStr) => {
-          const parts = entityStr.split(':');
+          const parts = entityStr.split(":");
           if (parts.length === 2) {
             return {
               name: parts[0].trim(),
-              type: parts[1].trim()
+              type: parts[1].trim(),
             };
           }
           // Fallback to old format without type
           return {
             name: entityStr.trim(),
-            type: null
+            type: null,
           };
         };
 
@@ -112,20 +112,20 @@ ${url ? `\nURL: ${url}` : ""}`,
             /^(docker|kubernetes|k8s|terraform|ansible|jenkins|github|gitlab|bitbucket)$/i,
             /^(mysql|postgresql|mongodb|redis|elasticsearch|kafka|rabbitmq|sqlite)$/i,
             /^(http|https|tcp|udp|websocket|graphql|rest|grpc|mqtt)$/i,
-            /(framework|library|toolkit|platform|service|database|server|client|protocol|algorithm|technology|software|hardware|system|application|tool|package|module|component|interface|api|sdk)/i
+            /(framework|library|toolkit|platform|service|database|server|client|protocol|algorithm|technology|software|hardware|system|application|tool|package|module|component|interface|api|sdk)/i,
           ];
           if (techPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Technology';
+            return "Technology";
           }
 
           // Organization patterns - companies, institutions, agencies
           const orgPatterns = [
             /\b(Inc\.?|Corp\.?|LLC|Ltd\.?|GmbH|SA|AG|PLC|Co\.?|Company|Corporation|Group|Holdings|Partners|Associates|Foundation|Institute|University|College|School|Academy|Hospital|Bank|Agency|Department|Ministry|Commission|Committee|Council|Board|Authority|Office|Bureau|Service|Administration|Organization|Association|Society|Union|Federation|Confederation|Alliance|Coalition|Network|Consortium|Trust|Fund)\b/i,
             /^(Microsoft|Google|Facebook|Meta|Amazon|Apple|Netflix|Tesla|SpaceX|OpenAI|Anthropic|DeepMind|IBM|Oracle|Intel|AMD|NVIDIA|Samsung|Sony|Nintendo|Adobe|Salesforce|Uber|Airbnb|Twitter|X|LinkedIn|TikTok|ByteDance|Alibaba|Tencent|Baidu)/i,
-            /^(UN|UNESCO|WHO|IMF|World Bank|NATO|EU|NASA|FDA|CDC|FBI|CIA|NSA|MIT|Harvard|Stanford|Oxford|Cambridge)/i
+            /^(UN|UNESCO|WHO|IMF|World Bank|NATO|EU|NASA|FDA|CDC|FBI|CIA|NSA|MIT|Harvard|Stanford|Oxford|Cambridge)/i,
           ];
           if (orgPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Organization';
+            return "Organization";
           }
 
           // Person patterns - names with common structures
@@ -135,10 +135,10 @@ ${url ? `\nURL: ${url}` : ""}`,
             /\s+(Jr\.?|Sr\.?|III|IV|V|MD|PhD|Esq\.?)$/i,
             /^[A-Z][a-z]+\s+[A-Z]'[A-Z][a-z]+$/,  // Irish/Scottish names
             /^[A-Z][a-z]+\s+(van|von|de|di|da|del|della|dos|mac|mc|o'|le|la)\s+[A-Z][a-z]+$/i,  // Names with particles
-            /(CEO|CTO|CFO|COO|CMO|President|Director|Manager|Engineer|Developer|Designer|Analyst|Scientist|Professor|Doctor|Attorney|Judge|Senator|Representative|Governor|Mayor|Minister|Secretary|Commissioner|Chief|Head|Lead|Principal|Founder|Co-founder|Chairman|Board Member)/i
+            /(CEO|CTO|CFO|COO|CMO|President|Director|Manager|Engineer|Developer|Designer|Analyst|Scientist|Professor|Doctor|Attorney|Judge|Senator|Representative|Governor|Mayor|Minister|Secretary|Commissioner|Chief|Head|Lead|Principal|Founder|Co-founder|Chairman|Board Member)/i,
           ];
           if (personPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Person';
+            return "Person";
           }
 
           // Location patterns
@@ -146,55 +146,55 @@ ${url ? `\nURL: ${url}` : ""}`,
             /^(United States|Canada|Mexico|Brazil|Argentina|United Kingdom|France|Germany|Spain|Italy|Russia|China|Japan|India|Australia|South Africa)/i,
             /^(New York|Los Angeles|Chicago|Houston|Phoenix|Philadelphia|San Antonio|San Diego|Dallas|San Jose|Austin|Jacksonville|San Francisco|Seattle|Denver|Boston|Washington|Miami|Atlanta|Portland)/i,
             /^(London|Paris|Berlin|Rome|Madrid|Moscow|Beijing|Tokyo|Mumbai|Sydney|Toronto|Vancouver|Montreal|Mexico City|São Paulo|Buenos Aires)/i,
-            /\b(Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|Lane|Ln\.?|Drive|Dr\.?|Court|Ct\.?|Plaza|Square|Park|City|Town|Village|County|State|Province|Country|Nation|Continent|Ocean|Sea|River|Lake|Mountain|Valley|Desert|Forest|Island)\b/i
+            /\b(Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|Lane|Ln\.?|Drive|Dr\.?|Court|Ct\.?|Plaza|Square|Park|City|Town|Village|County|State|Province|Country|Nation|Continent|Ocean|Sea|River|Lake|Mountain|Valley|Desert|Forest|Island)\b/i,
           ];
           if (locationPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Location';
+            return "Location";
           }
 
           // Product patterns
           const productPatterns = [
             /^(iPhone|iPad|MacBook|iMac|Apple Watch|AirPods|Pixel|Galaxy|Surface|Xbox|PlayStation|Switch)/i,
             /\b(Pro|Plus|Max|Mini|Air|Ultra|Lite|Premium|Standard|Basic|Enterprise|Professional|Personal|Home|Business)\b/i,
-            /\b(Version|v\d+|\d+\.\d+|\d{4}|Gen \d+|Generation|Edition|Release|Update|Patch|Build)\b/i
+            /\b(Version|v\d+|\d+\.\d+|\d{4}|Gen \d+|Generation|Edition|Release|Update|Patch|Build)\b/i,
           ];
           if (productPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Product';
+            return "Product";
           }
 
           // Concept patterns - abstract ideas, methodologies, etc.
           const conceptPatterns = [
             /^(Democracy|Capitalism|Socialism|Freedom|Justice|Equality|Liberty|Privacy|Security|Innovation|Sustainability|Diversity|Inclusion|Ethics|Morality|Philosophy|Science|Art|Culture|Education|Health|Wealth|Poverty|War|Peace|Love|Hate|Fear|Hope|Faith|Truth|Knowledge|Wisdom|Power|Authority|Responsibility|Accountability)/i,
-            /(methodology|approach|strategy|technique|process|procedure|principle|theory|concept|idea|framework|model|pattern|practice|standard|guideline|policy|rule|regulation|law)/i
+            /(methodology|approach|strategy|technique|process|procedure|principle|theory|concept|idea|framework|model|pattern|practice|standard|guideline|policy|rule|regulation|law)/i,
           ];
           if (conceptPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Concept';
+            return "Concept";
           }
 
           // Event patterns
           const eventPatterns = [
             /^(World War|Civil War|Revolution|Olympics|World Cup|Super Bowl|Conference|Summit|Symposium|Workshop|Seminar|Meeting|Election|Referendum|Festival|Fair|Expo|Exhibition|Show|Concert|Tour)/i,
             /\b(2019|2020|2021|2022|2023|2024|2025)\b/,
-            /(January|February|March|April|May|June|July|August|September|October|November|December)/i
+            /(January|February|March|April|May|June|July|August|September|October|November|December)/i,
           ];
           if (eventPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Event';
+            return "Event";
           }
 
           // If it's a single capitalized word, likely a concept or brand
           if (/^[A-Z][a-z]+$/.test(trimmed)) {
-            return 'Concept';
+            return "Concept";
           }
 
           // Default fallback
-          return 'Entity';
+          return "Entity";
         };
 
         // Return flat structure for database compatibility
         return {
           source: sourceParsed.name,
           target: targetParsed.name,
-          relationship: relationship.trim()
+          relationship: relationship.trim(),
         };
       })
       .filter(Boolean);

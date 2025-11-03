@@ -26,7 +26,7 @@ const supabase = createClient(
   {
     auth: { persistSession: false },
     db: { schema: "public" },
-  }
+  },
 );
 
 // Add logger setup at the top after imports
@@ -36,7 +36,7 @@ const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.printf(({ timestamp, level, message }) => {
       return `${timestamp} [${level.toUpperCase()}]: ${message}`;
-    })
+    }),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -50,7 +50,7 @@ export async function fetchUserId() {
         headers: {
           Authorization: `Bearer ${MASTODON_ACCESS_TOKEN}`,
         },
-      }
+      },
     );
     return response.data.id;
   } catch (error) {
@@ -72,7 +72,7 @@ export async function fetchStatuses(userId, testMode = false) {
           exclude_reblogs: true,
           exclude_replies: false,
         },
-      }
+      },
     );
     return response.data;
   } catch (error) {
@@ -235,7 +235,7 @@ export async function processStatus(status, isValidation = false) {
     // Process images if present and not in validation mode
     if (!isValidation && status.mediaAttachments?.length > 0) {
       logger.info(
-        `Processing ${status.mediaAttachments.length} media attachments...`
+        `Processing ${status.mediaAttachments.length} media attachments...`,
       );
       return await processImagesForScrap(scrap);
     }

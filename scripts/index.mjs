@@ -29,7 +29,7 @@ import {
   recordSuccess,
   recordFailure,
   validateData,
-  printSafetyStatus
+  printSafetyStatus,
 } from "./safetyManager.mjs";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -185,12 +185,12 @@ async function sendWebhookAlert(data) {
   try {
     await axios.post(webhookUrl, {
       timestamp: new Date().toISOString(),
-      instance: process.env.INSTANCE_NAME || 'unknown',
-      ...data
+      instance: process.env.INSTANCE_NAME || "unknown",
+      ...data,
     }, { timeout: 5000 });
   } catch (error) {
     // Don't log webhook failures to avoid loops
-    console.error('Webhook failed:', error.message);
+    console.error("Webhook failed:", error.message);
   }
 }
 
@@ -202,38 +202,38 @@ const dailyStats = {
   memory: { peak: 0, current: 0 },
   stepFailures: {
     screenshots: 0,
-    relationships: 0, 
+    relationships: 0,
     embeddings: 0,
     ai_summary: 0,
-    image_upload: 0
+    image_upload: 0,
   },
   stepAttempts: {
     screenshots: 0,
     relationships: 0,
-    embeddings: 0, 
+    embeddings: 0,
     ai_summary: 0,
-    image_upload: 0
-  }
+    image_upload: 0,
+  },
 };
 
 import { getRateLimitConfig } from "../lib/config.mjs";
 
 // Bottleneck limiters for rate-limiting async tasks using centralized config
-const generalConfig = getRateLimitConfig('general');
-const upsertConfig = getRateLimitConfig('upsert');
-const browserConfig = getRateLimitConfig('browser');
+const generalConfig = getRateLimitConfig("general");
+const upsertConfig = getRateLimitConfig("upsert");
+const browserConfig = getRateLimitConfig("browser");
 
-const limiter = new Bottleneck({ 
-  maxConcurrent: generalConfig.maxConcurrent, 
-  minTime: generalConfig.minTimeBetweenRequests 
+const limiter = new Bottleneck({
+  maxConcurrent: generalConfig.maxConcurrent,
+  minTime: generalConfig.minTimeBetweenRequests,
 });
-const upsertLimiter = new Bottleneck({ 
-  maxConcurrent: upsertConfig.maxConcurrent, 
-  minTime: upsertConfig.minTimeBetweenRequests 
+const upsertLimiter = new Bottleneck({
+  maxConcurrent: upsertConfig.maxConcurrent,
+  minTime: upsertConfig.minTimeBetweenRequests,
 });
-const browserLimiter = new Bottleneck({ 
-  maxConcurrent: browserConfig.maxConcurrent, 
-  minTime: browserConfig.minTimeBetweenRequests 
+const browserLimiter = new Bottleneck({
+  maxConcurrent: browserConfig.maxConcurrent,
+  minTime: browserConfig.minTimeBetweenRequests,
 });
 
 // Add metrics tracking
@@ -436,43 +436,43 @@ process.on("unhandledRejection", (reason, promise) => {
   if (reason?.stack) {
     logger.error("Error stack:", reason.stack);
   }
-  
+
   // Track error
   dailyStats.errors.push({
-    type: 'unhandledRejection',
+    type: "unhandledRejection",
     message: reason?.message || String(reason),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   // Send webhook alert for critical errors
   if (rejectionCount >= 3) {
     const memoryMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
     const uptimeHours = Math.round(process.uptime() / 3600 * 100) / 100;
-    
+
     // Only send if not in cooldown
-    const cooldownKey = 'critical_restart';
+    const cooldownKey = "critical_restart";
     const lastAlert = alertCooldowns.get(cooldownKey);
     if (!lastAlert || Date.now() - lastAlert > 5 * 60 * 1000) { // 5min cooldown
       alertCooldowns.set(cooldownKey, Date.now());
-      
+
       sendWebhookAlert({
-        alert_type: 'critical_error',
+        alert_type: "critical_error",
         title: `🚨 CRITICAL: ${rejectionCount} unhandled errors in ${uptimeHours}h (${memoryMB}MB) - restarting`,
-        error_type: 'unhandledRejection',
+        error_type: "unhandledRejection",
         error_count: rejectionCount,
         message: reason?.message || String(reason),
         memory_mb: memoryMB,
-        uptime_hours: uptimeHours
+        uptime_hours: uptimeHours,
       });
     }
   }
-  
+
   // Don't crash on first few rejections, just log and continue
   if (rejectionCount < 3) {
     logger.warn("Continuing execution, will shutdown if more rejections occur");
     return;
   }
-  
+
   gracefulShutdown("unhandledRejection");
 });
 
@@ -610,37 +610,37 @@ async function getExistingScrap(scrapData) {
 function validateAIOutput(type, data) {
   try {
     switch (type) {
-      case "summary":
-        return typeof data === "string" && data.length > 0 ? data : null;
+    case "summary":
+      return typeof data === "string" && data.length > 0 ? data : null;
 
-      case "tags":
-        return Array.isArray(data)
-          ? data.filter((t) => typeof t === "string")
-          : [];
+    case "tags":
+      return Array.isArray(data)
+        ? data.filter((t) => typeof t === "string")
+        : [];
 
-      case "relationships":
-        if (!Array.isArray(data)) return [];
-        return data.filter(
-          (r) =>
-            r &&
+    case "relationships":
+      if (!Array.isArray(data)) return [];
+      return data.filter(
+        (r) =>
+          r &&
             typeof r === "object" &&
             typeof r.source === "string" &&
             typeof r.relationship === "string" &&
             typeof r.target === "string",
-        );
+      );
 
-      case "location":
-        if (!data || typeof data !== "object") return null;
-        return {
-          name: data.location || "",
-          latitude: Number(data.latitude) || null,
-          longitude: Number(data.longitude) || null,
-          metadata: data.metadata || {},
-        };
+    case "location":
+      if (!data || typeof data !== "object") return null;
+      return {
+        name: data.location || "",
+        latitude: Number(data.latitude) || null,
+        longitude: Number(data.longitude) || null,
+        metadata: data.metadata || {},
+      };
 
-      default:
-        logger.warn(`Unknown AI output type: ${type}`);
-        return null;
+    default:
+      logger.warn(`Unknown AI output type: ${type}`);
+      return null;
     }
   } catch (error) {
     logger.error(`Error validating ${type} output:`, error);
@@ -694,13 +694,13 @@ async function enrichScrapWithAI(scrapData) {
           generateEmbedding(contentToProcess, {
             type: "text",
             scrapId: scrapIdentifier,
-            taskType: 'text_embedding'
+            taskType: "text_embedding",
           }),
         );
         if (textEmbedding) {
           scrapData.embedding = textEmbedding;  // OpenAI text-embedding-3-small
-          stepViz.completeStep(5, `1536 dimensions`);
-          trackStep('embeddings', true);
+          stepViz.completeStep(5, "1536 dimensions");
+          trackStep("embeddings", true);
           break;
         }
       } catch (error) {
@@ -709,7 +709,7 @@ async function enrichScrapWithAI(scrapData) {
         );
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         if (attempt === 3) {
-          trackStep('embeddings', false);
+          trackStep("embeddings", false);
         }
       }
     }
@@ -732,7 +732,7 @@ async function enrichScrapWithAI(scrapData) {
         scrapData.relationships = enrichedWithRelationships.relationships;
         stepViz.completeStep(4, `${scrapData.relationships.length} connections`);
       } else {
-        stepViz.completeStep(4, 'none found');
+        stepViz.completeStep(4, "none found");
       }
 
       // Extract financial analysis
@@ -744,39 +744,39 @@ async function enrichScrapWithAI(scrapData) {
         const totalAssets = analysis.assets.length;
         const trackedCount = analysis.tracked_assets?.length || 0;
         const discoveredCount = analysis.discovered_assets?.length || 0;
-        
+
         const avgSentiment = analysis.assets
           .reduce((sum, asset) => sum + asset.sentiment_score, 0) / totalAssets;
-        
+
         logger.info(
           chalk.green(
-            `✅ Found ${totalAssets} financial assets (${trackedCount} tracked, ${discoveredCount} discovered) - avg sentiment: ${avgSentiment.toFixed(2)}`
-          )
+            `✅ Found ${totalAssets} financial assets (${trackedCount} tracked, ${discoveredCount} discovered) - avg sentiment: ${avgSentiment.toFixed(2)}`,
+          ),
         );
-        
+
         // Show tracked assets first
         if (trackedCount > 0) {
           logger.info(chalk.cyan("   📊 Tracked assets:"));
           analysis.tracked_assets.forEach(asset => {
-            const sentimentColor = asset.sentiment_score >= 0.1 ? chalk.green : 
-                                  asset.sentiment_score <= -0.1 ? chalk.red : chalk.yellow;
+            const sentimentColor = asset.sentiment_score >= 0.1 ? chalk.green :
+              asset.sentiment_score <= -0.1 ? chalk.red : chalk.yellow;
             logger.info(
-              chalk.gray(`     • ${asset.ticker}: ${sentimentColor(asset.sentiment_score.toFixed(2))}`)
+              chalk.gray(`     • ${asset.ticker}: ${sentimentColor(asset.sentiment_score.toFixed(2))}`),
             );
           });
         }
-        
+
         // Show discovered assets
         if (discoveredCount > 0) {
           logger.info(chalk.magenta("   🔍 Discovered assets:"));
           analysis.discovered_assets.forEach(asset => {
-            const sentimentColor = asset.sentiment_score >= 0.1 ? chalk.green : 
-                                  asset.sentiment_score <= -0.1 ? chalk.red : chalk.yellow;
-            const typeEmoji = asset.asset_type === 'crypto' ? '₿' : 
-                             asset.asset_type === 'etf' ? '📈' :
-                             asset.asset_type === 'commodity' ? '🏗️' : '📊';
+            const sentimentColor = asset.sentiment_score >= 0.1 ? chalk.green :
+              asset.sentiment_score <= -0.1 ? chalk.red : chalk.yellow;
+            const typeEmoji = asset.asset_type === "crypto" ? "₿" :
+              asset.asset_type === "etf" ? "📈" :
+                asset.asset_type === "commodity" ? "🏗️" : "📊";
             logger.info(
-              chalk.gray(`     ${typeEmoji} ${asset.ticker} (${asset.asset_type}): ${sentimentColor(asset.sentiment_score.toFixed(2))}`)
+              chalk.gray(`     ${typeEmoji} ${asset.ticker} (${asset.asset_type}): ${sentimentColor(asset.sentiment_score.toFixed(2))}`),
             );
           });
         }
@@ -806,15 +806,15 @@ async function enrichScrapWithAI(scrapData) {
     // Generate screenshot if URL exists and we don't have one
     if (!scrapData.screenshot_url) {
       // For Are.na images, use the highest resolution version directly
-      if (scrapData.source === 'arena' && scrapData.metadata?.image_data) {
+      if (scrapData.source === "arena" && scrapData.metadata?.image_data) {
         const imageUrl = scrapData.metadata.image_data.original_url ||
                         scrapData.metadata.image_data.display ||
                         scrapData.metadata.image_data.cloudinary_url;
         if (imageUrl) {
           scrapData.screenshot_url = imageUrl;
-          const urlShort = imageUrl.split('/').pop()?.substring(0, 20) || 'image';
+          const urlShort = imageUrl.split("/").pop()?.substring(0, 20) || "image";
           logger.info(chalk.green(`📸 ARENA → ${urlShort}... ✅`));
-          trackStep('screenshots', true);
+          trackStep("screenshots", true);
         }
       }
       // For everything else with a URL, generate screenshot
@@ -829,17 +829,17 @@ async function enrichScrapWithAI(scrapData) {
           const duration = ((Date.now() - startTime) / 1000).toFixed(1);
           if (screenshot?.url) {
             scrapData.screenshot_url = screenshot.url;
-            const filename = screenshot.url.split('/').pop()?.substring(0, 20) || 'screenshot';
+            const filename = screenshot.url.split("/").pop()?.substring(0, 20) || "screenshot";
             console.log(chalk.green(`✅ ${filename} (${duration}s)`));
-            trackStep('screenshots', true);
+            trackStep("screenshots", true);
           } else {
             console.log(chalk.yellow(`⚠️ no URL (${duration}s)`));
-            trackStep('screenshots', false);
+            trackStep("screenshots", false);
           }
         } catch (error) {
           const duration = ((Date.now() - startTime) / 1000).toFixed(1);
           console.log(chalk.red(`❌ ${error.message.substring(0, 30)} (${duration}s)`));
-          trackStep('screenshots', false);
+          trackStep("screenshots", false);
         }
       }
     }
@@ -1010,7 +1010,7 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
         // Upsert the enriched data
         if (options.dryRun) {
           logger.info(`[DRY RUN] Would upsert scrap: ${scrapId}`);
-          logger.info(`[DRY RUN] Data:`, {
+          logger.info("[DRY RUN] Data:", {
             title: enrichedData.title?.substring(0, 50) + "...",
             source: source,
             type: enrichedData.type || getTypeFromSource(source),
@@ -1127,9 +1127,9 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
       // Try 3 different models for relationship extraction
       let extractedRelationships = [];
       const models = [
-        'deepseek/deepseek-chat-v3.1',     // First try: DeepSeek (default)
-        'google/gemini-2.5-flash',         // Second try: Gemini
-        'openai/gpt-4o-mini'               // Third try: OpenAI
+        "deepseek/deepseek-chat-v3.1",     // First try: DeepSeek (default)
+        "google/gemini-2.5-flash",         // Second try: Gemini
+        "openai/gpt-4o-mini",               // Third try: OpenAI
       ];
 
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -1142,14 +1142,14 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
               isRawText: !scrapObj.summary,
               url: scrapObj.url,
               scrapId,
-              model
+              model,
             }),
           );
 
           // If we got relationships, break out of retry loop
           if (extractedRelationships && extractedRelationships.length > 0) {
             logger.info(chalk.green(`✅ Got ${extractedRelationships.length} relationships from ${model}`));
-            trackStep('relationships', true);
+            trackStep("relationships", true);
             break;
           } else {
             logger.warn(chalk.yellow(`⚠️ ${model} returned no relationships, trying next model...`));
@@ -1159,7 +1159,7 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
           if (attempt === 2) {
             // Last attempt failed
             logger.error("All 3 models failed to extract relationships");
-            trackStep('relationships', false);
+            trackStep("relationships", false);
             extractedRelationships = [];
           } else {
             // Wait a bit before next attempt
@@ -1246,13 +1246,13 @@ async function generateSummaryAndTags(scrapObj, scrapId) {
           summarizeContent(contentToProcess, {
             metaSummary: true,
             scrapId,
-            taskType: 'summarization'
+            taskType: "summarization",
           }),
         );
-        trackStep('ai_summary', scrapObj.summary && scrapObj.summary.length > 0);
+        trackStep("ai_summary", scrapObj.summary && scrapObj.summary.length > 0);
       } catch (error) {
         logger.error("AI summary generation failed:", error.message);
-        trackStep('ai_summary', false);
+        trackStep("ai_summary", false);
       }
 
       // Generate tags from summary if we have one
@@ -1317,8 +1317,8 @@ async function shouldProcessScrap(scrapData) {
 const INSTANCE_NAME = process.env.FLY_ALLOC_ID
   ? `fly-${process.env.FLY_ALLOC_ID}`
   : `local-${os.hostname().toLowerCase()}-${process.platform}-${
-      process.env.NODE_ENV || "dev"
-    }`;
+    process.env.NODE_ENV || "dev"
+  }`;
 const STUCK_THRESHOLD_MINS = 5;
 
 // Add this helper function
@@ -1462,8 +1462,8 @@ async function fetchAndUpsertPinboardBookmarks() {
     let bookmarksToProcess = bookmarks;
     const isManualRun = options.limit; // If user specified limit, treat as manual
     const safetyLimits = isManualRun ?
-      parseInt(process.env.SAFETY_MANUAL_MAX_ITEMS_PER_RUN || '500') :
-      parseInt(process.env.SAFETY_MAX_ITEMS_PER_RUN || '50');
+      parseInt(process.env.SAFETY_MANUAL_MAX_ITEMS_PER_RUN || "500") :
+      parseInt(process.env.SAFETY_MAX_ITEMS_PER_RUN || "50");
 
     // Apply user limit or safety limit
     if (options.limit) {
@@ -1491,7 +1491,7 @@ async function fetchAndUpsertPinboardBookmarks() {
     // Start safety-managed processing run
     startProcessingRun({
       isAutomated: !isManualRun,
-      expectedItems: bookmarksToProcess.length
+      expectedItems: bookmarksToProcess.length,
     });
 
     for (const bookmark of bookmarksToProcess) {
@@ -1675,7 +1675,7 @@ async function fetchAndUpsertMastodonStatuses() {
     // Track for daily summary
     dailyStats.processed[source] = metrics.processed.bySource[source] || 0;
   } catch (error) {
-    logger.error(`Error in Mastodon processing`, {
+    logger.error("Error in Mastodon processing", {
       source,
       error: error.message,
       stack: error.stack,
@@ -1816,7 +1816,7 @@ async function fetchAndUpsertArenaBlocks() {
     // Track for daily summary
     dailyStats.processed[source] = metrics.processed.bySource[source] || 0;
   } catch (error) {
-    logger.error(`Error in Arena processing`, {
+    logger.error("Error in Arena processing", {
       source,
       error: error.message,
       stack: error.stack,
@@ -1829,7 +1829,7 @@ async function fetchAndUpsertArenaBlocks() {
 
 async function fetchAndUpsertGithubData() {
   const githubData = await fetchGithubData();
-  logger.info(`Fetched GitHub data`);
+  logger.info("Fetched GitHub data");
 
   const allScraps = [
     ...githubData.userRepos,
@@ -1975,7 +1975,7 @@ async function checkOpenRouterCredits() {
     return { enabled: true, usage, limit, is_free_tier };
   } catch (error) {
     // Don't log credential errors as harshly - they're configuration issues, not bugs
-    const logLevel = error.code === 401 || error.code === 'ERR_BAD_REQUEST' ? 'warn' : 'error';
+    const logLevel = error.code === 401 || error.code === "ERR_BAD_REQUEST" ? "warn" : "error";
     logger[logLevel]("OpenRouter API check failed - continuing without AI features", {
       api_key_present: !!process.env.OPENROUTER_API_KEY,
       error_code: error.code,
@@ -2107,16 +2107,16 @@ async function identifyAndFixMissingData(options = {}) {
 
           if (screenshot?.url) {
             logger.info(chalk.green("✅ Screenshot generated"));
-            trackStep('screenshots', true);
+            trackStep("screenshots", true);
             return { screenshot_url: screenshot.url };
           } else {
             logger.warn(chalk.yellow("⚠️ No screenshot URL returned"));
-            trackStep('screenshots', false);
+            trackStep("screenshots", false);
             return null;
           }
         } catch (error) {
           logger.error(`Screenshot generation failed for ${scrap.url}:`, error);
-          trackStep('screenshots', false);
+          trackStep("screenshots", false);
           return null;
         }
       },
@@ -2426,11 +2426,11 @@ async function main() {
   // Send startup notification
   const memoryMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
   sendWebhookAlert({
-    alert_type: 'startup',
+    alert_type: "startup",
     title: `🚀 STARTED: scrapbook-core (${memoryMB}MB) on ${INSTANCE_NAME}`,
     instance: INSTANCE_NAME,
     memory_mb: memoryMB,
-    node_version: process.version
+    node_version: process.version,
   });
 
   logger.info(chalk.blue("\n🗺️ Processing Plan:"));
@@ -2456,7 +2456,7 @@ async function main() {
     startPeriodicMetricLogging();
 
     // SAFETY: Hard timeout for cron jobs - kill after 10 minutes
-    const MAX_RUNTIME = parseInt(process.env.MAX_RUNTIME_MS || '600000'); // 10 minutes default
+    const MAX_RUNTIME = parseInt(process.env.MAX_RUNTIME_MS || "600000"); // 10 minutes default
     setTimeout(() => {
       logger.error(`🚨 Process exceeded maximum runtime of ${MAX_RUNTIME}ms - forcing exit`);
       process.exit(1);
@@ -2578,8 +2578,8 @@ async function runProcessing() {
             source,
             error: error.message,
             stack: error.stack,
-            function: "runProcessing"
-          }
+            function: "runProcessing",
+          },
         );
         if (DEBUG) {
           logger.error(chalk.gray("Full error:"), error);
@@ -2597,7 +2597,7 @@ async function runProcessing() {
   if (alerts.length > 0) {
     logger.warn(chalk.yellow(`⚠️  ${alerts.length} cost alerts:`));
     alerts.forEach(alert => {
-      const icon = alert.severity === 'critical' ? '🚨' : '⚠️';
+      const icon = alert.severity === "critical" ? "🚨" : "⚠️";
       logger.warn(chalk.yellow(`   ${icon} ${alert.message}`));
     });
   }
@@ -2611,33 +2611,33 @@ async function runProcessing() {
 const alertCooldowns = new Map();
 function trackStep(stepName, success = true) {
   if (!dailyStats.stepAttempts[stepName]) return; // Unknown step
-  
+
   dailyStats.stepAttempts[stepName]++;
   if (!success) {
     dailyStats.stepFailures[stepName]++;
-    
+
     // Check if this step is consistently failing (>50% failure rate after 5+ attempts)
     const attempts = dailyStats.stepAttempts[stepName];
     const failures = dailyStats.stepFailures[stepName];
     const failureRate = failures / attempts;
-    
+
     if (attempts >= 5 && failureRate >= 0.5) {
       // Check cooldown (don't spam same alert)
       const cooldownKey = `degraded_${stepName}`;
       const lastAlert = alertCooldowns.get(cooldownKey);
       if (!lastAlert || Date.now() - lastAlert > 30 * 60 * 1000) { // 30min cooldown
         alertCooldowns.set(cooldownKey, Date.now());
-        
+
         // Send degradation alert with cleaner title
-        const stepDisplay = stepName.replace('_', ' ');
+        const stepDisplay = stepName.replace("_", " ");
         sendWebhookAlert({
-          alert_type: 'service_degradation',
+          alert_type: "service_degradation",
           title: `⚠️ DEGRADED: ${stepDisplay} failing ${Math.round(failureRate * 100)}% (${failures}/${attempts})`,
           step: stepName,
           failure_rate: Math.round(failureRate * 100),
           failures: failures,
           attempts: attempts,
-          memory_mb: Math.round(process.memoryUsage().rss / 1024 / 1024)
+          memory_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
         });
       }
     }
@@ -2649,17 +2649,17 @@ async function sendDailySummary() {
   const endTime = Date.now();
   const duration = endTime - dailyStats.startTime;
   const memory = process.memoryUsage();
-  
+
   // Update peak memory
   dailyStats.memory.current = Math.round(memory.rss / 1024 / 1024);
   dailyStats.memory.peak = Math.max(dailyStats.memory.peak, dailyStats.memory.current);
-  
+
   const totalProcessed = Object.values(dailyStats.processed).reduce((a, b) => a + b, 0);
-  
+
   const successRate = totalProcessed > 0 ? Math.round((1 - dailyStats.errors.length / totalProcessed) * 100) : 100;
   const durationHours = Math.round(duration / 3600000 * 10) / 10; // 1 decimal place
   const uptimeHours = Math.round(process.uptime() / 3600 * 100) / 100;
-  
+
   // Calculate step failure rates for degraded services
   const stepFailures = Object.entries(dailyStats.stepFailures)
     .map(([step, failures]) => {
@@ -2668,28 +2668,28 @@ async function sendDailySummary() {
       return { step, failures, attempts, rate };
     })
     .filter(s => s.attempts > 0 && s.rate > 0);
-  
+
   const degradedSteps = stepFailures.filter(s => s.rate >= 30);
-  const degradedInfo = degradedSteps.length > 0 ? ` - ${degradedSteps.length} degraded` : '';
-  
+  const degradedInfo = degradedSteps.length > 0 ? ` - ${degradedSteps.length} degraded` : "";
+
   await sendWebhookAlert({
-    alert_type: 'daily_summary',
+    alert_type: "daily_summary",
     title: `✅ PROCESSED ${totalProcessed} items in ${durationHours}h (${successRate}% success, ${dailyStats.memory.peak}MB peak${degradedInfo})`,
     duration_minutes: Math.round(duration / 60000),
     processed: dailyStats.processed,
     total_processed: totalProcessed,
     errors: {
       count: dailyStats.errors.length,
-      recent: dailyStats.errors.slice(-3) // Last 3 errors
+      recent: dailyStats.errors.slice(-3), // Last 3 errors
     },
     step_failures: stepFailures,
     degraded_services: degradedSteps,
     memory: {
       peak_mb: dailyStats.memory.peak,
-      current_mb: dailyStats.memory.current
+      current_mb: dailyStats.memory.current,
     },
     uptime_hours: uptimeHours,
-    success_rate: successRate
+    success_rate: successRate,
   });
 }
 
@@ -2723,9 +2723,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .catch(async (error) => {
       logger.error("Unhandled error:", error);
       dailyStats.errors.push({
-        type: 'fatal',
+        type: "fatal",
         message: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       await sendDailySummary(); // Send summary even on failure
       process.exit(1);

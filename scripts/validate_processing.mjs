@@ -5,16 +5,16 @@
  * Alerts if money was wasted on failed operations
  */
 
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import chalk from 'chalk';
-import fs from 'fs/promises';
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+import chalk from "chalk";
+import fs from "fs/promises";
 
 dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 );
 
 async function validateProcessing(options = {}) {
@@ -23,9 +23,9 @@ async function validateProcessing(options = {}) {
     minSuccessRate = 0.7, // 70% minimum success rate
   } = options;
 
-  console.log(chalk.bold.cyan('\n╔══════════════════════════════════════╗'));
-  console.log(chalk.bold.cyan('║    POST-PROCESSING VALIDATOR         ║'));
-  console.log(chalk.bold.cyan('╚══════════════════════════════════════╝\n'));
+  console.log(chalk.bold.cyan("\n╔══════════════════════════════════════╗"));
+  console.log(chalk.bold.cyan("║    POST-PROCESSING VALIDATOR         ║"));
+  console.log(chalk.bold.cyan("╚══════════════════════════════════════╝\n"));
 
   console.log(chalk.gray(`Analyzing scraps updated in the last ${minutesAgo} minutes...\n`));
 
@@ -33,10 +33,10 @@ async function validateProcessing(options = {}) {
 
   // Get recent scraps
   const { data: recentScraps, error } = await supabase
-    .from('scraps')
-    .select('*')
-    .gte('updated_at', cutoffTime)
-    .order('updated_at', { ascending: false });
+    .from("scraps")
+    .select("*")
+    .gte("updated_at", cutoffTime)
+    .order("updated_at", { ascending: false });
 
   if (error) {
     console.log(chalk.red(`❌ Failed to fetch scraps: ${error.message}\n`));
@@ -44,7 +44,7 @@ async function validateProcessing(options = {}) {
   }
 
   if (!recentScraps || recentScraps.length === 0) {
-    console.log(chalk.yellow('⚠️  No scraps processed in this time window\n'));
+    console.log(chalk.yellow("⚠️  No scraps processed in this time window\n"));
     return true;
   }
 
@@ -77,7 +77,7 @@ async function validateProcessing(options = {}) {
   // Calculate rates
   const pct = (count) => ((count / stats.total) * 100).toFixed(1);
 
-  console.log(chalk.bold('Field Completeness:'));
+  console.log(chalk.bold("Field Completeness:"));
   console.log(`  Content:        ${stats.withContent.toString().padStart(4)} / ${stats.total} (${pct(stats.withContent)}%)`);
   console.log(`  Summaries:      ${stats.withSummary.toString().padStart(4)} / ${stats.total} (${pct(stats.withSummary)}%)`);
   console.log(`  Tags:           ${stats.withTags.toString().padStart(4)} / ${stats.total} (${pct(stats.withTags)}%)`);
@@ -90,10 +90,10 @@ async function validateProcessing(options = {}) {
   // Check cost tracking
   const costData = await loadCostData();
   if (costData) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     const todayStats = costData.dailyStats?.[today];
     if (todayStats) {
-      console.log(chalk.bold('Today\'s Spending:'));
+      console.log(chalk.bold("Today's Spending:"));
       console.log(`  Cost:     $${todayStats.cost.toFixed(4)}`);
       console.log(`  Requests: ${todayStats.requests}`);
       console.log(`  Scraps:   ${todayStats.scrapCount}\n`);
@@ -123,44 +123,44 @@ async function validateProcessing(options = {}) {
 
   // Show examples of failed scraps
   if (stats.withSummary < minSuccessCount) {
-    console.log(chalk.bold.red('\n⚠️  SCRAPS WITHOUT SUMMARIES:\n'));
+    console.log(chalk.bold.red("\n⚠️  SCRAPS WITHOUT SUMMARIES:\n"));
 
     const withoutSummaries = recentScraps
       .filter(s => !s.summary || s.summary.length < 10)
       .slice(0, 5);
 
     withoutSummaries.forEach((scrap, i) => {
-      console.log(chalk.red(`  ${i+1}. ${scrap.title || 'No title'}`));
-      console.log(chalk.gray(`     URL: ${scrap.url || 'N/A'}`));
-      console.log(chalk.gray(`     Content: ${scrap.content ? scrap.content.length + ' chars' : 'missing'}`));
+      console.log(chalk.red(`  ${i+1}. ${scrap.title || "No title"}`));
+      console.log(chalk.gray(`     URL: ${scrap.url || "N/A"}`));
+      console.log(chalk.gray(`     Content: ${scrap.content ? scrap.content.length + " chars" : "missing"}`));
       console.log(chalk.gray(`     Updated: ${scrap.updated_at}\n`));
     });
   }
 
   // Final verdict
-  console.log('\n' + '─'.repeat(50) + '\n');
+  console.log("\n" + "─".repeat(50) + "\n");
 
   if (failures.length === 0) {
-    console.log(chalk.bold.green('✅ VALIDATION PASSED\n'));
-    console.log(chalk.green('Processing is working correctly. Money well spent!\n'));
+    console.log(chalk.bold.green("✅ VALIDATION PASSED\n"));
+    console.log(chalk.green("Processing is working correctly. Money well spent!\n"));
     return true;
   } else {
-    console.log(chalk.bold.red('❌ VALIDATION FAILED\n'));
-    console.log(chalk.red('Processing failures detected:\n'));
+    console.log(chalk.bold.red("❌ VALIDATION FAILED\n"));
+    console.log(chalk.red("Processing failures detected:\n"));
     failures.forEach(f => console.log(chalk.red(`  • ${f}`)));
     console.log();
-    console.log(chalk.red('⚠️  MONEY MAY BE WASTED ON FAILED OPERATIONS!\n'));
-    console.log(chalk.yellow('Actions:'));
-    console.log(chalk.yellow('  1. Check circuit breaker logs'));
-    console.log(chalk.yellow('  2. Run health check: node scripts/health_check.mjs'));
-    console.log(chalk.yellow('  3. Check error logs in logs/error.log\n'));
+    console.log(chalk.red("⚠️  MONEY MAY BE WASTED ON FAILED OPERATIONS!\n"));
+    console.log(chalk.yellow("Actions:"));
+    console.log(chalk.yellow("  1. Check circuit breaker logs"));
+    console.log(chalk.yellow("  2. Run health check: node scripts/health_check.mjs"));
+    console.log(chalk.yellow("  3. Check error logs in logs/error.log\n"));
     return false;
   }
 }
 
 async function loadCostData() {
   try {
-    const data = await fs.readFile('./data/cost-history.json', 'utf-8');
+    const data = await fs.readFile("./data/cost-history.json", "utf-8");
     return JSON.parse(data);
   } catch (error) {
     return null;

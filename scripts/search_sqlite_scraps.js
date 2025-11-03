@@ -27,7 +27,7 @@ async function search(query) {
       LIMIT 20
     `,
       sanitizedQuery,
-      sanitizedQuery
+      sanitizedQuery,
     );
 
     console.error(`Found ${results.length} results`);
@@ -51,7 +51,7 @@ async function search(query) {
             : result.metadata;
       } catch (e) {
         console.error(
-          `Error parsing metadata for scrap ${result.scrap_id}: ${e.message}`
+          `Error parsing metadata for scrap ${result.scrap_id}: ${e.message}`,
         );
         metadata = {};
       }
@@ -67,7 +67,7 @@ async function search(query) {
           title,
           subtitle: subtitle.substring(0, 50) + "...",
           url,
-        })}`
+        })}`,
       );
 
       return {
@@ -114,7 +114,7 @@ function formatScrapForCopy(result, metadata) {
   // const title = result?.content || "No title";
   const title = truncate(
     result.title || metadata.title || result.content || "No title",
-    100
+    100,
   );
   const subtitle = formatSubtitle(result, metadata, domain);
   // const tags = result?.tags?.join(", ") || "No tags";
@@ -142,7 +142,7 @@ function truncate(str, length) {
 function formatSubtitle(result, metadata, domain) {
   const summary = truncate(
     result.summary || result.content || "No content available",
-    80
+    80,
   );
   const age = formatDistanceToNow(parseISO(result.created_at), {
     addSuffix: true,
@@ -162,7 +162,7 @@ if (!query) {
           valid: false,
         },
       ],
-    })
+    }),
   );
 } else {
   search(query)
@@ -179,7 +179,7 @@ if (!query) {
               valid: false,
             },
           ],
-        })
+        }),
       );
     });
 }

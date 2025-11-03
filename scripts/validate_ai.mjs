@@ -20,7 +20,7 @@ console.log(
 ║  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾  ║
 ║    [STATUS: INITIALIZING TESTS]       ║
 ╚═══════════════════════════════════════╝
-`)
+`),
 );
 
 // Add command line options
@@ -35,18 +35,18 @@ const DEBUG = options.debug || process.env.DEBUG === "true";
 
 // Test data
 const TEST_CONTENT = [
-  `While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API...`,
-  `The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications...`,
+  "While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API...",
+  "The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications...",
 ];
 
 // Add more test cases specifically for location testing
 const LOCATION_TEST_CASES = [
-  `While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API...`,
-  `The new Apple Store in downtown Shanghai, located at 123 Huaihai Road, has a stunning glass facade.`,
-  `Remote work has allowed me to split my time between Berlin's Kreuzberg neighborhood and a small village in the South of France.`,
-  `This photo was taken at the Louvre Museum in Paris, just steps away from the Seine River.`,
+  "While working from a cafe in the East Village, New York City, I've been exploring Vue.js 3.0's Composition API...",
+  "The new Apple Store in downtown Shanghai, located at 123 Huaihai Road, has a stunning glass facade.",
+  "Remote work has allowed me to split my time between Berlin's Kreuzberg neighborhood and a small village in the South of France.",
+  "This photo was taken at the Louvre Museum in Paris, just steps away from the Seine River.",
   // Technical content with no locations (negative test case)
-  `The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications...`,
+  "The ref() and reactive() functions are core utilities for managing reactive state in Vue.js applications...",
 ];
 
 async function checkCredits() {
@@ -76,8 +76,8 @@ async function checkCredits() {
       console.error(
         chalk.red("\n❌ No credits remaining!") +
           chalk.yellow(
-            "\nPlease add more credits at https://openrouter.ai/credits"
-          )
+            "\nPlease add more credits at https://openrouter.ai/credits",
+          ),
       );
       console.log(chalk.gray("\nCredit Details:"));
       console.log(chalk.gray(`Limit Remaining: ${limit_remaining}`));
@@ -89,30 +89,30 @@ async function checkCredits() {
     // Create a visual representation of credit usage
     const usagePercent = (usage / limit) * 100;
     const creditBar = `[${"=".repeat(Math.floor(usagePercent / 5))}${" ".repeat(
-      20 - Math.floor(usagePercent / 5)
+      20 - Math.floor(usagePercent / 5),
     )}]`;
 
     console.log(chalk.cyan("\n📊 OpenRouter Credits Status:"));
     console.log(chalk.cyan("━".repeat(50)));
     console.log(
-      `Account Type: ${chalk.blue(is_free_tier ? "Free Tier" : "Paid")}`
+      `Account Type: ${chalk.blue(is_free_tier ? "Free Tier" : "Paid")}`,
     );
     console.log(
       `Rate Limit: ${chalk.blue(
-        `${rate_limit.requests}/${rate_limit.interval}`
-      )}`
+        `${rate_limit.requests}/${rate_limit.interval}`,
+      )}`,
     );
     console.log(
       `Usage: ${chalk.yellow(usage.toFixed(2))} / ${chalk.yellow(
-        limit
-      )} (${usagePercent.toFixed(1)}%)`
+        limit,
+      )} (${usagePercent.toFixed(1)}%)`,
     );
     console.log(
       `Credits Remaining: ${
         limit_remaining > 10
           ? chalk.green(limit_remaining.toFixed(2))
           : chalk.yellow(limit_remaining.toFixed(2))
-      }`
+      }`,
     );
     console.log(`${creditBar} ${usagePercent.toFixed(1)}%`);
     console.log(chalk.cyan("━".repeat(50)));
@@ -122,7 +122,7 @@ async function checkCredits() {
     console.error(chalk.red("\n❌ Error checking credits:"));
     if (error.response) {
       console.error(`Status: ${error.response.status}`);
-      console.error(`Data:`, error.response.data);
+      console.error("Data:", error.response.data);
     } else if (error.request) {
       console.error("No response received from API");
     } else {
@@ -161,7 +161,7 @@ async function runTests() {
             console.log(chalk.cyan("\nPrimary Location:"));
             console.log(`Name: ${location.location}`);
             console.log(
-              `Coordinates: ${location.latitude}, ${location.longitude}`
+              `Coordinates: ${location.latitude}, ${location.longitude}`,
             );
           }
 
@@ -169,7 +169,7 @@ async function runTests() {
             console.log(chalk.cyan("\nOther Locations:"));
             location.otherLocations.forEach((loc) => {
               console.log(
-                `- ${loc.location} (${loc.latitude}, ${loc.longitude})`
+                `- ${loc.location} (${loc.latitude}, ${loc.longitude})`,
               );
             });
           }
@@ -199,7 +199,7 @@ async function runTests() {
       console.log("\n[TESTING FREE MODELS]");
       const freeModels = getFallbackModels();
       console.log("Available free models:", freeModels);
-      
+
       for (const freeModel of freeModels.slice(0, 2)) {
         console.log(`\n🆓 Testing ${freeModel}:`);
         try {
@@ -208,25 +208,25 @@ async function runTests() {
             messages: [
               {
                 role: "system",
-                content: "Create a structured summary with key facts as bullet points. Include fact extraction."
+                content: "Create a structured summary with key facts as bullet points. Include fact extraction.",
               },
               {
                 role: "user",
-                content: `Summarize this content and extract key facts:\n\n${content}`
-              }
+                content: `Summarize this content and extract key facts:\n\n${content}`,
+              },
             ],
             model: freeModel,
             maxTokens: 400,
-            temperature: 0.3
+            temperature: 0.3,
           });
           console.timeEnd(`Free Model ${freeModel}`);
-          
+
           if (freeResult) {
             console.log(chalk.green("✓ Free model result:"), freeResult.substring(0, 200) + "...");
-            
+
             // Check for structured elements
-            const hasMarkdown = freeResult.includes('**') || freeResult.includes('##');
-            const hasBullets = freeResult.includes('- ') || freeResult.includes('• ');
+            const hasMarkdown = freeResult.includes("**") || freeResult.includes("##");
+            const hasBullets = freeResult.includes("- ") || freeResult.includes("• ");
             console.log(chalk.blue("  Has formatting:"), hasMarkdown, "| Has bullets:", hasBullets);
           } else {
             console.log(chalk.red("❌ Free model returned null"));

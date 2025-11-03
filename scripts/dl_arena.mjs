@@ -22,7 +22,7 @@ const logger = winston.createLogger({
   level: DEBUG ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -74,7 +74,7 @@ const supabase = createClient(
   {
     auth: { persistSession: false },
     db: { schema: "public" },
-  }
+  },
 );
 
 // Configure Cloudinary
@@ -168,23 +168,23 @@ export const processBlock = async (block) => {
       if (!block.class) return "No content";
 
       switch (block.class.toLowerCase()) {
-        case "image":
-          return (
-            block.description ||
+      case "image":
+        return (
+          block.description ||
             block.title ||
             block.generated_title ||
             "Untitled image"
-          );
-        case "text":
-          return block.content || block.description || "Empty text block";
-        case "link":
-          return block.description || block.source?.title || "Untitled link";
-        case "attachment":
-          return block.description || block.title || "Untitled attachment";
-        case "media":
-          return block.description || block.embed?.title || "Untitled media";
-        default:
-          return block.content || block.description || "No content";
+        );
+      case "text":
+        return block.content || block.description || "Empty text block";
+      case "link":
+        return block.description || block.source?.title || "Untitled link";
+      case "attachment":
+        return block.description || block.title || "Untitled attachment";
+      case "media":
+        return block.description || block.embed?.title || "Untitled media";
+      default:
+        return block.content || block.description || "No content";
       }
     })();
 
@@ -393,7 +393,7 @@ export const fetchAllBlocks = async (testMode = false, options = {}) => {
             per: testMode ? 5 : 100,
             sort: "updated_at",
             direction: "desc",
-          })
+          }),
         );
 
         const blocks = response || [];

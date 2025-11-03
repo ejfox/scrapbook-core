@@ -5,14 +5,14 @@ const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
 
 // ScrapCard Component - Where the *swoosh* happens!
 const ScrapCard = {
-  name: 'ScrapCard',
+  name: "ScrapCard",
   props: {
     scrap: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
-  emits: ['field-update'],
+  emits: ["field-update"],
   setup(props, { emit }) {
     const cardRef = ref(null);
 
@@ -28,16 +28,16 @@ const ScrapCard = {
         // *WHOOSH* Highlight animation!
         anime({
           targets: fieldElement,
-          backgroundColor: ['#00ff00', '#000000'],
+          backgroundColor: ["#00ff00", "#000000"],
           duration: 800,
-          easing: 'easeOutCubic',
+          easing: "easeOutCubic",
           complete: () => {
             updatingFields.delete(fieldName);
-          }
+          },
         });
       }
 
-      emit('field-update', { scrapId: props.scrap.id, fieldName });
+      emit("field-update", { scrapId: props.scrap.id, fieldName });
     };
 
     // Format tags nicely
@@ -45,7 +45,7 @@ const ScrapCard = {
       if (!props.scrap.ai_tags) return [];
       return Array.isArray(props.scrap.ai_tags)
         ? props.scrap.ai_tags
-        : props.scrap.ai_tags.split(',').map(t => t.trim());
+        : props.scrap.ai_tags.split(",").map(t => t.trim());
     });
 
     // Relationship count for quick stats
@@ -55,7 +55,7 @@ const ScrapCard = {
 
     // Completeness percentage - how processed is this scrap?
     const completeness = computed(() => {
-      const fields = ['ai_summary', 'ai_tags', 'relationships', 'location', 'financial_analysis', 'screenshot_url'];
+      const fields = ["ai_summary", "ai_tags", "relationships", "location", "financial_analysis", "screenshot_url"];
       const filled = fields.filter(f => props.scrap[f]).length;
       return Math.round((filled / fields.length) * 100);
     });
@@ -67,7 +67,7 @@ const ScrapCard = {
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 400,
-        easing: 'easeOutCubic'
+        easing: "easeOutCubic",
       });
     });
 
@@ -77,7 +77,7 @@ const ScrapCard = {
       animateFieldUpdate,
       formattedTags,
       relationshipCount,
-      completeness
+      completeness,
     };
   },
   template: `
@@ -156,13 +156,13 @@ const ScrapCard = {
         <span class="scrap-id">ID: {{ scrap.id.substring(0, 8) }}</span>
       </div>
     </article>
-  `
+  `,
 };
 
 // Main App - THIS IS WHERE WE GO FULL SPEED! *zoom*
 const app = createApp({
   components: {
-    ScrapCard
+    ScrapCard,
   },
   setup() {
     // Reactive state - LIGHTNING FAST updates!
@@ -170,9 +170,9 @@ const app = createApp({
     const stats = reactive({
       total: 0,
       processing: 0,
-      complete: 0
+      complete: 0,
     });
-    const connectionStatus = ref('connecting');
+    const connectionStatus = ref("connecting");
     const fps = ref(60); // Always aim for 60fps! *pew pew*
 
     let updateInterval = null;
@@ -181,7 +181,7 @@ const app = createApp({
 
     // Mock data generator for testing - replace with real API/WebSocket
     const generateMockScrap = () => {
-      const sources = ['arena', 'github', 'pinboard', 'mastodon'];
+      const sources = ["arena", "github", "pinboard", "mastodon"];
       const source = sources[Math.floor(Math.random() * sources.length)];
 
       return {
@@ -191,15 +191,15 @@ const app = createApp({
         url: `https://example.com/${Math.random().toString(36).substr(2, 9)}`,
         content: `This is sample content that would come from ${source}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In a real implementation, this would be actual scraped content.`,
         ai_summary: Math.random() > 0.3 ? `AI-generated summary of the content from ${source}` : null,
-        ai_tags: Math.random() > 0.3 ? ['technology', 'web', source] : null,
+        ai_tags: Math.random() > 0.3 ? ["technology", "web", source] : null,
         relationships: Math.random() > 0.4 ? [
-          { subject: 'User', predicate: 'posted', object: 'Content' },
-          { subject: 'Content', predicate: 'relates_to', object: 'Technology' }
+          { subject: "User", predicate: "posted", object: "Content" },
+          { subject: "Content", predicate: "relates_to", object: "Technology" },
         ] : null,
-        location: Math.random() > 0.7 ? 'New York, NY' : null,
-        financial_analysis: Math.random() > 0.9 ? { amount: 100, currency: 'USD' } : null,
+        location: Math.random() > 0.7 ? "New York, NY" : null,
+        financial_analysis: Math.random() > 0.9 ? { amount: 100, currency: "USD" } : null,
         screenshot_url: Math.random() > 0.5 ? `https://picsum.photos/400/300?random=${Math.random()}` : null,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     };
 
@@ -215,12 +215,12 @@ const app = createApp({
       // Stagger animation for grid *zoom zoom zoom*
       setTimeout(() => {
         anime({
-          targets: '.scrap-card',
+          targets: ".scrap-card",
           opacity: [0, 1],
           translateY: [40, 0],
           delay: anime.stagger(80), // Each card 80ms apart - SO SMOOTH!
           duration: 600,
-          easing: 'easeOutCubic'
+          easing: "easeOutCubic",
         });
       }, 100);
     };
@@ -231,7 +231,7 @@ const app = createApp({
       let complete = 0;
 
       scraps.value.forEach(scrap => {
-        const fields = ['ai_summary', 'ai_tags', 'relationships', 'location', 'financial_analysis'];
+        const fields = ["ai_summary", "ai_tags", "relationships", "location", "financial_analysis"];
         const filled = fields.filter(f => scrap[f]).length;
         const completeness = (filled / fields.length) * 100;
 
@@ -249,7 +249,7 @@ const app = createApp({
         if (scraps.value.length > 0 && Math.random() > 0.7) {
           // Randomly update a scrap's field
           const randomScrap = scraps.value[Math.floor(Math.random() * scraps.value.length)];
-          const fields = ['ai_summary', 'ai_tags', 'relationships', 'location'];
+          const fields = ["ai_summary", "ai_tags", "relationships", "location"];
           const randomField = fields[Math.floor(Math.random() * fields.length)];
 
           if (!randomScrap[randomField]) {
@@ -270,7 +270,7 @@ const app = createApp({
         }
       }, 2000);
 
-      connectionStatus.value = 'connected';
+      connectionStatus.value = "connected";
     };
 
     // FPS counter because we're PERFORMANCE OBSESSED!
@@ -302,18 +302,18 @@ const app = createApp({
 
     // Lifecycle hooks
     onMounted(() => {
-      console.log('⚡ DASHBOARD INITIALIZING AT LIGHTSPEED!');
+      console.log("⚡ DASHBOARD INITIALIZING AT LIGHTSPEED!");
       loadInitialScraps();
       startRealtimeUpdates();
       startFPSCounter();
 
       // *[adjusts lucky hoodie]* Let's make this EPIC!
       anime({
-        targets: '.dashboard-header',
+        targets: ".dashboard-header",
         opacity: [0, 1],
         translateY: [-20, 0],
         duration: 800,
-        easing: 'easeOutCubic'
+        easing: "easeOutCubic",
       });
     });
 
@@ -327,12 +327,12 @@ const app = createApp({
       stats,
       connectionStatus,
       fps,
-      onFieldUpdate
+      onFieldUpdate,
     };
-  }
+  },
 });
 
 // Mount the app and GO GO GO!
-app.mount('#app');
+app.mount("#app");
 
-console.log('⚡ SCRAPBOOK DASHBOARD RUNNING AT 60FPS! *whoosh*');
+console.log("⚡ SCRAPBOOK DASHBOARD RUNNING AT 60FPS! *whoosh*");
