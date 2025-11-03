@@ -59,27 +59,46 @@ export async function cleanupTempFiles() {
   }
 }
 
-// Helper function to upload to Cloudinary
-async function uploadToCloudinary(buffer) {
+// Helper function to upload to Cloudinary with timeout
+async function uploadToCloudinary(buffer, timeoutMs = 45000) {
   if (!isCloudinaryConfigured) {
     throw new Error('Cloudinary is not configured - screenshot upload skipped')
   }
 
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: 'scrapbook/screenshots',
-        format: 'jpg',
-        quality: 'auto:good',
-      },
-      (error, result) => {
-        if (error) reject(error)
-        else resolve(result)
-      },
-    )
+  return Promise.race([
+    new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'scrapbook/screenshots',
+          format: 'jpg',
+          quality: 'auto:good',
+        },
+        (error, result) => {
+          if (error) reject(error)
+          else resolve(result)
+        },
+      )
 
-    uploadStream.end(buffer)
-  })
+      uploadStream.end(buffer)
+    }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Cloudinary upload timeout')), timeoutMs)
+    )
+  ])
+}
+
+// Pool of realistic user agents (recent Chrome versions)
+const USER_AGENTS = [
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+]
+
+// Get random user agent
+function getRandomUserAgent() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
 }
 
 // Enhanced logger
@@ -233,20 +252,83 @@ export async function generateScreenshot(url) {
     browser = await puppeteer.launch({
       headless: 'new',
       executablePath: getChromePath(),
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled', // Hide automation
+      ],
     })
 
     const page = await browser.newPage()
+
+    // Set random user agent
+    const userAgent = getRandomUserAgent()
+    await page.setUserAgent(userAgent)
+
+    // Set extra headers to look like a real browser
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+    })
+
+    // Hide webdriver and automation properties
+    await page.evaluateOnNewDocument(() => {
+      // Override navigator.webdriver
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => false,
+      })
+
+      // Mock plugins to look like real browser
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5],
+      })
+
+      // Mock languages
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      })
+
+      // Add realistic chrome properties
+      window.chrome = {
+        runtime: {},
+      }
+    })
+
     await page.setViewport({ width: 1080, height: 1920 })
 
-    // Set a reasonable timeout
-    await page.setDefaultNavigationTimeout(30000)
+    // Increase timeout to 60s for slow sites
+    await page.setDefaultNavigationTimeout(60000)
 
-    // Navigate and wait for network idle
-    await page.goto(url, {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    })
+    // Navigate with retry logic
+    let navigationError
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await page.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000,
+        })
+        navigationError = null
+        break
+      } catch (error) {
+        navigationError = error
+        logger.warn(`Navigation attempt ${attempt} failed: ${error.message}`)
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2s before retry
+        }
+      }
+    }
+
+    // If navigation failed after retries, throw the error
+    if (navigationError) {
+      throw navigationError
+    }
 
     // Brief wait for critical content
     await new Promise((resolve) => setTimeout(resolve, 1000))

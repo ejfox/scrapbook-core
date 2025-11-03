@@ -244,6 +244,10 @@ async function repairScrapWithAI(scrap, options) {
   // Check if we have insufficient content and should retry
   const MIN_CONTENT_LENGTH = 500
   if (options.fetchContent && scrap.url && content.length < MIN_CONTENT_LENGTH && contentFetchFailed) {
+    // TODO: After 3+ retries, use vision model on screenshot_url as last resort
+    // if (retryAttempts >= 3 && scrap.screenshot_url) {
+    //   content = await extractTextFromScreenshot(scrap.screenshot_url)
+    // }
     return {
       needsRetry: true,
       retryReason: `Insufficient content (${content.length} chars, fetch failed)`,
@@ -555,24 +559,39 @@ async function repairScrapWithAI(scrap, options) {
         }
       }
     } else {
-      try {
-        const { error } = await supabase
-          .from('scraps')
-          .update(updates)
-          .eq('scrap_id', scrap.scrap_id)
+      // Retry database update up to 3 times for network failures
+      let lastError
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { error } = await supabase
+            .from('scraps')
+            .update(updates)
+            .eq('scrap_id', scrap.scrap_id)
 
-        if (error) {
-          console.error(chalk.red('    ✗ DATABASE UPDATE FAILED'))
-          console.error(chalk.red(`      Scrap ID: ${scrapId}`))
-          console.error(chalk.red(`      Fields: ${Object.keys(updates).join(', ')}`))
-          console.error(chalk.red(`      Error: ${JSON.stringify(error)}`))
-          throw error
+          if (error) {
+            console.error(chalk.red('    ✗ DATABASE UPDATE FAILED'))
+            console.error(chalk.red(`      Scrap ID: ${scrapId}`))
+            console.error(chalk.red(`      Fields: ${Object.keys(updates).join(', ')}`))
+            console.error(chalk.red(`      Error: ${JSON.stringify(error)}`))
+            throw error
+          }
+          // Success - break out of retry loop
+          lastError = null
+          break
+        } catch (error) {
+          lastError = error
+          if (attempt < 3) {
+            console.log(chalk.yellow(`    ⚠ DB update attempt ${attempt} failed, retrying... (${error.message})`))
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt)) // Exponential backoff
+          }
         }
-      } catch (error) {
-        console.error(chalk.red('    ✗ DATABASE UPDATE EXCEPTION'))
-        console.error(chalk.red(`      Error: ${error.message}`))
-        console.error(chalk.red(`      Stack: ${error.stack}`))
-        throw error
+      }
+
+      if (lastError) {
+        console.error(chalk.red('    ✗ DATABASE UPDATE EXCEPTION (after 3 retries)'))
+        console.error(chalk.red(`      Error: ${lastError.message}`))
+        console.error(chalk.red(`      Stack: ${lastError.stack}`))
+        throw lastError
       }
     }
   } else {
