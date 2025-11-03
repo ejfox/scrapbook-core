@@ -1,5 +1,53 @@
 import { completion, MODELS, PROMPTS } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
+import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
+
+dotenv.config()
+
+// Lazy-load supabase client for relationship examples
+let supabaseClient = null
+function getSupabase() {
+  if (!supabaseClient && process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+    supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+  }
+  return supabaseClient
+}
+
+// Fetch real examples from recent scraps
+async function getRecentRelationshipExamples(count = 9) {
+  try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
+    const { data: scraps } = await supabase
+      .from('scraps')
+      .select('relationships')
+      .not('relationships', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(3)
+
+    if (!scraps || scraps.length === 0) return []
+
+    const examples = []
+    for (const scrap of scraps) {
+      if (scrap.relationships?.length) {
+        // Pick up to 3 random relationships from each scrap
+        const sample = scrap.relationships
+          .filter(r => r.source && r.target && r.relationship)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3)
+          .map(r => `[${r.source}]-[${r.relationship}]->[${r.target}]`)
+        examples.push(...sample)
+      }
+    }
+
+    return examples.slice(0, count)
+  } catch (error) {
+    console.warn('Could not fetch recent examples:', error.message)
+    return []
+  }
+}
 
 // Validate relationship structure before returning
 function validateRelationship(rel) {
@@ -19,6 +67,12 @@ export async function extractRelationships(content, options = {}) {
   const { url, isRawText = false, model = null } = options
 
   try {
+    // Fetch recent examples from the archive
+    const recentExamples = await getRecentRelationshipExamples(9)
+    const examplesText = recentExamples.length > 0
+      ? `\n\nExamples (from recently processed scraps in your archive):\n${recentExamples.join('\n')}`
+      : ''
+
     // Create properly formatted messages array
     const messages = [
       {
@@ -38,15 +92,7 @@ Entity Types to use:
 - Product (specific products, services, applications)
 - Location (places, cities, countries, regions)
 - Event (conferences, meetings, occurrences)
-- Concept (abstract ideas, methodologies, principles)
-
-Examples:
-[Vue.js:Technology]-[DEVELOPED_BY]->[Evan You:Person]
-[React:Technology]-[MAINTAINED_BY]->[Meta:Organization]
-[TypeScript:Technology]-[ENHANCES]->[JavaScript:Technology]
-[Sam Altman:Person]-[CEO_OF]->[OpenAI:Organization]
-[iPhone:Product]-[MANUFACTURED_BY]->[Apple:Organization]
-[GitHub:Product]-[ACQUIRED_BY]->[Microsoft:Organization]
+- Concept (abstract ideas, methodologies, principles)${examplesText}
 
 Content to analyze:
 ${content}
