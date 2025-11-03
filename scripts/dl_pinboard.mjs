@@ -12,6 +12,7 @@ import { getImageDescription } from './imageDescriptions.mjs'
 import OpenAI from 'openai'
 import { INSTANCE_NAME } from '../helpers/instanceName.mjs'
 import puppeteer from 'puppeteer'
+import { extractContentWithRetry } from './contentExtractor.mjs'
 
 dotenv.config()
 
@@ -419,12 +420,64 @@ export async function processBookmark(bookmark) {
       }
     }
 
+    // Try to extract content from the URL
+    if (bookmark.href) {
+      try {
+        const contentStartTime = Date.now()
+        const extracted = await extractContentWithRetry(bookmark.href, {
+          timeout: 10000,
+          maxRetries: 1,
+        })
+
+        if (extracted?.content) {
+          // Use extracted content (plain text from Readability)
+          processed.content = extracted.content
+
+          // Store extraction metadata
+          processed.metadata.content_extraction = {
+            extracted_at: extracted.extractedAt,
+            title: extracted.title,
+            byline: extracted.byline,
+            length: extracted.length,
+            site_name: extracted.siteName,
+            method: 'readability',
+          }
+
+          logMetric('content_extracted', {
+            bookmark_id: bookmarkId,
+            duration_ms: Date.now() - contentStartTime,
+            url: bookmark.href,
+            content_length: extracted.content.length,
+          })
+        } else {
+          // Fall back to Pinboard metadata if extraction failed
+          logger.info(`Content extraction failed for ${bookmark.href}, using Pinboard metadata`)
+          processed.metadata.content_extraction = {
+            method: 'pinboard_metadata',
+            reason: 'extraction_failed',
+          }
+        }
+      } catch (error) {
+        logError('Content extraction failed', error, {
+          bookmark_id: bookmarkId,
+          url: bookmark.href,
+        })
+        // Content already set to Pinboard metadata in initial processing
+        processed.metadata.content_extraction = {
+          method: 'pinboard_metadata',
+          reason: 'extraction_error',
+          error: error.message,
+        }
+      }
+    }
+
     logMetric('bookmark_processed', {
       bookmark_id: bookmarkId,
       duration_ms: Date.now() - startTime,
       has_content: !!processed.content,
       has_screenshot: !!processed.screenshot_url,
       tags_count: processed.tags.length,
+      content_length: processed.content?.length || 0,
     })
 
     return processed
