@@ -1,7 +1,7 @@
 <template>
   <div id="app" class="h-screen w-screen flex flex-col bg-white dark:bg-black text-black dark:text-white font-mono transition-colors duration-300">
     <!-- Live activity ticker -->
-    <div class="h-3 overflow-hidden bg-black dark:bg-white text-white dark:text-black text-[10px] leading-3 flex items-center">
+    <div class="h-6 overflow-hidden bg-black dark:bg-white text-white dark:text-black text-xs leading-6 flex items-center border-b border-gray-700 dark:border-gray-300">
       <div class="ticker-content whitespace-nowrap">
         <template v-if="activityFeed.length > 0">
           <!-- Duplicate content for seamless loop -->
@@ -14,10 +14,10 @@
         <template v-else>
           <!-- Duplicate placeholder content for seamless loop -->
           <template v-for="n in 2" :key="`placeholder-${n}`">
-            <span class="inline-block opacity-50" style="padding: 0 12vw;">WAITING FOR ACTIVITY</span>
-            <span class="inline-block opacity-30" style="padding: 0 12vw;">• NO UPDATES YET</span>
-            <span class="inline-block opacity-30" style="padding: 0 12vw;">• MONITORING REALTIME FEED</span>
-            <span class="inline-block opacity-30" style="padding: 0 12vw;">• READY FOR DATA</span>
+            <span class="inline-block opacity-70" style="padding: 0 12vw;">WAITING FOR ACTIVITY</span>
+            <span class="inline-block opacity-50" style="padding: 0 12vw;">• NO UPDATES YET</span>
+            <span class="inline-block opacity-50" style="padding: 0 12vw;">• MONITORING REALTIME FEED</span>
+            <span class="inline-block opacity-50" style="padding: 0 12vw;">• READY FOR DATA</span>
           </template>
         </template>
       </div>
@@ -28,11 +28,11 @@
       <div class="flex items-center gap-4">
         <h1 class="text-base uppercase tracking-widest">SCRAP MONITOR</h1>
         <div v-if="isConnected" class="flex items-center gap-2 text-base">
-          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <div class="w-3 h-3 rounded-full animate-pulse" style="background-color: #22c55e;"></div>
           <span>LIVE</span>
         </div>
         <div v-else class="flex items-center gap-2 text-base opacity-50">
-          <div class="w-2 h-2 rounded-full bg-red-500"></div>
+          <div class="w-3 h-3 rounded-full" style="background-color: #ef4444;"></div>
           <span>OFFLINE</span>
         </div>
       </div>
