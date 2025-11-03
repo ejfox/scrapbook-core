@@ -4,15 +4,21 @@
     <div class="h-3 overflow-hidden bg-black dark:bg-white text-white dark:text-black text-[10px] leading-3 flex items-center">
       <div class="ticker-content whitespace-nowrap">
         <template v-if="activityFeed.length > 0">
-          <span v-for="(activity, i) in activityFeed" :key="i" class="inline-block px-6">
-            {{ activity }}
-          </span>
+          <!-- Duplicate content for seamless loop -->
+          <template v-for="n in 2" :key="`loop-${n}`">
+            <span v-for="(activity, i) in activityFeed" :key="`${n}-${i}`" class="inline-block" style="padding: 0 12vw;">
+              {{ activity }}
+            </span>
+          </template>
         </template>
         <template v-else>
-          <span class="inline-block px-2 opacity-50">WAITING FOR ACTIVITY</span>
-          <span class="inline-block px-6 opacity-30">• NO UPDATES YET</span>
-          <span class="inline-block px-6 opacity-30">• MONITORING REALTIME FEED</span>
-          <span class="inline-block px-6 opacity-30">• READY FOR DATA</span>
+          <!-- Duplicate placeholder content for seamless loop -->
+          <template v-for="n in 2" :key="`placeholder-${n}`">
+            <span class="inline-block opacity-50" style="padding: 0 12vw;">WAITING FOR ACTIVITY</span>
+            <span class="inline-block opacity-30" style="padding: 0 12vw;">• NO UPDATES YET</span>
+            <span class="inline-block opacity-30" style="padding: 0 12vw;">• MONITORING REALTIME FEED</span>
+            <span class="inline-block opacity-30" style="padding: 0 12vw;">• READY FOR DATA</span>
+          </template>
         </template>
       </div>
     </div>
@@ -21,12 +27,13 @@
     <header class="flex-shrink-0 px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <h1 class="text-base uppercase tracking-widest">SCRAP MONITOR</h1>
-        <div class="flex items-center gap-2 text-base">
-          <div
-            class="w-2 h-2 rounded-full"
-            :class="isConnected ? 'bg-black dark:bg-white' : 'bg-black dark:bg-white'"
-          ></div>
-          <span>{{ isConnected ? 'LIVE' : 'OFFLINE' }}</span>
+        <div v-if="isConnected" class="flex items-center gap-2 text-base">
+          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span>LIVE</span>
+        </div>
+        <div v-else class="flex items-center gap-2 text-base opacity-50">
+          <div class="w-2 h-2 rounded-full bg-red-500"></div>
+          <span>OFFLINE</span>
         </div>
       </div>
 
