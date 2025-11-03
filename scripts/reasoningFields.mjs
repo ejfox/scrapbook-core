@@ -4,6 +4,7 @@
  */
 
 import { completion } from './llmService.mjs'
+import { getModelForTask } from '../lib/config.mjs'
 
 /**
  * Infer content type from URL and content patterns
@@ -114,7 +115,7 @@ Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concep
       ],
       temperature: 0.3,
       maxTokens: 200,
-      model: 'google/gemini-2.0-flash-exp:free',
+      model: getModelForTask('superCheap'),
       scrapId,
       taskType,
     })
@@ -174,7 +175,7 @@ Return ONLY a JSON object with scores:
       ],
       temperature: 0.1,
       maxTokens: 100,
-      model: 'google/gemini-2.0-flash-exp:free',
+      model: getModelForTask('superCheap'),
       scrapId,
       taskType,
     })
