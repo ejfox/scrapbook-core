@@ -24,6 +24,41 @@ Think of it as an automated digital memory that captures what you read, create, 
 - Uploads screenshots to Supabase or Cloudinary and stores URLs
 - Syncs data with both Supabase and SQLite databases
 - Includes an Alfred Workflow for quick local database searches
+- **Realtime dashboard** with live activity feed and auto-advance
+- **Smart rate limiting** with automatic free model fallbacks
+- **Cost safety systems** with circuit breakers and spending limits
+- **Enhanced AI extraction** with OpenAI fallback and improved reliability
+
+## Recent Improvements
+
+### Realtime Dashboard (v1.2.0)
+- **Live Activity Ticker**: See updates as they happen with a scrolling news ticker
+- **Auto-advance**: Automatically shows newly processed scraps
+- **Connection Status**: Visual indicator for Supabase realtime connection
+- **Pulse Animations**: Recently updated scraps pulse for 3 seconds
+- Enable realtime in Supabase: Database → Replication → `scraps` table
+
+### AI Service Reliability
+- **Multi-provider Fallback**: Automatically falls back to OpenAI when OpenRouter fails
+- **Smart Rate Limiting**: Progressive backoff (6 levels) with automatic recovery
+- **Better JSON Extraction**: Handles markdown code blocks and truncated responses
+- **Content Validation**: Skips AI processing for insufficient content (< 50 chars)
+
+### Enhanced Data Extraction
+- **Location with Coordinates**: OpenCage geocoding provides lat/lon for all locations
+- **Relationship Quality**: 50+ entity type patterns for better relationship extraction
+- **Financial Analysis**: Tracks 40+ assets with sentiment analysis
+- **Gemini Vision**: Transforms image embeddings into rich visual descriptions
+
+### Process Reliability
+- **No More Zombies**: Scripts properly exit after completion (10-minute timeout)
+- **Fail-Fast**: Errors in critical extractions (summary/tags) stop processing immediately
+- **Comprehensive Logging**: Detailed error tracking and debugging information
+
+### Testing & Quality
+- **Test Suite**: Comprehensive validation for AI services, data integrity, and embeddings
+- **Quality Auditing**: Field completeness checks and data validation tools
+- **Webhook Alerting**: Smart degradation detection for production monitoring
 
 ## Quick VPS Deployment
 
@@ -194,9 +229,13 @@ npm test
 - Repair missing fields: `npm run doctor:repair`
 
 ### Interfaces
-- Launch dashboard: `npm run dashboard` (opens http://localhost:3001)
-- Search scraps using Alfred (keyword: `sc`)
-- Use the [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) TUI interface
+- **Realtime Dashboard**: `cd dashboard && npm run dev` (opens http://localhost:3002)
+  - Live activity ticker showing INSERT/UPDATE events
+  - Auto-advances to newly processed scraps
+  - Connection status indicator (requires Supabase Realtime enabled)
+  - Keyboard navigation (← / →)
+- **Alfred Workflow**: Quick search with keyword `sc`
+- **TUI Interface**: Use [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) for terminal interface
 
 Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfox/scrapbook-cli) tool.
 
