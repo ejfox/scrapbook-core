@@ -27,12 +27,12 @@
     <header class="flex-shrink-0 px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <h1 class="text-base uppercase tracking-widest">SCRAP MONITOR</h1>
-        <div v-if="isConnected" class="flex items-center gap-2 text-base">
-          <div class="w-3 h-3 rounded-full animate-pulse" style="background-color: #22c55e;"></div>
+        <div v-if="isConnected" class="flex items-center gap-3 text-base">
+          <div class="w-4 h-4 rounded-full animate-pulse" style="background-color: #10b981; box-shadow: 0 0 12px #10b981, 0 0 4px #10b981 inset;"></div>
           <span>LIVE</span>
         </div>
-        <div v-else class="flex items-center gap-2 text-base opacity-50">
-          <div class="w-3 h-3 rounded-full" style="background-color: #ef4444;"></div>
+        <div v-else class="flex items-center gap-3 text-base opacity-50">
+          <div class="w-4 h-4 rounded-full" style="background-color: #ef4444; box-shadow: 0 0 8px #ef4444;"></div>
           <span>OFFLINE</span>
         </div>
       </div>
@@ -76,7 +76,7 @@
 
 <style>
 .ticker-content {
-  animation: scroll-left 60s linear infinite;
+  animation: scroll-left 120s linear infinite;
 }
 
 @keyframes scroll-left {
