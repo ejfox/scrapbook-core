@@ -99,6 +99,117 @@ const ASSET_ALIASES = {
 }
 
 /**
+ * Attempt to recover truncated JSON by finding the last valid structure
+ * @param {string} jsonStr - Potentially truncated JSON string
+ * @returns {string} Recovered JSON string
+ */
+function attemptJsonRecovery(jsonStr) {
+  // Try to find incomplete arrays and close them
+  const openBrackets = (jsonStr.match(/\[/g) || []).length
+  const closeBrackets = (jsonStr.match(/\]/g) || []).length
+  const openBraces = (jsonStr.match(/\{/g) || []).length
+  const closeBraces = (jsonStr.match(/\}/g) || []).length
+
+  // Calculate how many closing brackets/braces we need
+  const missingBrackets = openBrackets - closeBrackets
+  const missingBraces = openBraces - closeBraces
+
+  // Remove any incomplete object/array at the end
+  // Look for the last complete comma or opening bracket/brace
+  let truncatePoint = jsonStr.length
+
+  // Find the last position where we have a complete element
+  const lastCompleteMatch = jsonStr.match(/[}\]],?\s*$/)
+  if (!lastCompleteMatch) {
+    // No complete elements at end, try to find last complete position
+    // Remove everything after the last complete structure
+    const lastComma = jsonStr.lastIndexOf(',')
+    const lastOpenBracket = jsonStr.lastIndexOf('[')
+    const lastOpenBrace = jsonStr.lastIndexOf('{')
+    const lastCloseBracket = jsonStr.lastIndexOf(']')
+    const lastCloseBrace = jsonStr.lastIndexOf('}')
+
+    // If we have an incomplete structure after the last comma, remove it
+    if (lastComma > Math.max(lastCloseBracket, lastCloseBrace)) {
+      truncatePoint = lastComma
+    }
+  }
+
+  let recovered = jsonStr.substring(0, truncatePoint)
+
+  // Add missing closing brackets/braces
+  recovered += ']'.repeat(missingBrackets)
+  recovered += '}'.repeat(missingBraces)
+
+  return recovered
+}
+
+/**
+ * Aggressive JSON recovery that tries to extract any valid assets
+ * @param {string} response - Raw AI response
+ * @returns {Object|null} Recovered analysis object or null
+ */
+function attemptAggressiveJsonRecovery(response) {
+  try {
+    // Try to extract just the tracked_assets array if it exists
+    const trackedMatch = response.match(/"tracked_assets"\s*:\s*\[([\s\S]*?)(?:\]|$)/)
+    const discoveredMatch = response.match(/"discovered_assets"\s*:\s*\[([\s\S]*?)(?:\]|$)/)
+
+    if (!trackedMatch && !discoveredMatch) {
+      return null
+    }
+
+    // Build a minimal valid structure
+    const result = {
+      tracked_assets: [],
+      discovered_assets: [],
+      overall_market_sentiment: 0,
+      market_reasoning: 'Recovered from truncated response',
+    }
+
+    // Try to parse individual asset objects from the arrays
+    if (trackedMatch) {
+      const assetsText = trackedMatch[1]
+      const assetMatches = assetsText.matchAll(/\{[^{}]*"ticker"\s*:\s*"([^"]+)"[^{}]*\}/g)
+      for (const match of assetMatches) {
+        try {
+          const asset = JSON.parse(match[0])
+          if (asset.ticker) {
+            result.tracked_assets.push(asset)
+          }
+        } catch (e) {
+          // Skip invalid asset
+        }
+      }
+    }
+
+    if (discoveredMatch) {
+      const assetsText = discoveredMatch[1]
+      const assetMatches = assetsText.matchAll(/\{[^{}]*"ticker"\s*:\s*"([^"]+)"[^{}]*\}/g)
+      for (const match of assetMatches) {
+        try {
+          const asset = JSON.parse(match[0])
+          if (asset.ticker) {
+            result.discovered_assets.push(asset)
+          }
+        } catch (e) {
+          // Skip invalid asset
+        }
+      }
+    }
+
+    // Only return if we recovered at least one asset
+    if (result.tracked_assets.length > 0 || result.discovered_assets.length > 0) {
+      return result
+    }
+
+    return null
+  } catch (error) {
+    return null
+  }
+}
+
+/**
  * Determine asset type based on ticker symbol patterns
  * @param {string} ticker - Asset ticker symbol
  * @returns {string} Asset type classification
@@ -163,41 +274,18 @@ CRITICAL: You MUST return ONLY valid JSON with no markdown, no code blocks, no e
 
 Sentiment scores: -1 (very negative) to +1 (very positive)`
 
-    const userPrompt = `Analyze for financial assets and sentiment. Return ONLY this exact JSON structure with no markdown formatting:
+    const userPrompt = `Analyze for financial assets and sentiment.
 
-{
-  "tracked_assets": [
-    {
-      "ticker": "AAPL",
-      "name": "Apple Inc.",
-      "mentions": ["Apple"],
-      "context": "how mentioned",
-      "sentiment_score": 0.5,
-      "sentiment_reasoning": "why",
-      "is_tracked": true
-    }
-  ],
-  "discovered_assets": [
-    {
-      "ticker": "OTHER",
-      "name": "Other Asset",
-      "mentions": ["name"],
-      "context": "how mentioned",
-      "sentiment_score": 0.0,
-      "sentiment_reasoning": "why",
-      "is_tracked": false,
-      "asset_type": "stock"
-    }
-  ],
-  "overall_market_sentiment": 0.0,
-  "market_reasoning": "overall analysis"
-}
+CRITICAL FORMATTING RULE: Your response must be ONLY the JSON object starting with { and ending with }. NO markdown code blocks (no \`\`\`), NO explanations, NO text before or after the JSON.
+
+Return this exact structure:
+{"tracked_assets":[{"ticker":"AAPL","name":"Apple Inc.","mentions":["Apple"],"context":"how mentioned","sentiment_score":0.5,"sentiment_reasoning":"why","is_tracked":true}],"discovered_assets":[{"ticker":"OTHER","name":"Other Asset","mentions":["name"],"context":"how mentioned","sentiment_score":0.0,"sentiment_reasoning":"why","is_tracked":false,"asset_type":"stock"}],"overall_market_sentiment":0.0,"market_reasoning":"overall analysis"}
 
 Content to analyze:
 ${content}
 ${url ? `\nURL: ${url}` : ''}
 
-Return ONLY the JSON. No code blocks, no markdown, no text before or after.`
+RESPOND WITH ONLY THE JSON OBJECT. START YOUR RESPONSE WITH { AND END WITH }`
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -215,48 +303,51 @@ Return ONLY the JSON. No code blocks, no markdown, no text before or after.`
       return { assets: [], tracked_assets: [], discovered_assets: [], overall_market_sentiment: 0, market_reasoning: 'No LLM response' }
     }
 
-    // Try to parse JSON response with improved extraction
+    // Try to parse JSON response with simple extraction
     let analysisResult
     try {
       let jsonStr = response.trim()
 
-      // Remove markdown code blocks if present
-      if (jsonStr.startsWith('```')) {
-        // Extract content between ```json and ``` or just ``` and ```
-        const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-        if (codeBlockMatch) {
-          jsonStr = codeBlockMatch[1].trim()
-        }
+      // Simple cleanup: remove markdown code blocks if AI ignored instructions
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/g, '').replace(/\n?```\s*$/g, '')
+
+      // Find the JSON object boundaries
+      const firstBrace = jsonStr.indexOf('{')
+      const lastBrace = jsonStr.lastIndexOf('}')
+
+      if (firstBrace === -1 || lastBrace === -1) {
+        throw new Error('No JSON object found in response')
       }
 
-      // If still not starting with {, try to extract JSON object
-      if (!jsonStr.startsWith('{')) {
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/)
-        jsonStr = jsonMatch ? jsonMatch[0] : jsonStr
-      }
+      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1)
 
-      // Validate JSON is complete (ends with })
+      // If truncated, try recovery
       if (!jsonStr.endsWith('}')) {
         console.warn("Financial analysis JSON appears truncated (doesn't end with })")
-        // Try to find the last complete closing brace
-        const lastBrace = jsonStr.lastIndexOf('}')
-        if (lastBrace > 0) {
-          jsonStr = jsonStr.substring(0, lastBrace + 1)
-        } else {
-          throw new Error('JSON is incomplete and cannot be recovered')
-        }
+        jsonStr = attemptJsonRecovery(jsonStr)
       }
 
       analysisResult = JSON.parse(jsonStr)
     } catch (parseError) {
       console.warn('Failed to parse financial analysis JSON:', parseError.message)
       console.warn('Response preview:', response.substring(0, 200))
-      return {
-        assets: [],
-        tracked_assets: [],
-        discovered_assets: [],
-        overall_market_sentiment: 0,
-        market_reasoning: `JSON parsing failed: ${parseError.message}`,
+      // Try one more aggressive recovery attempt
+      try {
+        const recovered = attemptAggressiveJsonRecovery(response)
+        if (recovered) {
+          console.log('✅ Successfully recovered JSON with aggressive parsing')
+          analysisResult = recovered
+        } else {
+          throw parseError
+        }
+      } catch (recoveryError) {
+        return {
+          assets: [],
+          tracked_assets: [],
+          discovered_assets: [],
+          overall_market_sentiment: 0,
+          market_reasoning: `JSON parsing failed: ${parseError.message}`,
+        }
       }
     }
 

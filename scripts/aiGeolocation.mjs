@@ -175,6 +175,83 @@ ${cleanContent}`
   }
 }
 
+/**
+ * Attempt to recover truncated location JSON
+ * @param {string} jsonStr - Potentially truncated JSON string
+ * @returns {string} Recovered JSON string
+ */
+function attemptLocationJsonRecovery(jsonStr) {
+  // Count brackets and braces
+  const openBrackets = (jsonStr.match(/\[/g) || []).length
+  const closeBrackets = (jsonStr.match(/\]/g) || []).length
+  const openBraces = (jsonStr.match(/\{/g) || []).length
+  const closeBraces = (jsonStr.match(/\}/g) || []).length
+
+  const missingBrackets = openBrackets - closeBrackets
+  const missingBraces = openBraces - closeBraces
+
+  // Remove incomplete trailing content
+  let recovered = jsonStr
+  const lastComma = jsonStr.lastIndexOf(',')
+  const lastCloseBrace = jsonStr.lastIndexOf('}')
+
+  // If there's content after the last complete element, remove it
+  if (lastComma > lastCloseBrace) {
+    recovered = jsonStr.substring(0, lastComma)
+  }
+
+  // Add missing closing brackets/braces
+  recovered += ']'.repeat(missingBrackets)
+  recovered += '}'.repeat(missingBraces)
+
+  return recovered
+}
+
+/**
+ * Aggressive recovery for location JSON
+ * @param {string} response - Raw AI response
+ * @returns {Object|null} Recovered locations object or null
+ */
+function attemptAggressiveLocationRecovery(response) {
+  try {
+    // Try to extract just the locations array
+    const locationsMatch = response.match(/"locations"\s*:\s*\[([\s\S]*?)(?:\]|$)/)
+
+    if (!locationsMatch) {
+      return null
+    }
+
+    const result = {
+      locations: [],
+      analysis_notes: 'Recovered from truncated response',
+    }
+
+    // Extract individual location objects
+    const locationsText = locationsMatch[1]
+    const locationMatches = locationsText.matchAll(/\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*\}/g)
+
+    for (const match of locationMatches) {
+      try {
+        const location = JSON.parse(match[0])
+        if (location.name) {
+          result.locations.push(location)
+        }
+      } catch (e) {
+        // Skip invalid location
+      }
+    }
+
+    // Only return if we recovered at least one location
+    if (result.locations.length > 0) {
+      return result
+    }
+
+    return null
+  } catch (error) {
+    return null
+  }
+}
+
 async function extractLocationsFromString(content) {
   try {
     // Create properly formatted messages array with enhanced instructions
@@ -249,6 +326,14 @@ ${content}`,
     try {
       // Clean the response to extract only the JSON
       const cleanResponse = (text) => {
+        // Remove markdown code blocks if present
+        if (text.includes('```')) {
+          const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+          if (codeBlockMatch) {
+            text = codeBlockMatch[1].trim()
+          }
+        }
+
         // Remove any text before the first {
         const jsonStart = text.indexOf('{')
         // Remove any text after the last }
@@ -259,7 +344,15 @@ ${content}`,
           return null
         }
 
-        return text.slice(jsonStart, jsonEnd)
+        let jsonStr = text.slice(jsonStart, jsonEnd)
+
+        // Check if JSON is truncated and try to recover
+        if (!jsonStr.endsWith('}')) {
+          log('⚠️ Location JSON appears truncated, attempting recovery...')
+          jsonStr = attemptLocationJsonRecovery(jsonStr)
+        }
+
+        return jsonStr
       }
 
       // Get clean JSON string
@@ -269,7 +362,19 @@ ${content}`,
       }
 
       // Parse the cleaned JSON
-      const parsed = JSON.parse(jsonStr)
+      let parsed
+      try {
+        parsed = JSON.parse(jsonStr)
+      } catch (parseError) {
+        // Try aggressive recovery
+        log('⚠️ First parse failed, attempting aggressive recovery...')
+        const recovered = attemptAggressiveLocationRecovery(response)
+        if (recovered) {
+          parsed = recovered
+        } else {
+          throw parseError
+        }
+      }
 
       if (!parsed.locations || !Array.isArray(parsed.locations)) {
         log('❌ Invalid locations array in response')
@@ -430,9 +535,58 @@ function extractUrlLocationHints(url) {
   return [...new Set(hints)] // Remove duplicates
 }
 
+/**
+ * Validate that a location string is actually a geographic place
+ * and not a social media platform or website
+ * @param {string} location - Location string to validate
+ * @returns {boolean} True if location is valid for geocoding
+ */
+function isValidGeographicLocation(location) {
+  if (!location || typeof location !== 'string') {
+    return false
+  }
+
+  const lowerLocation = location.toLowerCase()
+
+  // Blacklist of non-geographic entities
+  const blacklist = [
+    // Social media platforms
+    'reddit', 'twitter', 'facebook', 'instagram', 'linkedin',
+    'youtube', 'tiktok', 'snapchat', 'pinterest', 'tumblr',
+    // Development platforms
+    'github', 'gitlab', 'bitbucket', 'stackoverflow', 'codepen',
+    // Generic web indicators
+    '.com', '.org', '.net', '.io', '.dev', '.co', 'http://', 'https://',
+    // Common non-geographic terms
+    'online', 'virtual', 'digital', 'web', 'internet', 'cloud',
+    'app', 'website', 'platform', 'service', 'network',
+  ]
+
+  // Check if location contains any blacklisted terms
+  for (const term of blacklist) {
+    if (lowerLocation.includes(term)) {
+      log(`⚠️ Filtered out non-geographic location: "${location}" (contains "${term}")`)
+      return false
+    }
+  }
+
+  // Must have at least 2 characters
+  if (location.trim().length < 2) {
+    return false
+  }
+
+  return true
+}
+
 async function reverseGeocode(location) {
   if (!location || !process.env.OPENCAGE_API_KEY) {
     log('❌ Missing location or API key')
+    return { latitude: null, longitude: null }
+  }
+
+  // Validate location before geocoding
+  if (!isValidGeographicLocation(location)) {
+    log(`❌ Skipping geocoding for invalid location: ${location}`)
     return { latitude: null, longitude: null }
   }
 
