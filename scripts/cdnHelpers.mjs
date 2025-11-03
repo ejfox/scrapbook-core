@@ -1,14 +1,14 @@
-import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
-import path from "path";
+import dotenv from 'dotenv'
+import { createClient } from '@supabase/supabase-js'
+import path from 'path'
 
-dotenv.config();
+dotenv.config()
 
 // Initialize with anon key for public operations
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY,  // Using anon key
-);
+)
 
 /**
  * Upload screenshot to existing Supabase Storage bucket
@@ -28,31 +28,31 @@ export async function uploadToCDN(buffer, cdnPath) {
           autoRefreshToken: false,
         },
       },
-    );
+    )
 
-    console.log(`Uploading to: scrap_screenshots/${cdnPath}`);
+    console.log(`Uploading to: scrap_screenshots/${cdnPath}`)
 
     const { data, error } = await adminSupabase.storage
-      .from("scrap_screenshots")
+      .from('scrap_screenshots')
       .upload(cdnPath, buffer, {
-        contentType: "image/png",
+        contentType: 'image/png',
         upsert: true,
-      });
+      })
 
     if (error) {
-      console.error("Screenshot upload failed:", error);
-      return null;
+      console.error('Screenshot upload failed:', error)
+      return null
     }
 
     // Use public client for getting URL
     const { data: { publicUrl } } = supabase.storage
-      .from("scrap_screenshots")
-      .getPublicUrl(cdnPath);
+      .from('scrap_screenshots')
+      .getPublicUrl(cdnPath)
 
-    return publicUrl;
+    return publicUrl
 
   } catch (error) {
-    console.error("Error uploading screenshot:", error);
-    return null;
+    console.error('Error uploading screenshot:', error)
+    return null
   }
 }

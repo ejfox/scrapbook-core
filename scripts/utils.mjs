@@ -1,7 +1,7 @@
-import { exec } from "child_process";
-import { promisify } from "util";
+import { exec } from 'child_process'
+import { promisify } from 'util'
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec)
 
 export async function run_terminal_cmd({
   command,
@@ -9,12 +9,12 @@ export async function run_terminal_cmd({
   is_background = false,
 }) {
   try {
-    const { stdout, stderr } = await execAsync(command);
-    if (stdout) console.log(stdout);
-    if (stderr) console.error(stderr);
-    return { stdout, stderr };
+    const { stdout, stderr } = await execAsync(command)
+    if (stdout) console.log(stdout)
+    if (stderr) console.error(stderr)
+    return { stdout, stderr }
   } catch (error) {
-    console.error(`Error executing command: ${error.message}`);
-    throw error;
+    console.error(`Error executing command: ${error.message}`)
+    throw error
   }
 }

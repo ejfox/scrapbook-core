@@ -80,4 +80,4 @@ Format as a concise summary.`,
 
 Return as a JSON array of strings.`,
   },
-};
+}

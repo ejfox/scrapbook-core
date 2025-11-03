@@ -1,31 +1,31 @@
 // aiGeolocation.mjs
 
-import axios from "axios";
-import Bottleneck from "bottleneck";
-import cheerio from "cheerio";
-import { completion, MODELS, PROMPTS } from "./llmService.mjs";
-import { getModelForTask } from "../lib/config.mjs";
+import axios from 'axios'
+import Bottleneck from 'bottleneck'
+import cheerio from 'cheerio'
+import { completion, MODELS, PROMPTS } from './llmService.mjs'
+import { getModelForTask } from '../lib/config.mjs'
 
-const DEBUG = process.env.DEBUG === "true";
+const DEBUG = process.env.DEBUG === 'true'
 function log(...args) {
-  if (DEBUG) console.log(...args);
+  if (DEBUG) console.log(...args)
 }
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
   minTime: 1000,
-});
+})
 
 export async function extractLocation(content, options = {}) {
-  const { url, rawHtml } = options;
+  const { url, rawHtml } = options
 
-  log("\n[LOCATION EXTRACTION]");
-  log("Processing content:", content?.substring(0, 100) + "...");
-  log("URL:", url);
-  log("Raw HTML available:", !!rawHtml);
+  log('\n[LOCATION EXTRACTION]')
+  log('Processing content:', content?.substring(0, 100) + '...')
+  log('URL:', url)
+  log('Raw HTML available:', !!rawHtml)
 
-  if (!content || typeof content !== "string") {
-    log("❌ No valid content provided");
+  if (!content || typeof content !== 'string') {
+    log('❌ No valid content provided')
     return {
       location: null,
       latitude: null,
@@ -33,18 +33,18 @@ export async function extractLocation(content, options = {}) {
       metadata: {
         otherLocations: [],
       },
-    };
+    }
   }
 
   try {
     // Clean and prepare content
     const cleanContent = content
-      .replace(/<[^>]*>/g, " ") // Remove HTML
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim();
+      .replace(/<[^>]*>/g, ' ') // Remove HTML
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim()
 
     if (!cleanContent) {
-      log("❌ No content after cleaning");
+      log('❌ No content after cleaning')
       return {
         location: null,
         latitude: null,
@@ -52,52 +52,52 @@ export async function extractLocation(content, options = {}) {
         metadata: {
           otherLocations: [],
         },
-      };
+      }
     }
 
-    log("Cleaned content length:", cleanContent.length);
+    log('Cleaned content length:', cleanContent.length)
 
     // Extract additional context from URL and metadata
-    let urlContext = "";
-    let metaInfo = "";
+    let urlContext = ''
+    let metaInfo = ''
 
     if (url) {
-      urlContext = `URL: ${url}\n`;
+      urlContext = `URL: ${url}\n`
 
       // Extract domain hints
-      const domainInfo = extractDomainInfo(url);
+      const domainInfo = extractDomainInfo(url)
       if (domainInfo.domain) {
-        urlContext += `Domain: ${domainInfo.domain}.${domainInfo.tld}\n`;
+        urlContext += `Domain: ${domainInfo.domain}.${domainInfo.tld}\n`
       }
 
       // Check for location-related URL segments
-      const locationHints = extractUrlLocationHints(url);
+      const locationHints = extractUrlLocationHints(url)
       if (locationHints.length > 0) {
-        urlContext += `URL Location Hints: ${locationHints.join(", ")}\n`;
+        urlContext += `URL Location Hints: ${locationHints.join(', ')}\n`
       }
     }
 
     if (rawHtml) {
-      metaInfo = extractMetaInfo(rawHtml);
+      metaInfo = extractMetaInfo(rawHtml)
       if (metaInfo) {
-        metaInfo = `Metadata:\n${metaInfo}\n`;
+        metaInfo = `Metadata:\n${metaInfo}\n`
       }
     }
 
     // Combine all context for comprehensive analysis
     const enhancedContent = `${urlContext}${metaInfo}
 Content to analyze:
-${cleanContent}`;
+${cleanContent}`
 
-    log("🤖 Sending to LLM for location extraction...");
-    const locations = await extractLocationsFromString(enhancedContent);
+    log('🤖 Sending to LLM for location extraction...')
+    const locations = await extractLocationsFromString(enhancedContent)
 
     // If no locations found, return early
     if (
       !locations.primary &&
       (!locations.others || locations.others.length === 0)
     ) {
-      log("ℹ️ No locations found in content");
+      log('ℹ️ No locations found in content')
       return {
         location: null,
         latitude: null,
@@ -105,18 +105,18 @@ ${cleanContent}`;
         metadata: {
           otherLocations: [],
         },
-      };
+      }
     }
 
     // Get coordinates only if we have locations
-    let primaryCoords = { latitude: null, longitude: null };
-    let otherLocationsWithCoords = [];
+    let primaryCoords = { latitude: null, longitude: null }
+    let otherLocationsWithCoords = []
 
     if (locations.primary && process.env.OPENCAGE_API_KEY) {
-      log("🌍 Getting coordinates for primary location...");
+      log('🌍 Getting coordinates for primary location...')
       primaryCoords = await limiter.schedule(() =>
         reverseGeocode(locations.primary),
-      );
+      )
     }
 
     if (locations.others?.length > 0 && process.env.OPENCAGE_API_KEY) {
@@ -125,33 +125,33 @@ ${cleanContent}`;
           location: loc,
           ...(await limiter.schedule(() => reverseGeocode(loc))),
         })),
-      );
+      )
     }
 
     // Only keep locations that successfully geocoded (have coordinates)
     // If primary location didn't geocode, try to use first other location that did
-    let finalLocation = locations.primary;
-    let finalLat = primaryCoords.latitude;
-    let finalLon = primaryCoords.longitude;
+    let finalLocation = locations.primary
+    let finalLat = primaryCoords.latitude
+    let finalLon = primaryCoords.longitude
 
     // Filter other locations to only those with coordinates
     const validOthers = otherLocationsWithCoords.filter(
       (l) => l.latitude && l.longitude,
-    );
+    )
 
     // If primary didn't geocode but we have valid others, use the first one as primary
     if (!finalLat && !finalLon && validOthers.length > 0) {
-      log(`⚠️ Primary location "${locations.primary}" failed to geocode, using "${validOthers[0].location}" instead`);
-      finalLocation = validOthers[0].location;
-      finalLat = validOthers[0].latitude;
-      finalLon = validOthers[0].longitude;
-      validOthers.shift(); // Remove it from others since it's now primary
+      log(`⚠️ Primary location "${locations.primary}" failed to geocode, using "${validOthers[0].location}" instead`)
+      finalLocation = validOthers[0].location
+      finalLat = validOthers[0].latitude
+      finalLon = validOthers[0].longitude
+      validOthers.shift() // Remove it from others since it's now primary
     }
 
     // If primary didn't geocode and no valid others, set location to null
     if (!finalLat && !finalLon) {
-      log("⚠️ No locations successfully geocoded");
-      finalLocation = null;
+      log('⚠️ No locations successfully geocoded')
+      finalLocation = null
     }
 
     return {
@@ -161,9 +161,9 @@ ${cleanContent}`;
       metadata: {
         otherLocations: validOthers,
       },
-    };
+    }
   } catch (error) {
-    console.error("❌ Error in location extraction:", error);
+    console.error('❌ Error in location extraction:', error)
     return {
       location: null,
       latitude: null,
@@ -171,7 +171,7 @@ ${cleanContent}`;
       metadata: {
         otherLocations: [],
       },
-    };
+    }
   }
 }
 
@@ -180,7 +180,7 @@ async function extractLocationsFromString(content) {
     // Create properly formatted messages array with enhanced instructions
     const messages = [
       {
-        role: "system",
+        role: 'system',
         content: `You are an expert at identifying REAL GEOGRAPHIC LOCATIONS in formats that geocoding APIs can easily resolve. You ONLY output valid JSON with no explanations.
 
 CRITICAL: Format locations for maximum geocodability:
@@ -205,7 +205,7 @@ DO NOT EXTRACT:
 - Anything that isn't a physical place on Earth`,
       },
       {
-        role: "user",
+        role: 'user',
         content: `Extract ONLY real geographic locations in the most geocodable format possible. Return ONLY this JSON:
 
 {
@@ -232,74 +232,74 @@ FORMATTING RULES:
 Source material:
 ${content}`,
       },
-    ];
+    ]
 
     const response = await completion({
       messages,
       temperature: 0.3,
       maxTokens: 1000,
-      model: getModelForTask("geolocation"),
-    });
+      model: getModelForTask('geolocation'),
+    })
 
     if (!response) {
-      log("❌ No response from LLM");
-      return { primary: null, others: [] };
+      log('❌ No response from LLM')
+      return { primary: null, others: [] }
     }
 
     try {
       // Clean the response to extract only the JSON
       const cleanResponse = (text) => {
         // Remove any text before the first {
-        const jsonStart = text.indexOf("{");
+        const jsonStart = text.indexOf('{')
         // Remove any text after the last }
-        const jsonEnd = text.lastIndexOf("}") + 1;
+        const jsonEnd = text.lastIndexOf('}') + 1
 
         if (jsonStart === -1 || jsonEnd === 0) {
-          log("❌ No JSON found in response");
-          return null;
+          log('❌ No JSON found in response')
+          return null
         }
 
-        return text.slice(jsonStart, jsonEnd);
-      };
+        return text.slice(jsonStart, jsonEnd)
+      }
 
       // Get clean JSON string
-      const jsonStr = cleanResponse(response);
+      const jsonStr = cleanResponse(response)
       if (!jsonStr) {
-        return { primary: null, others: [] };
+        return { primary: null, others: [] }
       }
 
       // Parse the cleaned JSON
-      const parsed = JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonStr)
 
       if (!parsed.locations || !Array.isArray(parsed.locations)) {
-        log("❌ Invalid locations array in response");
-        return { primary: null, others: [], analysis_notes: parsed.analysis_notes || "Invalid response format" };
+        log('❌ Invalid locations array in response')
+        return { primary: null, others: [], analysis_notes: parsed.analysis_notes || 'Invalid response format' }
       }
 
       // Validate and filter locations by confidence threshold
       const validLocations = parsed.locations
         .filter((loc) =>
           loc &&
-          typeof loc === "object" &&
-          typeof loc.name === "string" &&
+          typeof loc === 'object' &&
+          typeof loc.name === 'string' &&
           loc.name.trim().length > 0 &&
           (loc.confidence || 0) >= 0.3, // Minimum confidence threshold
         )
-        .sort((a, b) => (b.confidence || 0) - (a.confidence || 0)); // Sort by confidence descending
+        .sort((a, b) => (b.confidence || 0) - (a.confidence || 0)) // Sort by confidence descending
 
       if (validLocations.length === 0) {
-        log("❌ No valid locations found above confidence threshold");
-        return { primary: null, others: [], analysis_notes: parsed.analysis_notes || "No locations above confidence threshold" };
+        log('❌ No valid locations found above confidence threshold')
+        return { primary: null, others: [], analysis_notes: parsed.analysis_notes || 'No locations above confidence threshold' }
       }
 
       // Get primary location (highest confidence) and others
-      const [primary, ...others] = validLocations;
+      const [primary, ...others] = validLocations
 
       if (DEBUG) {
-        log("✅ Extracted locations:");
-        log("Primary:", primary);
-        log("Others:", others);
-        log("Analysis notes:", parsed.analysis_notes);
+        log('✅ Extracted locations:')
+        log('Primary:', primary)
+        log('Others:', others)
+        log('Analysis notes:', parsed.analysis_notes)
       }
 
       return {
@@ -307,156 +307,156 @@ ${content}`,
         others: others.map((loc) => loc.name),
         analysis_notes: parsed.analysis_notes,
         all_locations: validLocations, // Keep full location data for debugging
-      };
-    } catch (error) {
-      console.error("Error parsing location response:", error);
-      if (DEBUG) {
-        console.error("Raw response:", response);
-        console.error("Attempted clean response:", cleanResponse(response));
       }
-      return { primary: null, others: [], analysis_notes: "JSON parsing failed", error: error.message };
+    } catch (error) {
+      console.error('Error parsing location response:', error)
+      if (DEBUG) {
+        console.error('Raw response:', response)
+        // cleanResponse is not available in this catch block scope
+      }
+      return { primary: null, others: [], analysis_notes: 'JSON parsing failed', error: error.message }
     }
   } catch (error) {
-    console.error("Error extracting locations:", error);
-    return { primary: null, others: [], analysis_notes: "Location extraction failed", error: error.message };
+    console.error('Error extracting locations:', error)
+    return { primary: null, others: [], analysis_notes: 'Location extraction failed', error: error.message }
   }
 }
 
 function extractDomainInfo(url) {
   try {
-    const parsedUrl = new URL(url);
-    const domainParts = parsedUrl.hostname.split(".");
+    const parsedUrl = new URL(url)
+    const domainParts = parsedUrl.hostname.split('.')
     return {
-      domain: domainParts[domainParts.length - 2] || "",
-      tld: domainParts[domainParts.length - 1] || "",
-    };
+      domain: domainParts[domainParts.length - 2] || '',
+      tld: domainParts[domainParts.length - 1] || '',
+    }
   } catch (error) {
-    console.error("Error parsing URL:", error);
-    return { domain: "", tld: "" };
+    console.error('Error parsing URL:', error)
+    return { domain: '', tld: '' }
   }
 }
 
 function extractMetaInfo(rawHtml) {
   try {
-    const $ = cheerio.load(rawHtml);
-    let metaInfo = "";
+    const $ = cheerio.load(rawHtml)
+    let metaInfo = ''
 
     // Look for location-related meta tags
     const locationTags = [
-      "place:location",
-      "geo.placename",
-      "geo.position",
-      "geo.region",
-      "og:locality",
-      "og:region",
-      "og:country",
-      "twitter:place",
-      "geo:lat",
-      "geo:lon",
-      "geo:location",
-      "location",
-      "address",
-    ];
+      'place:location',
+      'geo.placename',
+      'geo.position',
+      'geo.region',
+      'og:locality',
+      'og:region',
+      'og:country',
+      'twitter:place',
+      'geo:lat',
+      'geo:lon',
+      'geo:location',
+      'location',
+      'address',
+    ]
 
-    $("meta").each((i, elem) => {
-      const name = $(elem).attr("name") || $(elem).attr("property");
-      const content = $(elem).attr("content");
+    $('meta').each((i, elem) => {
+      const name = $(elem).attr('name') || $(elem).attr('property')
+      const content = $(elem).attr('content')
       if (name && content && locationTags.some((tag) => name.toLowerCase().includes(tag.toLowerCase()))) {
-        metaInfo += `${name}: ${content}\n`;
+        metaInfo += `${name}: ${content}\n`
       }
-    });
+    })
 
     // Also check for structured data with location info
     $('script[type="application/ld+json"]').each((i, elem) => {
       try {
-        const jsonData = JSON.parse($(elem).html());
+        const jsonData = JSON.parse($(elem).html())
         if (jsonData.address || jsonData.location || jsonData.geo) {
           metaInfo += `Structured Data: ${JSON.stringify({
             address: jsonData.address,
             location: jsonData.location,
             geo: jsonData.geo,
-          })}\n`;
+          })}\n`
         }
       } catch (e) {
         // Ignore JSON parsing errors
       }
-    });
+    })
 
-    return metaInfo;
+    return metaInfo
   } catch (error) {
-    console.error("Error parsing HTML:", error);
-    return "";
+    console.error('Error parsing HTML:', error)
+    return ''
   }
 }
 
 function extractUrlLocationHints(url) {
-  if (!url) return [];
+  if (!url) return []
 
-  const hints = [];
-  const lowerUrl = url.toLowerCase();
+  const hints = []
+  const lowerUrl = url.toLowerCase()
 
   // Check for common location-related path segments
   const locationSegments = [
-    "local", "city", "region", "metro", "area", "location",
-    "weather", "news", "events", "places", "venue", "address",
-  ];
+    'local', 'city', 'region', 'metro', 'area', 'location',
+    'weather', 'news', 'events', 'places', 'venue', 'address',
+  ]
 
   for (const segment of locationSegments) {
     if (lowerUrl.includes(`/${segment}/`) || lowerUrl.includes(`-${segment}-`)) {
-      hints.push(segment);
+      hints.push(segment)
     }
   }
 
   // Check for geographic TLDs
-  const geoTlds = [".us", ".uk", ".ca", ".au", ".fr", ".de", ".jp", ".in"];
+  const geoTlds = ['.us', '.uk', '.ca', '.au', '.fr', '.de', '.jp', '.in']
   for (const tld of geoTlds) {
     if (lowerUrl.includes(tld)) {
-      hints.push(`geographic domain (${tld})`);
+      hints.push(`geographic domain (${tld})`)
     }
   }
 
   // Check for common location-indicating domains
   const locationDomains = [
-    "patch.com", "weather.com", "yelp.com", "foursquare.com",
-    "maps.google.com", "local.", "city.", ".gov",
-  ];
+    'patch.com', 'weather.com', 'yelp.com', 'foursquare.com',
+    'maps.google.com', 'local.', 'city.', '.gov',
+  ]
 
   for (const domain of locationDomains) {
     if (lowerUrl.includes(domain)) {
-      hints.push(`location-focused domain (${domain})`);
+      hints.push(`location-focused domain (${domain})`)
     }
   }
 
-  return [...new Set(hints)]; // Remove duplicates
+  return [...new Set(hints)] // Remove duplicates
 }
 
 async function reverseGeocode(location) {
   if (!location || !process.env.OPENCAGE_API_KEY) {
-    log("❌ Missing location or API key");
-    return { latitude: null, longitude: null };
+    log('❌ Missing location or API key')
+    return { latitude: null, longitude: null }
   }
 
   try {
-    log(`🌍 Geocoding location: ${location}`);
+    log(`🌍 Geocoding location: ${location}`)
     const response = await axios.get(
       `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
         location,
       )}&key=${process.env.OPENCAGE_API_KEY}&no_annotations=1&limit=1`,
-    );
+    )
 
     if (response.data.results && response.data.results.length > 0) {
-      const { lat, lng } = response.data.results[0].geometry;
-      log(`✅ Found coordinates: ${lat}, ${lng}`);
-      return { latitude: lat, longitude: lng };
+      const { lat, lng } = response.data.results[0].geometry
+      log(`✅ Found coordinates: ${lat}, ${lng}`)
+      return { latitude: lat, longitude: lng }
     }
 
-    log("❌ No results found");
-    return { latitude: null, longitude: null };
+    log('❌ No results found')
+    return { latitude: null, longitude: null }
   } catch (error) {
-    console.error("❌ Error in geocoding:", error.message);
+    console.error('❌ Error in geocoding:', error.message)
     if (error.response?.data) {
-      console.error("API Response:", error.response.data);
+      console.error('API Response:', error.response.data)
     }
-    return { latitude: null, longitude: null };
+    return { latitude: null, longitude: null }
   }
 }
