@@ -19,7 +19,7 @@ import { completion, MODELS } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
 import { fetchPageContent } from '../helpers.js'
 import { trackCost } from './costTracking.mjs'
-import { syncTags as syncTagsToPinboard } from './sync_tags_to_pinboard.mjs'
+import { autoSyncRecentTags } from './sync_tags_to_pinboard.mjs'
 import Bottleneck from 'bottleneck'
 
 // Load environment variables
@@ -218,16 +218,16 @@ async function repair(options) {
   // Sync tags back to Pinboard if requested
   if (options.syncToPinboard && repaired > 0) {
     console.log(chalk.blue('\n🔄 Syncing tags to Pinboard...'))
-    try {
-      await syncTagsToPinboard({
-        limit: repaired, // Sync the same number we just repaired
-        dryRun: false,
-        source: options.source || 'pinboard', // Default to pinboard if not specified
-        reverse: false, // Start with newest
-      })
-      console.log(chalk.green('✅ Pinboard sync completed'))
-    } catch (error) {
-      console.log(chalk.red(`❌ Pinboard sync failed: ${error.message}`))
+    const result = await autoSyncRecentTags({
+      supabaseClient: supabase,
+      source: options.source || 'pinboard',
+      knownCount: repaired, // We know how many we just repaired
+    })
+
+    if (result.success) {
+      console.log(chalk.green(`✅ Synced ${result.synced} Pinboard tags`))
+    } else {
+      console.log(chalk.red(`❌ Pinboard sync failed: ${result.error}`))
     }
   }
 }
