@@ -11,6 +11,7 @@
       "fastProcessing": "google/gemini-2.5-flash",
       "heavyAnalysis": "google/gemini-2.5-flash",
       "costEffective": "deepseek/deepseek-chat-v3.1:free",
+      "superCheap": "google/gemma-3-12b-it",
       "textEmbedding": "text-embedding-3-small",
       "imageEmbedding": "text-embedding-3-small"
     },
