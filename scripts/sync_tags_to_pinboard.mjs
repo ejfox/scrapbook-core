@@ -340,6 +340,49 @@ function formatDuration(seconds) {
   }
 }
 
+/**
+ * Helper function to automatically sync recently updated tags
+ * Handles query + sync + error handling in one DRY call
+ */
+export async function autoSyncRecentTags({
+  supabaseClient,
+  source = 'pinboard',
+  maxAge = 3600000, // 1 hour in ms
+  maxLimit = 50,
+  knownCount = null, // If we already know the count (repair case)
+}) {
+  try {
+    let count = knownCount
+
+    // Query for recent scraps if count not provided
+    if (count === null) {
+      const result = await supabaseClient
+        .from('scraps')
+        .select('*', { count: 'exact', head: true })
+        .eq('source', source)
+        .not('tags', 'is', null)
+        .gte('updated_at', new Date(Date.now() - maxAge).toISOString())
+
+      count = result.count
+    }
+
+    // Sync if we have scraps to sync
+    if (count && count > 0) {
+      await syncTags({
+        limit: Math.min(count, maxLimit),
+        dryRun: false,
+        source,
+        reverse: false,
+      })
+      return { success: true, count, synced: Math.min(count, maxLimit) }
+    }
+
+    return { success: true, count: 0, synced: 0 }
+  } catch (error) {
+    return { success: false, error: error.message, count: 0, synced: 0 }
+  }
+}
+
 // Make it executable
 if (import.meta.url === `file://${process.argv[1]}`) {
   setupCLI()

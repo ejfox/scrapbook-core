@@ -1,0 +1,709 @@
+2025-11-03T16:08:27.564Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.565Z [INFO]: 🚀 SmartRateLimiter initialized for aiServices
+2025-11-03T16:08:27.565Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.565Z [INFO]: 🚀 SmartRateLimiter initialized for nomic
+2025-11-03T16:08:27.565Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.565Z [INFO]: 🚀 SmartRateLimiter initialized for general
+2025-11-03T16:08:27.567Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.567Z [INFO]: 🚀 SmartRateLimiter initialized for gemini
+info: Loaded historical cost data: $63.4497 lifetime {"timestamp":"2025-11-03T16:08:27.702Z"}
+info: Cost tracking initialized {"timestamp":"2025-11-03T16:08:27.702Z"}
+2025-11-03T16:08:27.703Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.703Z [INFO]: 🚀 SmartRateLimiter initialized for aiServices
+2025-11-03T16:08:27.703Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.703Z [INFO]: 🚀 SmartRateLimiter initialized for nomic
+2025-11-03T16:08:27.703Z [INFO]: 🔧 Rate limiter updated to level 0 (normal)
+2025-11-03T16:08:27.703Z [INFO]: 🚀 SmartRateLimiter initialized for aiServices
+🔧 AI-Powered Scrap Doctor - Repair Mode
+
+- Finding scraps that need repair...
+Found 500 scraps that need repair.
+
+[1/500] Repairing: The Anti-Tech Backlash Is Going to Grow Stronger...
+    Fetching content from https://jacobin.com/2025/10/anti-technology-ecofas...
+    ✓ Fetched 15015 chars of content
+    Extracting locations...
+      Input: 15015 chars
+OpenRouter credits - Usage: 46.47310877980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 1721,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Monterrey, Nuevo León, Mexico",\n' +
+    '      "type": "city"'
+}
+2025-11-03T16:08:52.436Z [INFO]: 🔧 OpenRouter limiter status:
+info: Cost tracked {"cost":0.00142806,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:08:52.436Z","tokens":4040}
+    ✓ Extracted location: Monterrey, Nuevo León, Mexico
+    Extracting financial analysis...
+      Input: 15015 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 572,
+  contentPreview: '{"tracked_assets": [], "discovered_assets": [], "overall_market_sentiment": -0.5, "market_reasoning"'
+}
+info: Cost tracked {"cost":0.0012912,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T16:09:03.691Z","tokens":3468}
+    ✓ Extracted financial data: 0 tracked, 0 discovered assets
+    📝 Updating 3 fields: location, financial_analysis, updated_at
+    ⚠ Warning: financial_analysis column may not exist in database yet
+    Please add this column: ALTER TABLE scraps ADD COLUMN financial_analysis JSONB;
+  ✅ Repaired
+[2/500] Repairing: pinboard-dcd76771ca6c7b492ddeff2fa6f4c075...
+    ⏭️  Skipping relationships (insufficient content)
+    ⏭️  Skipping financial analysis (insufficient content)
+    ℹ No updates needed
+  ✅ Repaired
+[3/500] Repairing: pinboard-89ab06996cd3db42697b7f7f1785c906...
+    ⏭️  Skipping relationships (insufficient content)
+    ⏭️  Skipping financial analysis (insufficient content)
+    ℹ No updates needed
+  ✅ Repaired
+[4/500] Repairing: Flipper Lab...
+    Fetching content from https://lab.flipper.net/apps/protoview...
+    ✓ Fetched 54 chars of content
+    Generating AI tags...
+      Input: 54 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 77,
+  contentPreview: 'design, demo, tools, api, coding, hardware, 3d, data, automation, inspiration'
+}
+info: Cost tracked {"cost":0.00008924999999999999,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-4d447c8f00f09a8b586e32e348a9dc20","taskType":"tagging","timestamp":"2025-11-03T16:09:10.075Z","tokens":532}
+    ✓ Generated 10 tags: design, demo, tools, api, coding, hardware, 3d, data, automation, inspiration
+    Extracting locations...
+      Input: 54 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 146,
+  contentPreview: '{\n' +
+    '  "locations": [],\n' +
+    '  "analysis_notes": "No geographic locations found - only contains URL, domain '
+}
+info: Cost tracked {"cost":0.00019465,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:09:11.561Z","tokens":629}
+    ✓ Extracted location: Unknown
+    Extracting financial analysis...
+      Input: 54 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 285,
+  contentPreview: '{"tracked_assets": [], "discovered_assets": [], "overall_market_sentiment": 0.0, "market_reasoning":'
+}
+info: Cost tracked {"cost":0.00027539999999999997,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T16:09:12.631Z","tokens":456}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 11 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:09:12.966Z [WARN]: ⚠️ 429 Rate limit hit (1 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting confidence scores: Request failed with status code 429
+    ✓ article, 0 concepts
+    Generating screenshot...
+      URL: https://lab.flipper.net/apps/protoview
+    ✓ Screenshot: yx6jgbyakjapr0ceog77
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[5/500] Repairing: jina-ai/clip-as-service: 🏄 Scalable embedding, reasoning, r...
+    Fetching content from https://github.com/jina-ai/clip-as-service...
+    ✓ Fetched 64192 chars of content
+    Generating AI tags...
+      Input: 64192 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 72,
+  contentPreview: 'github, machinelearning, api, code, tool, demo, data, automation, design'
+}
+info: Cost tracked {"cost":0.00014714999999999997,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-f7900dd3dcf7ffd194a0ae99a316c8d4","taskType":"tagging","timestamp":"2025-11-03T16:09:22.297Z","tokens":927}
+    ✓ Generated 9 tags: github, machinelearning, api, code, tool, demo, data, automation, design
+    Extracting locations...
+      Input: 64192 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 254,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "locations": [],\n' +
+    '  "analysis_notes": "No clear geographic locations found in the GitHub '
+}
+info: Cost tracked {"cost":0.0027345,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:09:29.817Z","tokens":9998}
+    ✓ Extracted location: Unknown
+    Extracting financial analysis...
+      Input: 64192 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 10820,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "tracked_assets": [],\n' +
+    '  "discovered_assets": [\n' +
+    '    {\n' +
+    '      "ticker": "OTHER",\n' +
+    '      "nam'
+}
+info: Cost tracked {"cost":0.0126777,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T16:09:41.940Z","tokens":20963}
+    ✓ Extracted financial data: 0 tracked, 10 discovered assets
+    Extracting reasoning fields...
+      Summary length: 101 chars
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:09:42.312Z [WARN]: ⚠️ 429 Rate limit hit (1 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting concept tags: Request failed with status code 429
+OpenRouter credits - Usage: 46.47453683980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:09:43.646Z [WARN]: ⚠️ 429 Rate limit hit (2 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting confidence scores: Request failed with status code 429
+    ✓ article, 0 concepts
+    Generating screenshot...
+      URL: https://github.com/jina-ai/clip-as-service
+    ✓ Screenshot: pfdidacame8qghaxt3xe
+    📝 Updating 8 fields: tags, location, financial_analysis, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+    ⚠ Warning: financial_analysis column may not exist in database yet
+    Please add this column: ALTER TABLE scraps ADD COLUMN financial_analysis JSONB;
+  ✅ Repaired
+[6/500] Repairing: Hill People Gear | Real use gear for backcountry travelers...
+    Fetching content from https://hillpeoplegear.com/Products/CategoryID/1/P...
+    ✓ Fetched 25528 chars of content
+    Generating AI tags...
+      Input: 25528 chars
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 75,
+  contentPreview: 'camping, gear, travel, functionality, cookies, performance, privacy, design'
+}
+info: Cost tracked {"cost":0.00016424999999999998,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-4172f6a6f3bb3a8998b69a3b015a7c85","taskType":"tagging","timestamp":"2025-11-03T16:09:56.216Z","tokens":1047}
+    ✓ Generated 8 tags: camping, gear, travel, functionality, cookies, performance, privacy, design
+    Extracting locations...
+      Input: 25528 chars
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 447,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Grand Junction, Colorado",\n' +
+    '      "type": "city",\n' +
+    '      "cont'
+}
+info: Cost tracked {"cost":0.00117216,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:10:00.670Z","tokens":4025}
+    ✓ Extracted location: Grand Junction, Colorado
+    Extracting financial analysis...
+      Input: 25528 chars
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 323,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"The p'
+}
+info: Cost tracked {"cost":0.0015367,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T16:10:03.644Z","tokens":4609}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 58 chars
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:10:04.265Z [WARN]: ⚠️ 429 Rate limit hit (1 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting concept tags: Request failed with status code 429
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:10:05.204Z [WARN]: ⚠️ 429 Rate limit hit (2 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting confidence scores: Request failed with status code 429
+    ✓ article, 0 concepts
+    Generating screenshot...
+      URL: https://hillpeoplegear.com/Products/CategoryID/1/ProductID/183
+    ✓ Screenshot: tvtkzolfjbkmne7e8gqj
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[7/500] Repairing: Golf: A Prejudice and Segregated Sport – RTF Sports Media...
+    Fetching content from https://rtfsportsmedia.wordpress.com/2018/03/05/go...
+    ✓ Fetched 18808 chars of content
+    Generating AI tags...
+      Input: 18808 chars
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 61,
+  contentPreview: 'golf, racism, sexism, classism, activism, culture, journalism'
+}
+info: Cost tracked {"cost":0.00018209999999999998,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-ad8063c9f4eb23c4b65ff4c848825014","taskType":"tagging","timestamp":"2025-11-03T16:10:13.906Z","tokens":1169}
+    ✓ Generated 7 tags: golf, racism, sexism, classism, activism, culture, journalism
+    Extracting locations...
+      Input: 18808 chars
+OpenRouter credits - Usage: 46.49213538980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 1194,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Augusta, Georgia, USA",\n' +
+    '      "type": "landmark",\n' +
+    '      "con'
+}
+info: Cost tracked {"cost":0.00136455,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:10:19.568Z","tokens":4186}
+    ✓ Extracted location: Augusta, Georgia, USA
+    Extracting financial analysis...
+      Input: 18808 chars
+OpenRouter credits - Usage: 46.49789427980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 365,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"The a'
+}
+info: Cost tracked {"cost":0.0015419,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T16:10:37.993Z","tokens":4575}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 57 chars
+OpenRouter credits - Usage: 46.49789427980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:10:38.341Z [WARN]: ⚠️ 429 Rate limit hit (1 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting concept tags: Request failed with status code 429
+OpenRouter credits - Usage: 46.49789427980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:10:39.407Z [WARN]: ⚠️ 429 Rate limit hit (2 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting confidence scores: Request failed with status code 429
+    ✓ article, 0 concepts
+    Generating screenshot...
+      URL: https://rtfsportsmedia.wordpress.com/2018/03/05/golf-a-prejudice-and-segregated-
+    ✓ Screenshot: pevi5pxwdljkgpyrzqpj
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[8/500] Repairing: The Trump regime is arresting protesters now. This was the p...
+    Fetching content from https://www.inquirer.com/opinion/ice-protesters-ar...
+    ✓ Fetched 11072 chars of content
+    Generating AI tags...
+      Input: 11072 chars
+OpenRouter credits - Usage: 46.49789427980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 53,
+  contentPreview: 'activism, america, journalism, media, politics, legal'
+}
+info: Cost tracked {"cost":0.00017865,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-0114cabac77b20462dc17142cfeb37cd","taskType":"tagging","timestamp":"2025-11-03T16:10:51.531Z","tokens":1155}
+    ✓ Generated 6 tags: activism, america, journalism, media, politics, legal
+    Extracting locations...
+      Input: 11072 chars
+OpenRouter credits - Usage: 46.49789427980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 1713,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Spokane, Washington, USA",\n' +
+    '      "type": "city",\n' +
+    '      "cont'
+}
+info: Cost tracked {"cost":0.00123967,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:11:12.671Z","tokens":3372}
+    ✓ Extracted location: Spokane, Washington, USA
+    Extracting financial analysis...
+      Input: 11072 chars
+OpenRouter credits - Usage: 46.49789427980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+⚠️ Error in tryCompletion for google/gemini-2.5-flash:
+Error message: read EHOSTUNREACH
+Error in financial analysis: AxiosError: read EHOSTUNREACH
+    at AxiosError.from (file:///Users/ejfox/code/scrapbook-core/node_modules/axios/lib/core/AxiosError.js:92:14)
+    at RedirectableRequest.handleRequestError (file:///Users/ejfox/code/scrapbook-core/node_modules/axios/lib/adapters/http.js:620:25)
+    at RedirectableRequest.emit (node:events:519:28)
+    at eventHandlers.<computed> (/Users/ejfox/code/scrapbook-core/node_modules/follow-redirects/index.js:38:24)
+    at ClientRequest.emit (node:events:519:28)
+    at emitErrorEvent (node:_http_client:105:11)
+    at TLSSocket.socketErrorListener (node:_http_client:518:5)
+    at TLSSocket.emit (node:events:519:28)
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at Axios.request (file:///Users/ejfox/code/scrapbook-core/node_modules/axios/lib/core/Axios.js:45:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async makeRequest (file:///Users/ejfox/code/scrapbook-core/scripts/llmService.mjs:291:20)
+    at async Job.task (file:///Users/ejfox/code/scrapbook-core/scripts/shared/smartRateLimiter.mjs:79:24) {
+  syscall: 'read',
+  code: 'EHOSTUNREACH',
+  errno: -65,
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 0,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer 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',
+      'HTTP-Referer': 'https://github.com/ejfox/scrapbook-core',
+      'X-Title': 'Scrapbook Core',
+      'X-Custom-Auth': 'scrapbook-core',
+      'X-Custom-Model': 'google/gemini-2.5-flash',
+      'User-Agent': 'axios/1.7.7',
+      'Content-Length': '12908',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    method: 'post',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    data: '{"model":"google/gemini-2.5-flash","messages":[{"role":"system","content":"You are a financial analysis specialist. Extract mentions of financial assets (stocks, crypto, ETFs, commodities, forex) and analyze sentiment.\\n\\nTRACKED ASSETS (prioritize these): ^GSPC, ^DJI, ^IXIC, ^RUT, AAPL, MSFT, AMZN, NVDA, GOOGL, META, TSLA, NFLX, SPY, QQQ, IWM, VTI, BTC-USD, ETH-USD, SOL-USD, CL=F, GC=F, SI=F, JPY=X, EUR=X\\n\\nCRITICAL: You MUST return ONLY valid JSON with no markdown, no code blocks, no explanations. Just the raw JSON object.\\n\\nSentiment scores: -1 (very negative) to +1 (very positive)"},{"role":"user","content":"Analyze for financial assets and sentiment.\\n\\nCRITICAL FORMATTING RULE: Your response must be ONLY the JSON object starting with { and ending with }. NO markdown code blocks (no ```), NO explanations, NO text before or after the JSON.\\n\\nReturn this exact structure:\\n{\\"tracked_assets\\":[{\\"ticker\\":\\"AAPL\\",\\"name\\":\\"Apple Inc.\\",\\"mentions\\":[\\"Apple\\"],\\"context\\":\\"how mentioned\\",\\"sentiment_score\\":0.5,\\"sentiment_reasoning\\":\\"why\\",\\"is_tracked\\":true}],\\"discovered_assets\\":[{\\"ticker\\":\\"OTHER\\",\\"name\\":\\"Other Asset\\",\\"mentions\\":[\\"name\\"],\\"context\\":\\"how mentioned\\",\\"sentiment_score\\":0.0,\\"sentiment_reasoning\\":\\"why\\",\\"is_tracked\\":false,\\"asset_type\\":\\"stock\\"}],\\"overall_market_sentiment\\":0.0,\\"market_reasoning\\":\\"overall analysis\\"}\\n\\nContent to analyze:\\n#The Trump regime is arresting protesters now. This was the plan all along. | Opinion\\n##https://www.inquirer.com/opinion/ice-protesters-arrested-spokane-20250717.html\\nSkip to content Today\'s Paper Inquirer Food Fest  Sign in SUBSCRIBESpecial offer Sign out News Sports Business Opinion Politics Entertainment Life Food Health Real Estate Philly First Obituaries Jobs Opinion The Trump regime is arresting protesters now. This was the plan all along. Federal felony charges against nine ICE protesters in Spokane, Wash., reveal how Trump\'s secret police are expanding their web. Read more by Will Bunch | Columnist Published July 17, 2025, 12:00 p.m. ET Will Bunch The knock on the door came at 6 a.m. It had been more than a month since Bajun Mavalwalla II had taken part in a large and eventually chaotic protest in his hometown of Spokane, Wash., against the U.S. government’s efforts to deport two young Latino immigrants — one from Venezuela, one from Colombia — whose work permits were abruptly revoked. large and eventually chaotic protest Federal officers had warned protesters during the June 11 demonstration that they could be arrested for blocking a vehicle that was to transport the two men, and indeed, 30 people were taken into custody during two separate rallies that day. But the U.S. Justice Department of the Trump regime wasn’t going to let the matter drop, and so now FBI agents were knocking at Mavalwalla’s home. now FBI agents were knocking “As soon as he stepped outside, he was arrested,” his father told a local news reporter. “We had no idea what was coming down the pipe.” What was coming were federal felony indictments of Mavalwalla and eight other protesters, including Spokane’s former City Council president, Ben Stuckart, who’d taken to Facebook that day to call for others to join him in blocking the vehicle. The Spokane 9 are charged with engaging in conspiracy to impede or injure law enforcement, with two additionally facing assault charges. (If you can, check out the excellent coverage in the hometown paper, the Spokesman-Review.) federal felony indictments of Mavalwalla and eight other protesters the excellent coverage Tuesday’s arrests in the eastern Washington city, far from the glare of the national media, have not received a great deal of attention. But they should. It’s a major twist in a downward spiral as Donald Trump’s newly signed mega-bill authorizes $30 billion for hiring thousands of new masked officers under U.S. Immigration and Customs Enforcement, and $45 billion for a gulag network of detention centers and camps that would hold the upsurge in arrests from these new agents. Donald Trump’s newly signed mega-bill authorizes The flood of new federal dollars for what the Trump regime calls mass deportation is essentially creating something once seen as antithetical to democracy: a national police force. And the arrests in Spokane — not the first time in recent weeks that the government has aggressively gone after anyone involved in resisting the ICE raids — are a window into how this police state plans to operate. a national police force Even the recent surge of activity by ICE and allied federal agents at Home Depots, supermarkets, and other places where immigrants congregate isn’t likely enough to fill a gulag archipelago of “Alligator Alcatrazes” — MAGA’s cute name for what are essentially concentration camps. But more arrests create more unrest, and arresting protesters like the Spokane 9 will kill two birds with one stone for the Trump regime — locking up its most aggressive political opponents while sending a chilling message about dissent to any citizen tempted to join them. at Home Depots supermarkets Alligator Alcatrazes concentration camps » READ MORE: Inside Trump’s $75B ICE gulag nightmare | Will Bunch Newsletter Inside Trump’s $75B ICE gulag nightmare | Will Bunch Newsletter The timing of the Spokane arrests is interesting. Thursday is the fifth anniversary of the death of civil rights icon and congressman John Lewis, who was arrested some 40 times in the early 1960s fighting Jim Crow segregation, and was beaten a couple of times, most famously during Selma, Ala.’s “Bloody Sunday” in 1965. fifth anniversary of the death arrested some 40 times The growing Trump resistance — which sent at least five million people into the streets last month for a “No Kings” protest, heavily motivated by opposition to mass deportation — is marking the anniversary with an event named after Lewis’ mantra, “Good Trouble,” that promises protests in 1,500 cities and towns. Plans for the event are centered mostly around rallies or direct action, and so far the movement hasn’t emulated Lewis’ strategy of civil disobedience. That could change as the Trump regime amps up its deportation drive and cements its authoritarian bent. for a “No Kings” protest Good Trouble But there’s a big difference between the 1960s civil rights marches led by Lewis, the Rev. Dr. Martin Luther King Jr., and others, and today. Back then, the oppression came from local officials in the segregated South, with the federal government increasingly supportive of the protests. Today, the various tentacles of a Trumpian police state — from ICE to the Justice Department, with allies in local law enforcement — have adopted what is close to a “zero tolerance” policy for anyone they think is standing in the way of mass deportation. federal government increasingly supportive A typical episode occurred in Worcester, Mass., where a City Council member was charged locally last month, after the fact, with assaulting a police officer during an immigration raid under circumstances that were murky at best. According to news reports, body-cam footage shows Etel Haxhiaj pleading with ICE agents not to arrest a woman, then an officer pulled her away from a federal vehicle, and apparently, her hand touched a police officer. It was actually Haxhiaj on tape yelling, “Don’t touch me” — and yet she is the one facing charges. a City Council member was charged locally last month In Los Angeles, a 32-year-old U.S. citizen, Andrea Velez, was arrested by ICE agents and charged with assaulting a federal officer after she apparently saw agents forcefully arresting her sister, also a citizen. In the best-known case, New Jersey Democratic U.S. Rep. LaMonica McIver — caught up in a fracas during her inspection of an ICE detention facility in Newark in which her hand touched an agent — now faces a three-count indictment for impeding federal officers. was arrested by ICE agents now faces a three-count indictment Recently, the U.S. Department of Homeland Security sought to justify the controversial use of masks by ICE and Border Patrol agents by claiming an 810% increase in assaults against ICE officers, although the raw number — 79 in little more than five months — is not large considering the upsurge in activity. More importantly, it seems like some — if not most — of the claimed rise in assaults are in fact under murky, disputed circumstances like in the McIver indictment. claiming an 810% increase in assaults “There are just laws and there are unjust laws,” King wrote in his famous 1963 “Letter from Birmingham Jail,” adding that “one has a moral responsibility to disobey unjust laws.” He stated further: “Any law that degrades human personality is unjust.” 1963 “Letter from Birmingham Jail,” To many of the millions inclined to resist Trump’s authoritarianism, the rounding up of immigrants — increasingly from the ranks of day laborers or farmworkers who’ve committed no crime — poses the same moral quandary as segregation. That was certainly the case for Stuckart, the leader of June’s Spokane protest. who’ve committed no crime Stuckart had been working to aid one of the immigrants — a 21-year-old Venezuelan, Cesar Alexander Alvarez Perez — when Perez and the Colombian immigrant were detained during what was supposed to be a routine check-in. He immediately took to Facebook, writing: “[I]f you care at all about these illegal detainers you meet me at 411 West Cataldo by 2 p.m. I am going to set in front of the bus. Feel free to join me … The Latino community needs the rest of our community. Not tonight, not Saturday but right now!!!!” He immediately took to Facebook Scores of people responded and did block the federal vehicle for a time. Now, Stuckart’s Facebook post urging resistance — and the actions of some who answered his call that day — are at the heart of the federal case that could lock them away for years. The Trump regime, still insisting it’s removing dangerous crim'... 2714 more characters
+  },
+  request: <ref *1> Writable {
+    _events: {
+      close: undefined,
+      error: [Function: handleRequestError],
+      prefinish: undefined,
+      finish: undefined,
+      drain: undefined,
+      response: [Function: handleResponse],
+      socket: [Function: handleRequestSocket]
+    },
+    _writableState: WritableState {
+      highWaterMark: 65536,
+      length: 0,
+      corked: 0,
+      onwrite: [Function: bound onwrite],
+      writelen: 0,
+      bufferedIndex: 0,
+      pendingcb: 0,
+      [Symbol(kState)]: 17580812,
+      [Symbol(kBufferedValue)]: null
+    },
+    _maxListeners: undefined,
+    _options: {
+      maxRedirects: 21,
+      maxBodyLength: Infinity,
+      protocol: 'https:',
+      path: '/api/v1/chat/completions',
+      method: 'POST',
+      headers: [Object: null prototype],
+      agents: [Object],
+      auth: undefined,
+      family: undefined,
+      beforeRedirect: [Function: dispatchBeforeRedirect],
+      beforeRedirects: [Object],
+      hostname: 'openrouter.ai',
+      port: '',
+      agent: undefined,
+      nativeProtocols: [Object],
+      pathname: '/api/v1/chat/completions'
+    },
+    _ended: true,
+    _ending: true,
+    _redirectCount: 0,
+    _redirects: [],
+    _requestBodyLength: 12908,
+    _requestBodyBuffers: [ [Object] ],
+    _eventsCount: 3,
+    _onNativeResponse: [Function (anonymous)],
+    _currentRequest: ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: false,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: true,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 12908,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'POST /api/v1/chat/completions HTTP/1.1\r\n' +
+        'Accept: application/json\r\n' +
+        'Content-Type: application/json\r\n' +
+        'Authorization: Bearer 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\r\n' +
+        'HTTP-Referer: https://github.com/ejfox/scrapbook-core\r\n' +
+        'X-Title: Scrapbook Core\r\n' +
+        'X-Custom-Auth: scrapbook-core\r\n' +
+        'X-Custom-Model: google/gemini-2.5-flash\r\n' +
+        'User-Agent: axios/1.7.7\r\n' +
+        'Content-Length: 12908\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: openrouter.ai\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'POST',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/api/v1/chat/completions',
+      _ended: false,
+      res: null,
+      aborted: false,
+      timeoutCb: [Function: emitRequestTimeout],
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: true,
+      host: 'openrouter.ai',
+      protocol: 'https:',
+      _redirectable: [Circular *1],
+      [Symbol(shapeMode)]: false,
+      [Symbol(kCapture)]: false,
+      [Symbol(kBytesWritten)]: 0,
+      [Symbol(kNeedDrain)]: false,
+      [Symbol(corked)]: 0,
+      [Symbol(kChunkedBuffer)]: [],
+      [Symbol(kChunkedLength)]: 0,
+      [Symbol(kSocket)]: [TLSSocket],
+      [Symbol(kOutHeaders)]: [Object: null prototype],
+      [Symbol(errored)]: null,
+      [Symbol(kHighWaterMark)]: 65536,
+      [Symbol(kRejectNonStandardBodyWrites)]: false,
+      [Symbol(kUniqueHeaders)]: null
+    },
+    _currentUrl: 'https://openrouter.ai/api/v1/chat/completions',
+    [Symbol(shapeMode)]: true,
+    [Symbol(kCapture)]: false
+  },
+  cause: Error: read EHOSTUNREACH
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20) {
+    errno: -65,
+    code: 'EHOSTUNREACH',
+    syscall: 'read'
+  }
+}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 83 chars
+OpenRouter credits - Usage: 46.50183999980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 500
+Error extracting concept tags: Request failed with status code 500
+OpenRouter credits - Usage: 46.50183999980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 500
+Error extracting confidence scores: Request failed with status code 500
+    ✓ opinion, 0 concepts
+    Generating screenshot...
+      URL: https://www.inquirer.com/opinion/ice-protesters-arrested-spokane-20250717.html
+    ✓ Screenshot: izekfby3zaektet1acas
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[9/500] Repairing: Meet the Disaster Capitalists Behind Alligator Alcatraz - Th...
+    Fetching content from https://prospect.org/power/2025-07-17-meet-disaste...
+    ✓ Fetched 19751 chars of content
+    Extracting locations...
+      Input: 19751 chars
+OpenRouter credits - Usage: 46.50183999980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 3028,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Illinois, USA",\n' +
+    '      "type": "region",\n' +
+    '      "conte'
+}
+info: Cost tracked {"cost":0.00198543,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T16:13:22.321Z","tokens":5058}
+    ✓ Extracted location: Illinois, USA
+    Extracting financial analysis...
+      Input: 19751 chars
+OpenRouter credits - Usage: 46.50183999980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 8629,
+  contentPreview: '```json\n' +
+    '{"tracked_assets":[],"discovered_assets":[{"ticker":"OTHER","name":"GardaWorld","mentions":['
+}
+info: Cost tracked {"cost":0.0058444000000000005,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T16:13:55.073Z","tokens":6230}
+    ✓ Extracted financial data: 0 tracked, 5 discovered assets
+    Extracting reasoning fields...
+      Summary length: 79 chars
+OpenRouter credits - Usage: 46.50336099980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.0-flash-exp:free
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 173,
+  contentPreview: '```json\n' +
+    '[\n' +
+    '  "disaster_capitalism",\n' +
+    '  "privatization_of_security",\n' +
+    '  "climate_change_adaptation_failu'
+}
+info: Cost tracked {"cost":0,"modelId":"google/gemini-2.0-flash-exp:free","scrapId":"pinboard-2541a9bbe41f2574ae6fda451e17e340","taskType":"concept_extraction","timestamp":"2025-11-03T16:13:59.213Z","tokens":514}
+OpenRouter credits - Usage: 46.50336099980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+2025-11-03T16:13:59.534Z [WARN]: ⚠️ 429 Rate limit hit (1 consecutive)
+
+⚠️ Error in tryCompletion for google/gemini-2.0-flash-exp:free:
+Error message: Request failed with status code 429
+Error extracting confidence scores: Request failed with status code 429
+    ✓ article, 5 concepts
+      Concepts: disaster_capitalism, privatization_of_security, climate_change_adaptation_failures, inequality_exacerbation, infrastructure_vulnerability
+    Generating screenshot...
+      URL: https://prospect.org/power/2025-07-17-meet-disaster-capitalists-alligator-alcatr
+    ✓ Screenshot: g2schirjspxqflnkebjs
+    📝 Updating 7 fields: location, financial_analysis, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+    ⚠ Warning: financial_analysis column may not exist in database yet
+    Please add this column: ALTER TABLE scraps ADD COLUMN financial_analysis JSONB;
+    ✗ DATABASE UPDATE FAILED (without financial_analysis)
+      Scrap ID: pinboard-2541a9bbe41f2574ae6fda451e17e340
+      Fields: location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+      Error: {"message":"TypeError: fetch failed","details":"TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async repairScrapWithAI (file:///Users/ejfox/code/scrapbook-core/scripts/scrap_doctor_ai.mjs:450:29)\n    at async Command.repair (file:///Users/ejfox/code/scrapbook-core/scripts/scrap_doctor_ai.mjs:120:7)","hint":"","code":""}
+    ✗ DATABASE UPDATE EXCEPTION
+      Error: TypeError: fetch failed
+      Stack: undefined
+  ❌ Failed: TypeError: fetch failed
+[10/500] Repairing: Introducing SplatTransform: The Ultimate CLI Tool for 3D Gau...
+    Fetching content from https://blog.playcanvas.com/introducing-splat-tran...
