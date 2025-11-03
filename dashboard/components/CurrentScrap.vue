@@ -8,7 +8,7 @@
     </div>
 
     <!-- Scrap display - Simple academic grid -->
-    <div v-else class="w-full h-full">
+    <div v-else class="w-full h-full" :class="{ 'scrap-pulse': isPulsing }">
       <!-- Clean uniform grid -->
       <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-0">
 
@@ -44,6 +44,10 @@ const props = defineProps({
   scrap: {
     type: Object,
     default: null
+  },
+  isPulsing: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -311,5 +315,32 @@ const isProcessing = (field) => {
 
 :global(.dark) ::-webkit-scrollbar-thumb {
   background: white;
+}
+
+/* Pulse animation for recently updated scraps */
+.scrap-pulse {
+  animation: pulse-border 1.5s ease-in-out 2;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    box-shadow: inset 0 0 0 0px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:global(.dark) .scrap-pulse {
+  animation: pulse-border-dark 1.5s ease-in-out 2;
+}
+
+@keyframes pulse-border-dark {
+  0%, 100% {
+    box-shadow: inset 0 0 0 0px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.5);
+  }
 }
 </style>

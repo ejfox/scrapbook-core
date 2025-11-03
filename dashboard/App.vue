@@ -1,5 +1,14 @@
 <template>
   <div id="app" class="h-screen w-screen flex flex-col bg-white dark:bg-black text-black dark:text-white font-mono transition-colors duration-300">
+    <!-- Live activity ticker -->
+    <div class="h-3 overflow-hidden bg-black dark:bg-white text-white dark:text-black text-[10px] leading-3 flex items-center">
+      <div class="ticker-content whitespace-nowrap">
+        <span v-for="(activity, i) in activityFeed" :key="i" class="inline-block px-8">
+          {{ activity }}
+        </span>
+      </div>
+    </div>
+
     <!-- Minimal header -->
     <header class="flex-shrink-0 px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
@@ -42,10 +51,28 @@
 
     <!-- Full-page scrap display -->
     <main class="flex-1 overflow-hidden">
-      <CurrentScrap :scrap="currentScrap" />
+      <CurrentScrap
+        :scrap="currentScrap"
+        :isPulsing="currentScrap && recentlyUpdated.has(currentScrap.id)"
+      />
     </main>
   </div>
 </template>
+
+<style>
+.ticker-content {
+  animation: scroll-left 60s linear infinite;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+</style>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
@@ -57,6 +84,26 @@ import { createClient } from '@supabase/supabase-js'
 const scraps = ref([])
 const currentIndex = ref(0)
 const currentScrap = computed(() => scraps.value[currentIndex.value] || null)
+
+// Activity feed for ticker
+const activityFeed = ref([])
+const addActivity = (message) => {
+  const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false })
+  activityFeed.value.unshift(`[${timestamp}] ${message}`)
+  // Keep only last 50 activities
+  if (activityFeed.value.length > 50) {
+    activityFeed.value = activityFeed.value.slice(0, 50)
+  }
+}
+
+// Recently updated scraps for pulse effect
+const recentlyUpdated = ref(new Set())
+const markAsUpdated = (id) => {
+  recentlyUpdated.value.add(id)
+  setTimeout(() => {
+    recentlyUpdated.value.delete(id)
+  }, 3000) // Pulse for 3 seconds
+}
 
 // Navigation
 const nextScrap = () => {
@@ -77,7 +124,16 @@ const { isConnected, error, stats } = useRealtimeScraps({
   onInsert: (newScraps) => {
     // Add new scraps to the beginning of the list
     scraps.value = [...newScraps, ...scraps.value]
-    console.log('[Dashboard] New scrap inserted:', newScraps[0].id)
+    const scrap = newScraps[0]
+    console.log('[Dashboard] New scrap inserted:', scrap.id)
+
+    // Add to activity feed
+    const title = scrap.title || scrap.url?.substring(0, 40) || 'Untitled'
+    addActivity(`🆕 NEW: ${title}`)
+
+    // Auto-advance to new scrap
+    currentIndex.value = 0
+    markAsUpdated(scrap.id)
   },
   onUpdate: (updates) => {
     // Update scraps in the list
@@ -86,6 +142,14 @@ const { isConnected, error, stats } = useRealtimeScraps({
       if (index !== -1) {
         scraps.value[index] = updated
         console.log('[Dashboard] Scrap updated:', updated.id)
+
+        // Add to activity feed
+        const title = updated.title || updated.url?.substring(0, 40) || 'Untitled'
+        addActivity(`✓ UPD: ${title}`)
+
+        // Auto-advance to updated scrap
+        currentIndex.value = index
+        markAsUpdated(updated.id)
       }
     })
   },
