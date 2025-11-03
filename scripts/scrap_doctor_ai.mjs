@@ -111,22 +111,99 @@ async function repair(options) {
 
   let repaired = 0
   let failed = 0
+  const retryQueue = [] // Queue for scraps that failed content fetch
 
   for (const [index, scrap] of scraps.entries()) {
     const progress = `[${index + 1}/${scraps.length}]`
     console.log(chalk.gray(`${progress} Repairing: ${scrap.title?.substring(0, 60) || scrap.url?.substring(0, 60) || scrap.scrap_id}...`))
 
     try {
-      await repairScrapWithAI(scrap, options)
-      repaired++
-      console.log(chalk.green('  ✅ Repaired'))
+      const result = await repairScrapWithAI(scrap, options)
+
+      // Check if content fetch failed or returned insufficient content
+      if (result && result.needsRetry) {
+        retryQueue.push({ scrap, reason: result.retryReason, attempts: 1 })
+        console.log(chalk.yellow(`  ⏭️  Queued for retry: ${result.retryReason}`))
+      } else {
+        repaired++
+        console.log(chalk.green('  ✅ Repaired'))
+      }
     } catch (error) {
       failed++
       console.log(chalk.red(`  ❌ Failed: ${error.message}`))
     }
 
+    // Process retry queue every 10 scraps
+    if ((index + 1) % 10 === 0 && retryQueue.length > 0) {
+      console.log(chalk.blue(`\n🔄 Processing ${retryQueue.length} queued retries...\n`))
+
+      const retriesToProcess = [...retryQueue]
+      retryQueue.length = 0 // Clear queue
+
+      for (const retry of retriesToProcess) {
+        if (retry.attempts >= 3) {
+          failed++
+          console.log(chalk.red(`  ❌ Max retries reached for ${retry.scrap.title?.substring(0, 40)}`))
+          continue
+        }
+
+        console.log(chalk.gray(`  🔄 Retry #${retry.attempts + 1}: ${retry.scrap.title?.substring(0, 60) || retry.scrap.url?.substring(0, 60)}...`))
+
+        try {
+          const result = await repairScrapWithAI(retry.scrap, options)
+
+          if (result && result.needsRetry) {
+            retryQueue.push({ ...retry, attempts: retry.attempts + 1 })
+            console.log(chalk.yellow(`    ⏭️  Re-queued: ${result.retryReason}`))
+          } else {
+            repaired++
+            console.log(chalk.green('    ✅ Retry successful'))
+          }
+        } catch (error) {
+          failed++
+          console.log(chalk.red(`    ❌ Retry failed: ${error.message}`))
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      console.log() // Blank line after retry batch
+    }
+
     // Small delay to be nice to APIs
     if (index < scraps.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+  }
+
+  // Final retry pass for any remaining items
+  if (retryQueue.length > 0) {
+    console.log(chalk.blue(`\n🔄 Final pass: Processing ${retryQueue.length} remaining retries...\n`))
+
+    for (const retry of retryQueue) {
+      if (retry.attempts >= 3) {
+        failed++
+        console.log(chalk.red(`  ❌ Max retries reached for ${retry.scrap.title?.substring(0, 40)}`))
+        continue
+      }
+
+      console.log(chalk.gray(`  🔄 Final retry: ${retry.scrap.title?.substring(0, 60) || retry.scrap.url?.substring(0, 60)}...`))
+
+      try {
+        const result = await repairScrapWithAI(retry.scrap, options)
+
+        if (!result || !result.needsRetry) {
+          repaired++
+          console.log(chalk.green('    ✅ Retry successful'))
+        } else {
+          failed++
+          console.log(chalk.red(`    ❌ Still insufficient: ${result.retryReason}`))
+        }
+      } catch (error) {
+        failed++
+        console.log(chalk.red(`    ❌ Retry failed: ${error.message}`))
+      }
+
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
   }
@@ -149,6 +226,7 @@ async function repairScrapWithAI(scrap, options) {
   let content = scrap.content || scrap.title || ''
 
   // Only fetch content if we're processing fields that need it (not for screenshots)
+  let contentFetchFailed = false
   if (options.type !== 'screenshot' && options.fetchContent && scrap.url && (!content || content.length < 200)) {
     console.log(chalk.dim(`    Fetching content from ${scrap.url.substring(0, 50)}...`))
     try {
@@ -158,7 +236,17 @@ async function repairScrapWithAI(scrap, options) {
         console.log(chalk.dim(`    ✓ Fetched ${fetchedContent.length} chars of content`))
       }
     } catch (error) {
+      contentFetchFailed = true
       console.log(chalk.dim(`    ⚠ Could not fetch content: ${error.message}`))
+    }
+  }
+
+  // Check if we have insufficient content and should retry
+  const MIN_CONTENT_LENGTH = 500
+  if (options.fetchContent && scrap.url && content.length < MIN_CONTENT_LENGTH && contentFetchFailed) {
+    return {
+      needsRetry: true,
+      retryReason: `Insufficient content (${content.length} chars, fetch failed)`,
     }
   }
 
