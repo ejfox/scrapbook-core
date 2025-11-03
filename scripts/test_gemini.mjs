@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import "dotenv/config";
-import chalk from "chalk";
-import { summarizeContent, metaSummaryToTags } from "./aiSummarization.mjs";
-import { getModelForTask } from "../lib/config.mjs";
+import 'dotenv/config'
+import chalk from 'chalk'
+import { summarizeContent, metaSummaryToTags } from './aiSummarization.mjs'
+import { getModelForTask } from '../lib/config.mjs'
 
 const TEST_CONTENT = `
 AlexanderGrooff/mermaid-ascii: Render Mermaid graphs inside your terminal
@@ -23,79 +23,79 @@ Installation: pip install mermaid-ascii
 Usage: mermaid-ascii input.mmd
 
 GitHub: https://github.com/AlexanderGrooff/mermaid-ascii
-`;
+`
 
 async function testGeminiSwitch() {
-  console.log(chalk.bold.cyan("\n🚀 TESTING GEMINI 2.0 FLASH CONFIGURATION\n"));
+  console.log(chalk.bold.cyan('\n🚀 TESTING GEMINI 2.0 FLASH CONFIGURATION\n'))
 
   // Check the configured model
-  const summaryModel = getModelForTask("summarization");
-  const taggingModel = getModelForTask("tagging");
+  const summaryModel = getModelForTask('summarization')
+  const taggingModel = getModelForTask('tagging')
 
-  console.log(chalk.bold("Current Configuration:"));
-  console.log(chalk.cyan("Summarization Model:"), summaryModel);
-  console.log(chalk.cyan("Tagging Model:"), taggingModel);
+  console.log(chalk.bold('Current Configuration:'))
+  console.log(chalk.cyan('Summarization Model:'), summaryModel)
+  console.log(chalk.cyan('Tagging Model:'), taggingModel)
 
-  if (summaryModel !== "google/gemini-2.0-flash-exp:free") {
-    console.error(chalk.red("⚠️  Configuration not updated! Still using:"), summaryModel);
-    return;
+  if (summaryModel !== 'google/gemini-2.0-flash-exp:free') {
+    console.error(chalk.red('⚠️  Configuration not updated! Still using:'), summaryModel)
+    return
   }
 
-  console.log(chalk.green("\n✅ Configuration updated to Gemini Flash!\n"));
+  console.log(chalk.green('\n✅ Configuration updated to Gemini Flash!\n'))
 
   // Test summarization
-  console.log(chalk.bold.yellow("Testing Summarization:"));
-  console.log(chalk.dim("Processing..."));
+  console.log(chalk.bold.yellow('Testing Summarization:'))
+  console.log(chalk.dim('Processing...'))
 
-  const startTime = Date.now();
+  const startTime = Date.now()
 
   try {
     const summary = await summarizeContent(TEST_CONTENT, {
-      taskType: "summarization",
-      scrapId: "test-gemini-switch",
-    });
+      taskType: 'summarization',
+      scrapId: 'test-gemini-switch',
+    })
 
-    const summaryTime = Date.now() - startTime;
+    const summaryTime = Date.now() - startTime
 
-    console.log(chalk.cyan("Summary:"), summary);
-    console.log(chalk.dim(`Length: ${summary?.length || 0} chars`));
-    console.log(chalk.green(`Time: ${summaryTime}ms`));
+    console.log(chalk.cyan('Summary:'), summary)
+    console.log(chalk.dim(`Length: ${summary?.length || 0} chars`))
+    console.log(chalk.green(`Time: ${summaryTime}ms`))
 
     // Test tag generation
-    console.log(chalk.bold.yellow("\nTesting Tag Generation:"));
-    console.log(chalk.dim("Processing..."));
+    console.log(chalk.bold.yellow('\nTesting Tag Generation:'))
+    console.log(chalk.dim('Processing...'))
 
-    const tagStartTime = Date.now();
+    const tagStartTime = Date.now()
     const tags = await metaSummaryToTags(summary, {
-      taskType: "tagging",
-      scrapId: "test-gemini-switch",
-    });
+      taskType: 'tagging',
+      scrapId: 'test-gemini-switch',
+    })
 
-    const tagTime = Date.now() - tagStartTime;
+    const tagTime = Date.now() - tagStartTime
 
-    console.log(chalk.cyan("Tags:"), tags.join(", "));
-    console.log(chalk.green(`Time: ${tagTime}ms`));
+    console.log(chalk.cyan('Tags:'), tags.join(', '))
+    console.log(chalk.green(`Time: ${tagTime}ms`))
 
     // Compare with previous DeepSeek performance
-    console.log(chalk.bold.magenta("\n📊 PERFORMANCE COMPARISON:"));
-    console.log(chalk.dim("Previous (DeepSeek):"));
-    console.log(chalk.dim("  • Summary: ~2459ms"));
-    console.log(chalk.dim("  • Tags: ~2277ms"));
-    console.log(chalk.dim("  • Total: ~4736ms"));
+    console.log(chalk.bold.magenta('\n📊 PERFORMANCE COMPARISON:'))
+    console.log(chalk.dim('Previous (DeepSeek):'))
+    console.log(chalk.dim('  • Summary: ~2459ms'))
+    console.log(chalk.dim('  • Tags: ~2277ms'))
+    console.log(chalk.dim('  • Total: ~4736ms'))
 
-    console.log(chalk.green("\nNow (Gemini Flash):"));
-    console.log(chalk.green(`  • Summary: ${summaryTime}ms`));
-    console.log(chalk.green(`  • Tags: ${tagTime}ms`));
-    console.log(chalk.green(`  • Total: ${summaryTime + tagTime}ms`));
+    console.log(chalk.green('\nNow (Gemini Flash):'))
+    console.log(chalk.green(`  • Summary: ${summaryTime}ms`))
+    console.log(chalk.green(`  • Tags: ${tagTime}ms`))
+    console.log(chalk.green(`  • Total: ${summaryTime + tagTime}ms`))
 
-    const speedup = (4736 / (summaryTime + tagTime)).toFixed(1);
-    console.log(chalk.bold.green(`\n⚡ Speed improvement: ${speedup}x faster!`));
+    const speedup = (4736 / (summaryTime + tagTime)).toFixed(1)
+    console.log(chalk.bold.green(`\n⚡ Speed improvement: ${speedup}x faster!`))
 
   } catch (error) {
-    console.error(chalk.red("Error during test:"), error.message);
-    console.error(chalk.dim("Full error:"), error);
+    console.error(chalk.red('Error during test:'), error.message)
+    console.error(chalk.dim('Full error:'), error)
   }
 }
 
 // Run the test
-testGeminiSwitch().catch(console.error);
+testGeminiSwitch().catch(console.error)

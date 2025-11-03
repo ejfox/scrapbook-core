@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import chalk from "chalk";
-import { extractFinancialAnalysis } from "./scripts/aiFinancialAnalysis.mjs";
+import chalk from 'chalk'
+import { extractFinancialAnalysis } from './scripts/aiFinancialAnalysis.mjs'
 
 // Sample product page content that should contain pricing/financial data
 const sampleProductContent = `
@@ -34,7 +34,7 @@ Payment Options:
 - PayPal accepted
 - Credit cards accepted
 - Buy now, pay later with Klarna (4 payments of $45.00)
-`;
+`
 
 const oxilineProductContent = `
 Oxiline Pulse 9 Pro Blood Pressure Monitor
@@ -67,50 +67,50 @@ Financing Available:
 Market Position:
 Competing with Omron Platinum ($99.99) and Withings BPM ($129.99)
 Rated #3 Best Blood Pressure Monitor by HealthTech Review 2024
-`;
+`
 
 async function testFinancialExtraction() {
-  console.log(chalk.cyan("🧪 Testing Financial Analysis Integration\n"));
+  console.log(chalk.cyan('🧪 Testing Financial Analysis Integration\n'))
 
   // Test 1: CADDX FPV Product
-  console.log(chalk.yellow("Test 1: CADDX FPV Product Page"));
-  console.log(chalk.gray("=" .repeat(50)));
+  console.log(chalk.yellow('Test 1: CADDX FPV Product Page'))
+  console.log(chalk.gray('=' .repeat(50)))
 
   try {
     const caddxAnalysis = await extractFinancialAnalysis(sampleProductContent, {
-      url: "https://example.com/caddx-fpv-vista-kit",
+      url: 'https://example.com/caddx-fpv-vista-kit',
       isRawText: false,
-    });
+    })
 
-    console.log(chalk.green("✅ CADDX Analysis Results:"));
-    console.log(JSON.stringify(caddxAnalysis, null, 2));
+    console.log(chalk.green('✅ CADDX Analysis Results:'))
+    console.log(JSON.stringify(caddxAnalysis, null, 2))
   } catch (error) {
-    console.log(chalk.red("❌ CADDX Analysis Failed:"), error.message);
+    console.log(chalk.red('❌ CADDX Analysis Failed:'), error.message)
   }
 
-  console.log("\n" + chalk.gray("=" .repeat(50)) + "\n");
+  console.log('\n' + chalk.gray('=' .repeat(50)) + '\n')
 
   // Test 2: Oxiline Product
-  console.log(chalk.yellow("Test 2: Oxiline Blood Pressure Monitor"));
-  console.log(chalk.gray("=" .repeat(50)));
+  console.log(chalk.yellow('Test 2: Oxiline Blood Pressure Monitor'))
+  console.log(chalk.gray('=' .repeat(50)))
 
   try {
     const oxilineAnalysis = await extractFinancialAnalysis(oxilineProductContent, {
-      url: "https://example.com/oxiline-pulse-9-pro",
+      url: 'https://example.com/oxiline-pulse-9-pro',
       isRawText: false,
-    });
+    })
 
-    console.log(chalk.green("✅ Oxiline Analysis Results:"));
-    console.log(JSON.stringify(oxilineAnalysis, null, 2));
+    console.log(chalk.green('✅ Oxiline Analysis Results:'))
+    console.log(JSON.stringify(oxilineAnalysis, null, 2))
   } catch (error) {
-    console.log(chalk.red("❌ Oxiline Analysis Failed:"), error.message);
+    console.log(chalk.red('❌ Oxiline Analysis Failed:'), error.message)
   }
 
-  console.log("\n" + chalk.gray("=" .repeat(50)) + "\n");
+  console.log('\n' + chalk.gray('=' .repeat(50)) + '\n')
 
   // Test 3: Non-financial content (should return minimal data)
-  console.log(chalk.yellow("Test 3: Non-Financial Content (Control Test)"));
-  console.log(chalk.gray("=" .repeat(50)));
+  console.log(chalk.yellow('Test 3: Non-Financial Content (Control Test)'))
+  console.log(chalk.gray('=' .repeat(50)))
 
   const nonFinancialContent = `
   How to Build a Better Todo App with React
@@ -124,30 +124,30 @@ async function testFinancialExtraction() {
   - Node.js installed
 
   Let's start by setting up our project structure...
-  `;
+  `
 
   try {
     const nonFinancialAnalysis = await extractFinancialAnalysis(nonFinancialContent, {
-      url: "https://example.com/react-todo-tutorial",
+      url: 'https://example.com/react-todo-tutorial',
       isRawText: false,
-    });
+    })
 
-    console.log(chalk.green("✅ Non-Financial Analysis Results:"));
-    console.log(JSON.stringify(nonFinancialAnalysis, null, 2));
+    console.log(chalk.green('✅ Non-Financial Analysis Results:'))
+    console.log(JSON.stringify(nonFinancialAnalysis, null, 2))
   } catch (error) {
-    console.log(chalk.red("❌ Non-Financial Analysis Failed:"), error.message);
+    console.log(chalk.red('❌ Non-Financial Analysis Failed:'), error.message)
   }
 
-  console.log(chalk.blue("\n🎯 Test Summary:"));
-  console.log(chalk.dim("The financial extraction should:"));
-  console.log(chalk.dim("1. Extract pricing data from product pages"));
-  console.log(chalk.dim("2. Identify any mentioned financial assets/companies"));
-  console.log(chalk.dim("3. Return minimal data for non-financial content"));
-  console.log(chalk.dim("4. Provide sentiment analysis when relevant"));
+  console.log(chalk.blue('\n🎯 Test Summary:'))
+  console.log(chalk.dim('The financial extraction should:'))
+  console.log(chalk.dim('1. Extract pricing data from product pages'))
+  console.log(chalk.dim('2. Identify any mentioned financial assets/companies'))
+  console.log(chalk.dim('3. Return minimal data for non-financial content'))
+  console.log(chalk.dim('4. Provide sentiment analysis when relevant'))
 }
 
 // Run the test
 testFinancialExtraction().catch(error => {
-  console.error(chalk.red("Test failed:"), error);
-  process.exit(1);
-});
+  console.error(chalk.red('Test failed:'), error)
+  process.exit(1)
+})

@@ -1,310 +1,310 @@
-import CryptoJS from "crypto-js";
-import { md5 } from "js-md5";
-import cheerio from "cheerio";
-import puppeteer from "puppeteer-core"; // Using puppeteer-core
-import llamaTokenizer from "llama-tokenizer-js";
-import dotenv from "dotenv";
-import os from "os";
-import { execSync } from "child_process";
-import crypto from "crypto";
+import CryptoJS from 'crypto-js'
+import { md5 } from 'js-md5'
+import cheerio from 'cheerio'
+import puppeteer from 'puppeteer-core' // Using puppeteer-core
+import llamaTokenizer from 'llama-tokenizer-js'
+import dotenv from 'dotenv'
+import os from 'os'
+import { execSync } from 'child_process'
+import crypto from 'crypto'
 
-dotenv.config();
+dotenv.config()
 
-const NODE_ENV = process.env.NODE_ENV || "production";
+const NODE_ENV = process.env.NODE_ENV || 'production'
 
 // Dynamically determine Chrome executable path based on environment
 async function getChromeExecutablePath() {
-  if (os.platform() === "darwin") {
+  if (os.platform() === 'darwin') {
     // macOS
-    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  } else if (os.platform() === "linux") {
+    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  } else if (os.platform() === 'linux') {
     // Linux (Docker environment)
     try {
-      const chromiumPath = execSync("which chromium-browser || which chromium")
+      const chromiumPath = execSync('which chromium-browser || which chromium')
         .toString()
-        .trim();
-      return chromiumPath;
+        .trim()
+      return chromiumPath
     } catch (error) {
-      console.error("Chromium not found on Linux, ensure it is installed.");
-      return null;
+      console.error('Chromium not found on Linux, ensure it is installed.')
+      return null
     }
   } else {
-    throw new Error(`Unsupported platform: ${os.platform()}`);
+    throw new Error(`Unsupported platform: ${os.platform()}`)
   }
 }
 
 // Fetch page content using Puppeteer with dynamic Chrome path
 export async function fetchPageContent(url) {
   const ALLOWED_TEXT_ELEMENTS =
-    "p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption";
+    'p, h1, h2, h3, h4, h5, h6, a, td, th, tr, pre, code, blockquote, li, ol, ul, table, caption'
 
-  const chromePath = await getChromeExecutablePath();
+  const chromePath = await getChromeExecutablePath()
   if (!chromePath) {
-    return `Error: No valid Chrome executable path found for platform ${os.platform()}`;
+    return `Error: No valid Chrome executable path found for platform ${os.platform()}`
   }
 
   try {
     const browser = await puppeteer.launch({
-      executablePath: NODE_ENV !== "development" ? chromePath : undefined,
+      executablePath: NODE_ENV !== 'development' ? chromePath : undefined,
       args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-gpu",
-        "--disable-software-rasterizer",
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
       ],
-      headless: "new",
-    });
+      headless: 'new',
+    })
 
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded" });
-    const pageTitle = await page.title();
-    const content = await page.content();
-    const $ = cheerio.load(content);
+    const page = await browser.newPage()
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    const pageTitle = await page.title()
+    const content = await page.content()
+    const $ = cheerio.load(content)
 
     const allowedContent = $(ALLOWED_TEXT_ELEMENTS)
       .map((index, element) => {
-        return $(element).text();
+        return $(element).text()
       })
       .get()
-      .join(" ");
+      .join(' ')
 
-    await browser.close();
+    await browser.close()
 
-    return `#${pageTitle}\n##${url}\n${allowedContent}`;
+    return `#${pageTitle}\n##${url}\n${allowedContent}`
   } catch (error) {
-    console.error(`Error processing ${url}:`, error);
-    return `Error processing ${url}: ${error.message}`;
+    console.error(`Error processing ${url}:`, error)
+    return `Error processing ${url}: ${error.message}`
   }
 }
 
 export const getHumanReadableContent = (scrap) => {
   if (scrap.pull_request) {
-    return `User created a new pull request: ${scrap.title}`;
+    return `User created a new pull request: ${scrap.title}`
   } else if (scrap.issue) {
-    return `User created a new issue: ${scrap.title}`;
+    return `User created a new issue: ${scrap.title}`
   } else if (scrap.repository) {
-    return `User created a new repository: ${scrap.name}`;
+    return `User created a new repository: ${scrap.name}`
   } else if (scrap.gist) {
-    return `User created a new gist: ${scrap.description || "No description"}`;
+    return `User created a new gist: ${scrap.description || 'No description'}`
   } else if (scrap.release) {
-    return `User created a new release: ${scrap.name}`;
+    return `User created a new release: ${scrap.name}`
   } else if (scrap.starred) {
-    return `User starred a repository: ${scrap.full_name}`;
+    return `User starred a repository: ${scrap.full_name}`
   } else {
-    return "Unknown action";
+    return 'Unknown action'
   }
-};
+}
 
 export function generateShortId(uuid) {
   // Take first 8 characters of UUID and ensure they're valid hex
-  return uuid.substring(0, 8).replace(/[^0-9a-f]/g, "0");
+  return uuid.substring(0, 8).replace(/[^0-9a-f]/g, '0')
 }
 
 export function generateScrapId(source, uniqueIdentifier) {
   // Generate proper UUID v4
-  const uuid = crypto.randomUUID();
-  return uuid;
+  const uuid = crypto.randomUUID()
+  return uuid
 }
 
 export function uuidToScrap(uuid, scrapArray) {
   if (!scrapArray?.length || !uuid) {
-    console.error("Invalid input", uuid);
-    return null;
+    console.error('Invalid input', uuid)
+    return null
   }
 
   const scrap = scrapArray.find(
     (scrap) => scrap.id === uuid || scrap.metadata?.shortId === uuid,
-  );
+  )
 
   if (!scrap) {
-    console.error("No scrap found for the given UUID", uuid);
-    return null;
+    console.error('No scrap found for the given UUID', uuid)
+    return null
   }
 
-  return scrap;
+  return scrap
 }
 
 function articleExists(article) {
-  if (!article) return false;
-  if (!article.excerpt) return false;
-  if (!article.excerpt.children) return false;
-  if (!article.excerpt.children.length) return false;
-  return true;
+  if (!article) return false
+  if (!article.excerpt) return false
+  if (!article.excerpt.children) return false
+  if (!article.excerpt.children.length) return false
+  return true
 }
 
 export function countWords(article) {
-  if (!articleExists(article)) return 0;
-  if (!article.excerpt.children) return 0;
+  if (!articleExists(article)) return 0
+  if (!article.excerpt.children) return 0
   const words = article.excerpt.children
     .filter(
       (node) =>
-        node.tag === "p" ||
-        node.tag === "h1" ||
-        node.tag === "h2" ||
-        node.tag === "h3" ||
-        node.tag === "h4" ||
-        node.tag === "blockquote" ||
-        node.tag === "li" ||
-        node.tag === "ol" ||
-        node.tag === "ul",
+        node.tag === 'p' ||
+        node.tag === 'h1' ||
+        node.tag === 'h2' ||
+        node.tag === 'h3' ||
+        node.tag === 'h4' ||
+        node.tag === 'blockquote' ||
+        node.tag === 'li' ||
+        node.tag === 'ol' ||
+        node.tag === 'ul',
     )
     .map((node) => node.children)
     .flat()
-    .filter((node) => node.type === "text")
+    .filter((node) => node.type === 'text')
     .map((node) => node.value)
-    .join(" ")
-    .split(" ")
-    .filter((word) => word.length > 0);
-  return words.length;
+    .join(' ')
+    .split(' ')
+    .filter((word) => word.length > 0)
+  return words.length
 }
 
 export function countPhotos(article) {
   const photos = article.body.children
-    .filter((node) => node.tag === "img")
+    .filter((node) => node.tag === 'img')
     .map((node) => node.attrs)
-    .flat();
+    .flat()
 
-  return photos.length;
+  return photos.length
 }
 
 export function extractPhotos(article) {
   const photos = article.body.children
-    .filter((node) => node.tag === "img")
-    .flat();
+    .filter((node) => node.tag === 'img')
+    .flat()
 
-  return photos;
+  return photos
 }
 
 export function extractFirstPhoto(article) {
-  const photos = extractPhotos(article);
-  if (photos.length) return photos[0];
-  return null;
+  const photos = extractPhotos(article)
+  if (photos.length) return photos[0]
+  return null
 }
 
 export function countLinks(article) {
-  if (!articleExists(article)) return 0;
-  if (!article.excerpt.children) return 0;
+  if (!articleExists(article)) return 0
+  if (!article.excerpt.children) return 0
   const links = article.excerpt.children
     .filter(
       (node) =>
-        node.tag === "p" ||
-        node.tag === "h1" ||
-        node.tag === "h2" ||
-        node.tag === "h3" ||
-        node.tag === "h4" ||
-        node.tag === "blockquote",
+        node.tag === 'p' ||
+        node.tag === 'h1' ||
+        node.tag === 'h2' ||
+        node.tag === 'h3' ||
+        node.tag === 'h4' ||
+        node.tag === 'blockquote',
     )
     .map((node) => node.children)
     .flat()
-    .filter((node) => node.tag === "a")
+    .filter((node) => node.tag === 'a')
     .map((node) => node.attrs)
-    .flat();
-  return links.length;
+    .flat()
+  return links.length
 }
 
 export function filterStrongTags(article) {
-  if (!articleExists(article)) return [];
+  if (!articleExists(article)) return []
   const strongTags = article.body.children
     .filter(
       (node) =>
-        node.tag === "p" ||
-        node.tag === "h1" ||
-        node.tag === "h2" ||
-        node.tag === "h3" ||
-        node.tag === "h4" ||
-        node.tag === "blockquote",
+        node.tag === 'p' ||
+        node.tag === 'h1' ||
+        node.tag === 'h2' ||
+        node.tag === 'h3' ||
+        node.tag === 'h4' ||
+        node.tag === 'blockquote',
     )
     .map((node) => node.children)
     .flat()
-    .filter((node) => node.tag === "strong")
+    .filter((node) => node.tag === 'strong')
     .map((node) => node.children)
     .flat()
-    .filter((node) => node.type === "text")
+    .filter((node) => node.type === 'text')
     .map((node) => node.value)
-    .filter((word) => word.length > 0);
-  return strongTags;
+    .filter((word) => word.length > 0)
+  return strongTags
 }
 
 export function isValidHttpUrl(string) {
-  if (!string) return false;
+  if (!string) return false
 
   try {
-    const url = new URL(string);
-    return url.protocol === "http:" || url.protocol === "https:";
+    const url = new URL(string)
+    return url.protocol === 'http:' || url.protocol === 'https:'
   } catch {
-    return false;
+    return false
   }
 }
 
 // Add a new function to clean URLs
 export function cleanUrl(url) {
-  if (!url) return null;
+  if (!url) return null
 
   try {
     // Remove any whitespace
-    url = url.trim();
+    url = url.trim()
 
     // Ensure URL has a protocol
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      url = "https://" + url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url
     }
 
     // Create URL object to validate and normalize
-    const urlObj = new URL(url);
+    const urlObj = new URL(url)
 
     // Return normalized URL string
-    return urlObj.toString();
+    return urlObj.toString()
   } catch {
-    return null;
+    return null
   }
 }
 
 export function generatePassword(titleSlug) {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const title = titleSlug;
-  const rawPassword = `${year}-${month}-${day}-${title}`;
-  const hash = md5(rawPassword);
-  const password = hash.slice(0, 8) + hash.slice(-8);
-  return password;
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const title = titleSlug
+  const rawPassword = `${year}-${month}-${day}-${title}`
+  const hash = md5(rawPassword)
+  const password = hash.slice(0, 8) + hash.slice(-8)
+  return password
 }
 
 // Function to break content into chunks
 export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
-  if (!content) return [];
+  if (!content) return []
 
   // Ensure content is a string and handle null/undefined
-  const text = String(content || "");
+  const text = String(content || '')
 
   // Split into sentences more reliably
   const sentences = text
-    .replace(/([.!?])\s+/g, "$1\n")
-    .split("\n")
-    .filter(Boolean);
+    .replace(/([.!?])\s+/g, '$1\n')
+    .split('\n')
+    .filter(Boolean)
 
-  const chunks = [];
-  let currentChunk = "";
+  const chunks = []
+  let currentChunk = ''
 
   for (const sentence of sentences) {
     const sentenceTokenSize = llamaTokenizer.encode(
       currentChunk + sentence,
-    ).length;
+    ).length
 
     if (sentenceTokenSize > chunkSizeTokens) {
-      chunks.push(currentChunk.trim());
-      currentChunk = "";
+      chunks.push(currentChunk.trim())
+      currentChunk = ''
     }
 
-    currentChunk += sentence + " ";
+    currentChunk += sentence + ' '
   }
 
   if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
+    chunks.push(currentChunk.trim())
   }
 
-  return chunks;
+  return chunks
 }
 
 /**
@@ -315,45 +315,45 @@ export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
  * @returns {string[]} An array of content chunks.
  */
 export function contentToChunks(content, options = {}) {
-  const { chunkMaxChars = 16384 } = options;
-  const chunks = [];
-  let currentChunk = "";
+  const { chunkMaxChars = 16384 } = options
+  const chunks = []
+  let currentChunk = ''
 
-  const paragraphs = content.split("\n");
+  const paragraphs = content.split('\n')
 
   const addChunk = () => {
     if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim());
-      currentChunk = "";
+      chunks.push(currentChunk.trim())
+      currentChunk = ''
     }
-  };
+  }
 
   const splitLongParagraph = (paragraph) => {
-    const words = paragraph.split(" ");
+    const words = paragraph.split(' ')
     for (const word of words) {
       if (currentChunk.length + word.length > chunkMaxChars) {
-        addChunk();
+        addChunk()
       }
-      currentChunk += (currentChunk ? " " : "") + word;
+      currentChunk += (currentChunk ? ' ' : '') + word
     }
-    addChunk();
-  };
+    addChunk()
+  }
 
   for (const paragraph of paragraphs) {
     if (currentChunk.length + paragraph.length <= chunkMaxChars) {
-      currentChunk += (currentChunk ? "\n" : "") + paragraph;
+      currentChunk += (currentChunk ? '\n' : '') + paragraph
     } else {
-      addChunk();
+      addChunk()
       if (paragraph.length <= chunkMaxChars) {
-        currentChunk = paragraph;
+        currentChunk = paragraph
       } else {
-        splitLongParagraph(paragraph);
+        splitLongParagraph(paragraph)
       }
     }
   }
 
-  addChunk();
+  addChunk()
 
-  console.log(`Chunks: ${chunks.length}`);
-  return chunks;
+  console.log(`Chunks: ${chunks.length}`)
+  return chunks
 }
