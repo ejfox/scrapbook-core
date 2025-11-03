@@ -19,6 +19,7 @@ import { completion, MODELS } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
 import { fetchPageContent } from '../helpers.js'
 import { trackCost } from './costTracking.mjs'
+import { syncTags as syncTagsToPinboard } from './sync_tags_to_pinboard.mjs'
 import Bottleneck from 'bottleneck'
 
 // Load environment variables
@@ -55,6 +56,7 @@ program
   .option('-a, --auto', 'Auto-repair without prompts')
   .option('--fetch-content', 'Fetch full content from URLs', true)
   .option('-f, --force', 'Force regenerate all fields even if they exist')
+  .option('--sync-to-pinboard', 'Sync repaired tags back to Pinboard after batch completes')
   .action(repair)
 
 async function repair(options) {
@@ -212,6 +214,22 @@ async function repair(options) {
   console.log(`  ✅ Repaired: ${repaired}`)
   console.log(`  ❌ Failed: ${failed}`)
   console.log(`  📈 Success rate: ${Math.round((repaired / scraps.length) * 100)}%`)
+
+  // Sync tags back to Pinboard if requested
+  if (options.syncToPinboard && repaired > 0) {
+    console.log(chalk.blue('\n🔄 Syncing tags to Pinboard...'))
+    try {
+      await syncTagsToPinboard({
+        limit: repaired, // Sync the same number we just repaired
+        dryRun: false,
+        source: options.source || 'pinboard', // Default to pinboard if not specified
+        reverse: false, // Start with newest
+      })
+      console.log(chalk.green('✅ Pinboard sync completed'))
+    } catch (error) {
+      console.log(chalk.red(`❌ Pinboard sync failed: ${error.message}`))
+    }
+  }
 }
 
 async function repairScrapWithAI(scrap, options) {
@@ -549,29 +567,36 @@ async function repairScrapWithAI(scrap, options) {
           .eq('scrap_id', scrap.scrap_id)
 
         if (error) {
-          console.error(chalk.red('    ✗ DATABASE UPDATE FAILED'))
+          // Supabase error (not network error) - don't retry
+          console.error(chalk.red(`    ✗ DATABASE UPDATE FAILED (attempt ${attempt}/3)`))
           console.error(chalk.red(`      Scrap ID: ${scrapId}`))
           console.error(chalk.red(`      Fields: ${Object.keys(updates).join(', ')}`))
           console.error(chalk.red(`      Error: ${JSON.stringify(error)}`))
           throw error
         }
         // Success - break out of retry loop
+        if (attempt > 1) {
+          console.log(chalk.green(`    ✓ DB update succeeded on retry ${attempt}`))
+        }
         lastError = null
         break
       } catch (error) {
         lastError = error
         if (attempt < 3) {
-          console.log(chalk.yellow(`    ⚠ DB update attempt ${attempt} failed, retrying... (${error.message})`))
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt)) // Exponential backoff
+          const delay = 2000 * attempt
+          console.log(chalk.yellow(`    ⚠ DB update attempt ${attempt}/3 failed, retrying in ${delay}ms...`))
+          console.log(chalk.yellow(`      Error: ${error.message}`))
+          await new Promise(resolve => setTimeout(resolve, delay)) // Exponential backoff
         }
       }
     }
 
     if (lastError) {
-      console.error(chalk.red('    ✗ DATABASE UPDATE EXCEPTION (after 3 retries)'))
-      console.error(chalk.red(`      Error: ${lastError.message}`))
-      console.error(chalk.red(`      Stack: ${lastError.stack}`))
-      throw lastError
+      console.error(chalk.red('    ✗ DATABASE UPDATE FAILED AFTER 3 RETRIES'))
+      console.error(chalk.red(`      Scrap ID: ${scrapId}`))
+      console.error(chalk.red(`      Final error: ${lastError.message}`))
+      // Don't throw - just log and continue to avoid losing progress
+      console.log(chalk.yellow(`    ⏭️  Continuing to next scrap despite DB failure`))
     }
   } else {
     console.log(chalk.gray('    ℹ No updates needed'))

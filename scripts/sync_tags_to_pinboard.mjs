@@ -37,25 +37,27 @@ const pinboardLimiter = new Bottleneck({
   minTime: 5000, // 5 seconds between requests - slow and methodical
 })
 
-// Set up CLI
-program
-  .name('sync-tags-to-pinboard')
-  .description('🏷️ Sync AI-generated tags back to Pinboard bookmarks (additive only)')
-  .version('1.0.0')
+// Set up CLI (only when running directly, not when imported)
+function setupCLI() {
+  program
+    .name('sync-tags-to-pinboard')
+    .description('🏷️ Sync AI-generated tags back to Pinboard bookmarks (additive only)')
+    .version('1.0.0')
 
-program
-  .command('sync')
-  .description('Sync tags from database back to Pinboard')
-  .option('-l, --limit <number>', 'Limit number of bookmarks to sync', '10')
-  .option('-r, --reverse', 'Process oldest bookmarks first (default: newest first)')
-  .option('-d, --dry-run', 'Show what would be updated without making changes')
-  .option('-s, --source <source>', 'Only sync specific source (default: pinboard)', 'pinboard')
-  .action(syncTags)
+  program
+    .command('sync')
+    .description('Sync tags from database back to Pinboard')
+    .option('-l, --limit <number>', 'Limit number of bookmarks to sync', '10')
+    .option('-r, --reverse', 'Process oldest bookmarks first (default: newest first)')
+    .option('-d, --dry-run', 'Show what would be updated without making changes')
+    .option('-s, --source <source>', 'Only sync specific source (default: pinboard)', 'pinboard')
+    .action(syncTags)
 
-program
-  .command('status')
-  .description('Show sync status and statistics')
-  .action(showStatus)
+  program
+    .command('status')
+    .description('Show sync status and statistics')
+    .action(showStatus)
+}
 
 async function syncTags(options) {
   console.log(chalk.cyan('🏷️ Syncing AI Tags to Pinboard\n'))
@@ -340,6 +342,7 @@ function formatDuration(seconds) {
 
 // Make it executable
 if (import.meta.url === `file://${process.argv[1]}`) {
+  setupCLI()
   program.parse()
 }
 
