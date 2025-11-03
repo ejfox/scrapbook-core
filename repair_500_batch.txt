@@ -12093,3 +12093,779 @@ info: Cost tracked {"cost":0.0026500000000000004,"modelId":"google/gemma-3-12b-i
   ✅ Repaired
 [131/500] Repairing: coder/agentapi: HTTP API for Claude Code, Goose, Aider, and ...
     Fetching content from https://github.com/coder/agentapi...
+Error processing https://github.com/coder/agentapi: TimeoutError: Navigation timeout of 30000 ms exceeded
+    at new Deferred (file:///Users/ejfox/code/scrapbook-core/node_modules/puppeteer-core/lib/esm/puppeteer/util/Deferred.js:57:34)
+    at Deferred.create (file:///Users/ejfox/code/scrapbook-core/node_modules/puppeteer-core/lib/esm/puppeteer/util/Deferred.js:18:16)
+    at new LifecycleWatcher (file:///Users/ejfox/code/scrapbook-core/node_modules/puppeteer-core/lib/esm/puppeteer/cdp/LifecycleWatcher.js:66:46)
+    at CdpFrame.goto (file:///Users/ejfox/code/scrapbook-core/node_modules/puppeteer-core/lib/esm/puppeteer/cdp/Frame.js:146:29)
+    at CdpFrame.<anonymous> (file:///Users/ejfox/code/scrapbook-core/node_modules/puppeteer-core/lib/esm/puppeteer/util/decorators.js:101:27)
+    at CdpPage.goto (file:///Users/ejfox/code/scrapbook-core/node_modules/puppeteer-core/lib/esm/puppeteer/api/Page.js:570:43)
+    at fetchPageContent (file:///Users/ejfox/code/scrapbook-core/helpers.js:59:16)
+    at async repairScrapWithAI (file:///Users/ejfox/code/scrapbook-core/scripts/scrap_doctor_ai.mjs:155:30)
+    at async Command.repair (file:///Users/ejfox/code/scrapbook-core/scripts/scrap_doctor_ai.mjs:120:7)
+    ✓ Fetched 91 chars of content
+    Extracting locations...
+      Input: 91 chars
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 139,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "locations": [],\n' +
+    '  "analysis_notes": "No geographic locations found - content only conta'
+}
+info: Cost tracked {"cost":0.00019311,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:51:53.850Z","tokens":626}
+    ✓ Extracted location: Unknown
+    Extracting financial analysis...
+      Input: 91 chars
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 190,
+  contentPreview: '{"tracked_assets": [], "discovered_assets": [], "overall_market_sentiment": 0.0, "market_reasoning":'
+}
+info: Cost tracked {"cost":0.0002366,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:51:54.525Z","tokens":444}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 65 chars
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 113,
+  contentPreview: '\n' +
+    '["ai_tooling_convergence", "developer_tooling_evolution", "agent_based_development", "ai_augmented_'
+}
+info: Cost tracked {"cost":0.005220000000000001,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-cf042e875c543abfa86eb08878e49368","taskType":"concept_extraction","timestamp":"2025-11-03T18:51:58.934Z","tokens":522}
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0025700000000000002,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-cf042e875c543abfa86eb08878e49368","taskType":"confidence_assessment","timestamp":"2025-11-03T18:52:02.479Z","tokens":257}
+    ✓ article, 4 concepts
+      Concepts: ai_tooling_convergence, developer_tooling_evolution, agent_based_development, ai_augmented_development
+    📝 Updating 5 fields: location, content_type, concept_tags, extraction_confidence, updated_at
+  ✅ Repaired
+[132/500] Repairing: party-identification-of-american-youth-v0-xb0f8h20jeve1.png?...
+    Fetching content from https://www.reddit.com/r/webdev/comments/1k0zjmo/w...
+    ✓ Fetched 414 chars of content
+    Extracting locations...
+      Input: 414 chars
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 132,
+  contentPreview: '{\n' +
+    '  "locations": [],\n' +
+    '  "analysis_notes": "No geographic locations found - only contains Reddit platf'
+}
+info: Cost tracked {"cost":0.00021711,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:52:06.334Z","tokens":723}
+    ✓ Extracted location: Unknown
+    Extracting financial analysis...
+      Input: 414 chars
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 173,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"No fi'
+}
+info: Cost tracked {"cost":0.000258,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:52:07.026Z","tokens":552}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 127 chars
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 126,
+  contentPreview: '\n' +
+    '\n' +
+    '["generational_political_shift", "youth_political_engagement", "political_polarization_trends", "e'
+}
+info: Cost tracked {"cost":0.005750000000000001,"modelId":"google/gemma-3-12b-it","scrapId":"arena-36068007","taskType":"concept_extraction","timestamp":"2025-11-03T18:52:17.481Z","tokens":575}
+OpenRouter credits - Usage: 47.08534768980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0031000000000000003,"modelId":"google/gemma-3-12b-it","scrapId":"arena-36068007","taskType":"confidence_assessment","timestamp":"2025-11-03T18:52:25.747Z","tokens":310}
+    ✓ discussion, 4 concepts
+      Concepts: generational_political_shift, youth_political_engagement, political_polarization_trends, evolving_party_alignments
+    📝 Updating 5 fields: location, content_type, concept_tags, extraction_confidence, updated_at
+  ✅ Repaired
+[133/500] Repairing: Tinywhoop the dragon on the Empire State building - YouTube...
+    Fetching content from https://www.youtube.com/watch?v=AKgjXNarR54...
+    ✓ Fetched 241 chars of content
+    Generating AI tags...
+      Input: 241 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 62,
+  contentPreview: 'video, art, inspiration, america, design, drone, gaming, funny'
+}
+info: Cost tracked {"cost":0.00009375,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-76306b2d88d33b76b8a1d14eedeaee30","taskType":"tagging","timestamp":"2025-11-03T18:52:40.607Z","tokens":580}
+    ✓ Generated 8 tags: video, art, inspiration, america, design, drone, gaming, funny
+    Extracting locations...
+      Input: 241 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 274,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Empire State Building, New York, New York",\n' +
+    '      "type": "l'
+}
+info: Cost tracked {"cost":0.00024494,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:52:42.207Z","tokens":699}
+    ✓ Extracted location: Empire State Building, New York, New York
+    Extracting financial analysis...
+      Input: 241 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 179,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"No fi'
+}
+info: Cost tracked {"cost":0.0002474,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:52:44.137Z","tokens":502}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 59 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 108,
+  contentPreview: '\n' +
+    '["emerging_aerial_art", "digital_tourism_trends", "creative_technology_integration", "pop_culture_m'
+}
+info: Cost tracked {"cost":0.00527,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-76306b2d88d33b76b8a1d14eedeaee30","taskType":"concept_extraction","timestamp":"2025-11-03T18:52:47.909Z","tokens":527}
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0026100000000000003,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-76306b2d88d33b76b8a1d14eedeaee30","taskType":"confidence_assessment","timestamp":"2025-11-03T18:52:51.602Z","tokens":261}
+    ✓ video, 4 concepts
+      Concepts: emerging_aerial_art, digital_tourism_trends, creative_technology_integration, pop_culture_mashups
+    Generating screenshot...
+      URL: https://www.youtube.com/watch?v=AKgjXNarR54
+    ✓ Screenshot: bsycckxjcwizbxpxwtjq
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[134/500] Repairing: MAVProxyUser/CIAJeepDoors...
+    Fetching content from https://github.com/MAVProxyUser/CIAJeepDoors...
+    ✓ Fetched 63367 chars of content
+    Generating AI tags...
+      Input: 63367 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 65,
+  contentPreview: 'git, github, code, automation, security, hacking, hardware, howto'
+}
+info: Cost tracked {"cost":0.00014309999999999998,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-91aef8e9e409e1c081b018dd81e83d78","taskType":"tagging","timestamp":"2025-11-03T18:53:10.182Z","tokens":906}
+    ✓ Generated 8 tags: git, github, code, automation, security, hacking, hardware, howto
+    Extracting locations...
+      Input: 63367 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 299,
+  contentPreview: '{\n' +
+    '  "locations": [],\n' +
+    '  "analysis_notes": "No geographic locations found in the content. The text con'
+}
+info: Cost tracked {"cost":0.00246405,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:53:13.642Z","tokens":8972}
+    ✓ Extracted location: Unknown
+    Extracting financial analysis...
+      Input: 63367 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 10010,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "tracked_assets": [],\n' +
+    '  "discovered_assets": [\n' +
+    '    {\n' +
+    '      "ticker": "DJI",\n' +
+    '      "name"'
+}
+info: Cost tracked {"cost":0.014290500000000001,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:53:32.149Z","tokens":18309}
+Failed to parse financial analysis JSON: No JSON object found in response
+Response preview: ```json
+{
+  "tracked_assets": [],
+  "discovered_assets": [
+    {
+      "ticker": "DJI",
+      "name": "DJI",
+      "mentions": [
+        "DJI",
+        "DJI",
+        "DJI",
+        "DJI",
+        "DJ
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 25 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0026000000000000003,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-91aef8e9e409e1c081b018dd81e83d78","taskType":"confidence_assessment","timestamp":"2025-11-03T18:53:36.285Z","tokens":260}
+    ✓ article, 0 concepts
+    Generating screenshot...
+      URL: https://github.com/MAVProxyUser/CIAJeepDoors
+    ✓ Screenshot: ob2paxviqw513dkgn2br
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[135/500] Repairing: Astronomers Detect a Signature of Life on a Distant Planet -...
+    Fetching content from https://www.nytimes.com/2025/04/16/science/astrono...
+    ✓ Fetched 100 chars of content
+    Generating AI tags...
+      Input: 100 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 51,
+  contentPreview: 'astronomy, exoplanets, science, ecology, journalism'
+}
+info: Cost tracked {"cost":0.0000915,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-63258946fc0cfb978a2d1a120682a870","taskType":"tagging","timestamp":"2025-11-03T18:53:46.741Z","tokens":574}
+    ✓ Generated 5 tags: astronomy, exoplanets, science, ecology, journalism
+    Extracting locations...
+      Input: 100 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 247,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "New York, New York, USA",\n' +
+    '      "type": "city",\n' +
+    '      "conte'
+}
+info: Cost tracked {"cost":0.00024228999999999999,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:53:49.640Z","tokens":700}
+    ✓ Extracted location: New York, New York, USA
+    Extracting financial analysis...
+      Input: 100 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 153,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"No fi'
+}
+info: Cost tracked {"cost":0.00023040000000000002,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:53:51.501Z","tokens":482}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 79 chars
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 125,
+  contentPreview: '\n' +
+    '["astrobiology_advancement", "search_for_extraterrestrial_life", "planetary_habitability", "scienti'
+}
+info: Cost tracked {"cost":0.0053,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-63258946fc0cfb978a2d1a120682a870","taskType":"concept_extraction","timestamp":"2025-11-03T18:53:55.411Z","tokens":530}
+OpenRouter credits - Usage: 47.08647320980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0026500000000000004,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-63258946fc0cfb978a2d1a120682a870","taskType":"confidence_assessment","timestamp":"2025-11-03T18:53:59.824Z","tokens":265}
+    ✓ news, 4 concepts
+      Concepts: astrobiology_advancement, search_for_extraterrestrial_life, planetary_habitability, scientific_discovery_narrative
+    Generating screenshot...
+      URL: https://www.nytimes.com/2025/04/16/science/astronomy-exoplanets-habitable-k218b.
+    ✓ Screenshot: zemgad4p5gohmrgspucw
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[136/500] Repairing: Splash Bivy...
+    Fetching content from https://hyperlitemountaingear.com/products/splash-...
+    ✓ Fetched 51963 chars of content
+    Generating AI tags...
+      Input: 51963 chars
+OpenRouter credits - Usage: 47.10407658980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 80,
+  contentPreview: 'camping, gear, accessories, alpine, climbing, backpacking, ultralight, adventure'
+}
+info: Cost tracked {"cost":0.0001596,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-a1dd558991dab9bff09e3a7fb5af028d","taskType":"tagging","timestamp":"2025-11-03T18:54:17.783Z","tokens":1007}
+    ✓ Generated 8 tags: camping, gear, accessories, alpine, climbing, backpacking, ultralight, adventure
+    Extracting locations...
+      Input: 51963 chars
+OpenRouter credits - Usage: 47.10407658980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 388,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Maine, USA",\n' +
+    '      "type": "region",\n' +
+    '      "context": "headq'
+}
+2025-11-03T18:54:30.402Z [INFO]: 🔧 OpenRouter limiter status:
+info: Cost tracked {"cost":0.00184739,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:54:30.403Z","tokens":6561}
+    ✓ Extracted location: Maine, USA
+    Extracting financial analysis...
+      Input: 51963 chars
+OpenRouter credits - Usage: 47.10353639980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 333,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"The p'
+}
+info: Cost tracked {"cost":0.0027504,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:54:33.470Z","tokens":8640}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 11 chars
+OpenRouter credits - Usage: 47.10353639980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 72,
+  contentPreview: '```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0025000000000000005,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-a1dd558991dab9bff09e3a7fb5af028d","taskType":"confidence_assessment","timestamp":"2025-11-03T18:54:34.360Z","tokens":250}
+    ✓ article, 0 concepts
+    Generating screenshot...
+      URL: https://hyperlitemountaingear.com/products/splash-bivy?variant=42764474089517&tw
+    ✓ Screenshot: pmfsftyj6b7dlwwzce9c
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[137/500] Repairing: Materialist Conceptions of God...
+    Fetching content from https://nothinghuman.substack.com/p/materialist-co...
+    ✓ Fetched 23340 chars of content
+    Generating AI tags...
+      Input: 23340 chars
+OpenRouter credits - Usage: 47.10353639980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 52,
+  contentPreview: 'culture, education, inspiration, philosophy, science'
+}
+info: Cost tracked {"cost":0.00017625,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-cd1b1f3eeaf1271738f2a85dd6558156","taskType":"tagging","timestamp":"2025-11-03T18:54:48.447Z","tokens":1148}
+    ✓ Generated 5 tags: culture, education, inspiration, philosophy, science
+    Extracting locations...
+      Input: 23340 chars
+OpenRouter credits - Usage: 47.10353639980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 750,
+  contentPreview: '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Amazon Rainforest, Brazil",\n' +
+    '      "type": "region",\n' +
+    '      "c'
+}
+info: Cost tracked {"cost":0.00165632,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:55:00.804Z","tokens":5610}
+    ✓ Extracted location: Amazon Rainforest, Brazil
+    Extracting financial analysis...
+      Input: 23340 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 264,
+  contentPreview: '```json\n' +
+    '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning'
+}
+info: Cost tracked {"cost":0.0017096,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:55:04.661Z","tokens":5266}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 30 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0025000000000000005,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-cd1b1f3eeaf1271738f2a85dd6558156","taskType":"confidence_assessment","timestamp":"2025-11-03T18:55:10.613Z","tokens":250}
+    ✓ opinion, 0 concepts
+    Generating screenshot...
+      URL: https://nothinghuman.substack.com/p/materialist-conceptions-of-god
+    ✓ Screenshot: exewjkf53znklytrfck6
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[138/500] Repairing: Ukraine's DIY drone makers are helping fighters on the front...
+    Generating AI tags...
+      Input: 200 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 89,
+  contentPreview: 'drones, military, electronics, hacking, activism, journalism, design, automation, culture'
+}
+info: Cost tracked {"cost":0.0000945,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-5657db91744078803c99ad21042571d8","taskType":"tagging","timestamp":"2025-11-03T18:55:23.579Z","tokens":576}
+    ✓ Generated 9 tags: drones, military, electronics, hacking, activism, journalism, design, automation, culture
+    Extracting locations...
+      Input: 200 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 505,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "locations": [\n' +
+    '    {\n' +
+    '      "name": "Kyiv, Ukraine",\n' +
+    '      "type": "city",\n' +
+    '      "context'
+}
+info: Cost tracked {"cost":0.00029818,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:55:30.030Z","tokens":761}
+    ✓ Extracted location: Kyiv, Ukraine
+    Extracting financial analysis...
+      Input: 200 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 250,
+  contentPreview: '{"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"The a'
+}
+info: Cost tracked {"cost":0.00026230000000000003,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:55:32.391Z","tokens":493}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 200 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 147,
+  contentPreview: '\n' +
+    '["modern_asymmetric_warfare", "drone_proliferation", "rapid_manufacturing_innovation", "civilian_de'
+}
+info: Cost tracked {"cost":0.00566,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-5657db91744078803c99ad21042571d8","taskType":"concept_extraction","timestamp":"2025-11-03T18:55:35.257Z","tokens":566}
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0029500000000000004,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-5657db91744078803c99ad21042571d8","taskType":"confidence_assessment","timestamp":"2025-11-03T18:55:38.887Z","tokens":295}
+    ✓ article, 5 concepts
+      Concepts: modern_asymmetric_warfare, drone_proliferation, rapid_manufacturing_innovation, civilian_defense_mobilization, technology_and_conflict
+    Generating screenshot...
+      URL: https://www.npr.org/2025/04/12/g-s1-59428/ukraine-drones-russia-war
+    ✓ Screenshot: ngldwprsd96mbtff8xog
+    📝 Updating 7 fields: tags, location, content_type, concept_tags, extraction_confidence, screenshot_url, updated_at
+  ✅ Repaired
+[139/500] Repairing: arena-31773285...
+    ⏭️  Skipping summary (insufficient content)
+    ⏭️  Skipping relationships (insufficient content)
+    ⏭️  Skipping financial analysis (insufficient content)
+    ℹ No updates needed
+  ✅ Repaired
+[140/500] Repairing: coder/code-server: VS Code in the browser...
+    Fetching content from https://github.com/coder/code-server...
+    ✓ Fetched 40095 chars of content
+    Extracting locations...
+      Input: 40095 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from deepseek/deepseek-chat-v3.1
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 272,
+  contentPreview: '{\n' +
+    '  "locations": [],\n' +
+    '  "analysis_notes": "No geographic locations found in the content. The text con'
+}
+info: Cost tracked {"cost":0.00101752,"modelId":"deepseek/deepseek-chat-v3.1","taskType":"completion","timestamp":"2025-11-03T18:56:13.777Z","tokens":3628}
+    ✓ Extracted location: Unknown
+    Extracting financial analysis...
+      Input: 40095 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemini-2.5-flash
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 281,
+  contentPreview: '```json\n' +
+    '{\n' +
+    '  "tracked_assets": [],\n' +
+    '  "discovered_assets": [],\n' +
+    '  "overall_market_sentiment": 0.0,\n' +
+    '  "m'
+}
+info: Cost tracked {"cost":0.0030177999999999997,"modelId":"google/gemini-2.5-flash","taskType":"completion","timestamp":"2025-11-03T18:56:15.049Z","tokens":9502}
+    ℹ No financial assets found (empty or low sentiment)
+    Extracting reasoning fields...
+      Summary length: 101 chars
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 118,
+  contentPreview: '["developer_tooling_evolution", "remote_development_paradigm", "web_native_applications", "open_sour'
+}
+info: Cost tracked {"cost":0.00521,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-c771ad7f22a7b35d7f46a11a021a6b92","taskType":"concept_extraction","timestamp":"2025-11-03T18:56:16.218Z","tokens":521}
+OpenRouter credits - Usage: 47.11068005980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from google/gemma-3-12b-it
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 73,
+  contentPreview: '\n```json\n{\n  "summary": 0.9,\n  "tags": 0.85,\n  "relationships": 0.7\n}\n```'
+}
+info: Cost tracked {"cost":0.0026100000000000003,"modelId":"google/gemma-3-12b-it","scrapId":"pinboard-c771ad7f22a7b35d7f46a11a021a6b92","taskType":"confidence_assessment","timestamp":"2025-11-03T18:56:17.665Z","tokens":261}
+    ✓ article, 4 concepts
+      Concepts: developer_tooling_evolution, remote_development_paradigm, web_native_applications, open_source_collaboration
+    📝 Updating 5 fields: location, content_type, concept_tags, extraction_confidence, updated_at
+  ✅ Repaired
+[141/500] Repairing: Josh Conway / Meshtastic_SDR · GitLab...
+    Fetching content from https://gitlab.com/crankylinuxuser/meshtastic_sdr...
+    ✓ Fetched 8120 chars of content
+    Generating AI tags...
+      Input: 8120 chars
+OpenRouter credits - Usage: 47.11309653980128, Limit: null, Type: Paid, Rate Limit: -1/10s
+
+🔍 Response received from openai/gpt-4o-mini
+Response structure: {
+  hasData: true,
+  hasChoices: true,
+  choicesLength: 1,
+  hasMessage: true,
+  hasContent: true,
+  contentLength: 82,
+  contentPreview: 'git, code, hardware, electronics, documentation, tool, automation, sdr, meshtastic'
+}
+info: Cost tracked {"cost":0.00017099999999999998,"modelId":"openai/gpt-4o-mini","scrapId":"pinboard-c510a262753cc911be9fb392408a0683","taskType":"tagging","timestamp":"2025-11-03T18:56:23.475Z","tokens":1080}
+    ✓ Generated 9 tags: git, code, hardware, electronics, documentation, tool, automation, sdr, meshtastic
+    Extracting locations...
+      Input: 8120 chars
+OpenRouter credits - Usage: 47.11309653980128, Limit: null, Type: Paid, Rate Limit: -1/10s
