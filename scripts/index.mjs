@@ -1180,10 +1180,13 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
 
       function validateRelationships(relationships) {
         if (!Array.isArray(relationships)) return []
-        return relationships.map((relationship) => {
-          // make sure they are in cypher format
-          const validated = validateAIOutput('relationships', relationship)
-          return validated || null
+        return relationships.filter((r) => {
+          // Validate each relationship object has required fields
+          return r &&
+            typeof r === 'object' &&
+            typeof r.source === 'string' &&
+            typeof r.relationship === 'string' &&
+            typeof r.target === 'string'
         })
       }
 
