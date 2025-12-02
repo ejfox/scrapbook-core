@@ -136,6 +136,21 @@ export class StepVisualizer {
       console.log(cyber.gray('      └─ ') + cyber.white(result))
     }
   }
+
+  skipStep(stepIndex, reason = 'skipped') {
+    const step = this.steps[stepIndex]
+    console.log(
+      cyber.gray('  [') +
+      cyber.gray('░'.repeat(stepIndex)) +
+      cyber.gray('⊘') +
+      cyber.gray('░'.repeat(this.steps.length - stepIndex - 1)) +
+      cyber.gray(']') +
+      '  ' +
+      step.icon +
+      '  ' +
+      cyber.gray(step.name + ' - ' + reason),
+    )
+  }
 }
 
 // Scrolling summary display
