@@ -10,7 +10,7 @@ import * as helpers from '../helpers.js'
 import { createClient } from '@supabase/supabase-js'
 import puppeteer from 'puppeteer'
 import Bottleneck from 'bottleneck'
-import { summarizeContent, metaSummaryToTags } from './aiSummarization.mjs'
+import { summarizeContent, metaSummaryToTags, summarizeFromScreenshot, isContentInsufficient } from './aiSummarization.mjs'
 import {
   summarizeGitHubActivity,
   gitHubSummaryToTags,
@@ -1245,27 +1245,54 @@ async function generateSummaryAndTags(scrapObj, scrapId) {
     .filter(Boolean)
     .join('\n\n')
 
-  if (!contentToProcess) {
-    logger.warn('No content to summarize')
+  // Check if content is insufficient for text-based summarization
+  const contentIsInsufficient = isContentInsufficient(contentToProcess)
+
+  if (!contentToProcess && !scrapObj.screenshot_url) {
+    logger.warn('No content or screenshot to summarize')
     return scrapObj
   }
 
   try {
     if (process.env.OPENROUTER_API_KEY) {
-      // Generate summary
-      logger.info('Generating summary...')
-      try {
-        scrapObj.summary = await limiter.schedule(() =>
-          summarizeContent(contentToProcess, {
-            metaSummary: true,
-            scrapId,
-            taskType: 'summarization',
-          }),
-        )
-        trackStep('ai_summary', scrapObj.summary && scrapObj.summary.length > 0)
-      } catch (error) {
-        logger.error('AI summary generation failed:', error.message)
-        trackStep('ai_summary', false)
+      // If content is insufficient but we have a screenshot, use vision
+      if (contentIsInsufficient && scrapObj.screenshot_url) {
+        logger.info(chalk.blue('📸 Content insufficient, using vision summarization from screenshot...'))
+        try {
+          scrapObj.summary = await limiter.schedule(() =>
+            summarizeFromScreenshot(scrapObj.screenshot_url, {
+              scrapId,
+              url: scrapObj.url,
+              title: scrapObj.title,
+            }),
+          )
+          if (scrapObj.summary) {
+            logger.info(chalk.green(`✅ Vision summary generated (${scrapObj.summary.length} chars)`))
+            trackStep('ai_summary', true)
+          } else {
+            logger.warn('Vision summarization returned no result')
+            trackStep('ai_summary', false)
+          }
+        } catch (error) {
+          logger.error('Vision summarization failed:', error.message)
+          trackStep('ai_summary', false)
+        }
+      } else {
+        // Normal text-based summarization
+        logger.info('Generating summary...')
+        try {
+          scrapObj.summary = await limiter.schedule(() =>
+            summarizeContent(contentToProcess, {
+              metaSummary: true,
+              scrapId,
+              taskType: 'summarization',
+            }),
+          )
+          trackStep('ai_summary', scrapObj.summary && scrapObj.summary.length > 0)
+        } catch (error) {
+          logger.error('AI summary generation failed:', error.message)
+          trackStep('ai_summary', false)
+        }
       }
 
       // Generate tags from summary if we have one

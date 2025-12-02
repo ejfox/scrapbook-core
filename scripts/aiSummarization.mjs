@@ -2,8 +2,12 @@ import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
 import { breakContentIntoChunks } from '../helpers.js'
 import Bottleneck from 'bottleneck'
+import fetch from 'node-fetch'
 
 const DEBUG = process.env.DEBUG === 'true'
+
+// Minimum content length to consider "real" content (not just title/metadata)
+const MIN_CONTENT_LENGTH = 100
 function log(...args) {
   if (DEBUG) console.log(...args)
 }
@@ -94,6 +98,100 @@ export async function summarizeContent(content, options = {}) {
     console.error(error.stack)
     return null
   }
+}
+
+/**
+ * Summarize content from a screenshot using Gemini's vision capability
+ * Used as fallback when text content is blocked/empty
+ */
+export async function summarizeFromScreenshot(screenshotUrl, options = {}) {
+  const { scrapId, url, title } = options
+
+  if (!screenshotUrl) {
+    log('❌ No screenshot URL provided for vision summarization')
+    return null
+  }
+
+  if (!process.env.OPENROUTER_API_KEY) {
+    log('❌ OPENROUTER_API_KEY not set for vision summarization')
+    return null
+  }
+
+  try {
+    log(`📸 Summarizing from screenshot: ${screenshotUrl}`)
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://scrapbook.ejfox.com',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `You are analyzing a screenshot of a webpage that couldn't be scraped for text content. Create a detailed summary based on what you can see in this screenshot.
+
+Context:
+- URL: ${url || 'unknown'}
+- Title: ${title || 'unknown'}
+
+Instructions:
+• Describe what type of content this is (article, product page, video, app, etc.)
+• Extract any visible text, headlines, prices, or key information
+• Note the main topic or purpose of the page
+• Include any visible details that would help remember what this page is about
+• Format as bullet points starting with "• "
+• Be comprehensive - this summary is the only record of this page's content
+
+Analyze the screenshot and provide a detailed summary:`
+              },
+              {
+                type: 'image_url',
+                image_url: { url: screenshotUrl }
+              }
+            ]
+          }
+        ],
+        max_tokens: 2048,
+        temperature: 0.3,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      log(`❌ Vision API error: ${response.status} - ${errorText}`)
+      return null
+    }
+
+    const data = await response.json()
+    const summary = data.choices?.[0]?.message?.content
+
+    if (summary) {
+      log(`✅ Vision summary generated (${summary.length} chars)`)
+      return summary
+    }
+
+    log('❌ No summary in vision API response')
+    return null
+  } catch (error) {
+    console.error('❌ Error in vision summarization:', error)
+    return null
+  }
+}
+
+/**
+ * Check if content is too short/empty to summarize meaningfully
+ */
+export function isContentInsufficient(content) {
+  if (!content) return true
+  const cleaned = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return cleaned.length < MIN_CONTENT_LENGTH
 }
 
 async function summarizeChunk(chunk, options = {}) {
