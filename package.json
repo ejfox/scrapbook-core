@@ -57,6 +57,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@danielxceron/youtube-transcript": "^1.2.3",
     "@mozilla/readability": "^0.6.0",
     "@octokit/rest": "^21.0.1",
     "@sendgrid/mail": "^8.1.4",

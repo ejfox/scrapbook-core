@@ -13,6 +13,7 @@ import OpenAI from 'openai'
 import { INSTANCE_NAME } from '../helpers/instanceName.mjs'
 import puppeteer from 'puppeteer'
 import { extractContentWithRetry } from './contentExtractor.mjs'
+import { isYoutubeUrl, fetchYoutubeTranscript } from './youtubeTranscript.mjs'
 
 dotenv.config()
 
@@ -424,37 +425,68 @@ export async function processBookmark(bookmark) {
     if (bookmark.href) {
       try {
         const contentStartTime = Date.now()
-        const extracted = await extractContentWithRetry(bookmark.href, {
-          timeout: 10000,
-          maxRetries: 1,
-        })
 
-        if (extracted?.content) {
-          // Use extracted content (plain text from Readability)
-          processed.content = extracted.content
+        // For YouTube URLs, try to fetch transcript first
+        if (isYoutubeUrl(bookmark.href)) {
+          logger.info(`📺 YouTube URL detected, fetching transcript...`)
+          const transcript = await fetchYoutubeTranscript(bookmark.href)
 
-          // Store extraction metadata
-          processed.metadata.content_extraction = {
-            extracted_at: extracted.extractedAt,
-            title: extracted.title,
-            byline: extracted.byline,
-            length: extracted.length,
-            site_name: extracted.siteName,
-            method: 'readability',
+          if (transcript) {
+            processed.content = transcript
+            processed.metadata.content_extraction = {
+              extracted_at: new Date().toISOString(),
+              method: 'youtube_transcript',
+              length: transcript.length,
+            }
+            logger.info(`✅ YouTube transcript extracted (${transcript.length} chars)`)
+
+            logMetric('content_extracted', {
+              bookmark_id: bookmarkId,
+              duration_ms: Date.now() - contentStartTime,
+              url: bookmark.href,
+              content_length: transcript.length,
+              method: 'youtube_transcript',
+            })
+          } else {
+            // No transcript available, fall through to regular extraction
+            logger.info(`YouTube transcript not available, trying regular extraction`)
           }
+        }
 
-          logMetric('content_extracted', {
-            bookmark_id: bookmarkId,
-            duration_ms: Date.now() - contentStartTime,
-            url: bookmark.href,
-            content_length: extracted.content.length,
+        // If we don't have content yet (non-YouTube or transcript failed), try regular extraction
+        if (!processed.content || processed.content === bookmark.description) {
+          const extracted = await extractContentWithRetry(bookmark.href, {
+            timeout: 10000,
+            maxRetries: 1,
           })
-        } else {
-          // Fall back to Pinboard metadata if extraction failed
-          logger.info(`Content extraction failed for ${bookmark.href}, using Pinboard metadata`)
-          processed.metadata.content_extraction = {
-            method: 'pinboard_metadata',
-            reason: 'extraction_failed',
+
+          if (extracted?.content) {
+            // Use extracted content (plain text from Readability)
+            processed.content = extracted.content
+
+            // Store extraction metadata
+            processed.metadata.content_extraction = {
+              extracted_at: extracted.extractedAt,
+              title: extracted.title,
+              byline: extracted.byline,
+              length: extracted.length,
+              site_name: extracted.siteName,
+              method: 'readability',
+            }
+
+            logMetric('content_extracted', {
+              bookmark_id: bookmarkId,
+              duration_ms: Date.now() - contentStartTime,
+              url: bookmark.href,
+              content_length: extracted.content.length,
+            })
+          } else if (!processed.metadata.content_extraction) {
+            // Fall back to Pinboard metadata if extraction failed
+            logger.info(`Content extraction failed for ${bookmark.href}, using Pinboard metadata`)
+            processed.metadata.content_extraction = {
+              method: 'pinboard_metadata',
+              reason: 'extraction_failed',
+            }
           }
         }
       } catch (error) {
