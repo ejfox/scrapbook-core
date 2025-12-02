@@ -1,124 +1,97 @@
 # Claude Code Session Notes
 
-## Database Environment
-- **Supabase URL**: `https://xmdylmbdeulxcqdbkfno.supabase.co`
-- **Database**: `scraps` table (primary data store)
-- **Environment**: Production instance with live data
-- **Total Scraps**: 9,485 (as of 2025-09-30)
+## Database
 
-## 🔴 CRITICAL: Archive Completeness Status (2025-09-30)
-**Overall Health Score: 16.7%** - Massive unprocessed backlog!
+### Supabase (Primary - Cloud)
+- **URL**: `https://xmdylmbdeulxcqdbkfno.supabase.co`
+- **Table**: `scraps`
+- **Count**: ~9,592 scraps
+- **Date range**: 2010-03-05 to present
 
-### Field Completeness Audit:
-- **ai_summary**: 0% (0/9,485) ❌ CRITICAL
-- **ai_tags**: 0% (0/9,485) ❌ CRITICAL
-- **relationships**: 5.9% (561/9,485) ⚠️
-- **location**: 2.6% (247/9,485) ⚠️
-- **financial_analysis**: 0.1% (6/9,485) ❌
-- **screenshot_url**: 8.2% (779/9,485) ⚠️
-- **content**: 100% (9,485/9,485) ✅
+### SQLite (Local - Stale)
+- **Path**: `~/scraps.db`
+- **Count**: 10,335 scraps
+- **Last synced**: June 2025 (6 months stale)
+- **Note**: Missing 12 columns added for AI processing. Sync script needs update.
 
-### Recent Processing Activity:
-- Last 24 hours: 236 processed
-- Last 7 days: 7,144 processed
-- Backlog requiring processing: ~9,000 scraps
+## Schema (Supabase - verified 2025-12)
 
-## Recent Bug Fixes (2025-09-30)
+Core fields:
+- `id` - UUID primary key
+- `scrap_id` - External ID from source
+- `source` - pinboard, arena, github, mastodon
+- `type` - bookmark, block, repo, status
+- `url` - Source URL
+- `title` - Title
+- `content` - Raw content
+- `created_at` / `updated_at` / `published_at`
 
-### 1. ✅ FIXED: Zombie Process Issue
-- **Problem**: Cron jobs never exiting, creating 10+ stuck processes
-- **Solution**: Added `process.exit(0)` after successful completion in `scripts/index.mjs`
-- **Added**: 10-minute timeout protection with `MAX_RUNTIME_MS`
+AI extraction fields:
+- `summary` - AI-generated summary
+- `tags` - Array of tags
+- `concept_tags` - Higher-level concept tags
+- `relationships` - Entity relationships (JSONB array)
+- `location` - Extracted location name
+- `latitude` / `longitude` - Geocoded coordinates
+- `financial_analysis` - Financial data (JSONB)
+- `extraction_confidence` - Confidence scores (JSONB)
+- `content_type` - article, video, etc.
 
-### 2. ✅ FIXED: Location Extraction Bug
-- **Problem**: All locations showing "Unknown"
-- **Solution**: Fixed `scripts/scrap_doctor_ai.mjs:210` - changed `locationData.name` to `locationData.location`
-- **Added**: OpenCage API key for geocoding with lat/lon coordinates
+Embedding fields:
+- `embedding` - OpenAI embedding vector
+- `embedding_nomic` - Nomic embedding vector
+- `image_embedding` - Image embedding vector
 
-### 3. ✅ FIXED: Relationship Extraction Quality
-- **Problem**: 0% success rate, malformed structures, generic "Entity" types
-- **Solutions**:
-  - Enhanced AI prompt to request entity types in Cypher format
-  - Added 50+ patterns for entity type detection (Person, Organization, Technology, Product, Location, Event, Concept)
-  - Fixed parsing to handle `[Entity:Type]` format from AI
-- **Result**: Now extracting 30-60 high-quality relationships per scrap with proper types
+Other:
+- `screenshot_url` - Cloudinary screenshot
+- `metadata` - Source-specific metadata (JSONB)
+- `shared` - Public visibility flag
+- `graph_imported` - Neo4j sync status
+- `processing_instance_id` / `processing_started_at` - Processing locks
 
-### 4. ✅ FIXED: Financial Analysis Integration
-- **Problem**: Column didn't exist, not integrated in batch processing
-- **Solution**: Added `financial_analysis` JSONB column via Supabase dashboard
-- **SQL**: `ALTER TABLE scraps ADD COLUMN financial_analysis JSONB;`
-
-## Screenshot Handling Status
-Different processors have inconsistent screenshot generation:
-- **Arena**: ✅ Generates screenshots
-- **GitHub**: ✅ Now generates screenshots (recently added)
-- **Pinboard**: ⚠️ Conditional generation
-- **Mastodon**: ❌ No generation
-
-## Repair Commands
-
-### Process Backlog (URGENT)
+## Status Commands
 ```bash
-# Process everything missing AI extraction (start with small batches)
-node scripts/scrap_doctor_ai.mjs repair --limit 100 --force
+# Field completeness (recent 64 scraps with samples)
+node scripts/audit_fields.mjs
 
-# Target specific extraction types
-node scripts/scrap_doctor_ai.mjs repair --type summary --limit 100
-node scripts/scrap_doctor_ai.mjs repair --type tags --limit 100
-node scripts/scrap_doctor_ai.mjs repair --type relationships --limit 100
-node scripts/scrap_doctor_ai.mjs repair --type location --limit 100
+# Full backlog audit with health score
+node scripts/audit_backlog.mjs [limit]
+
+# Unprocessed items check
+node scripts/check_backlog.mjs
+
+# Deep AI quality analysis
+node scripts/comprehensive_quality_audit.mjs
+
+# API/service health (costs ~$0.01)
+node scripts/health_check.mjs
 ```
 
-### Main Processing Script
+## Processing Commands
 ```bash
-# Run main scrapbook processing (with proper exit handling)
+# Main processing
 node scripts/index.mjs
+
+# Repair/reprocess
+node scripts/scrap_doctor_ai.mjs repair --limit 100
+node scripts/scrap_doctor_ai.mjs repair --type summary --limit 100
+node scripts/scrap_doctor_ai.mjs repair --type relationships --limit 100
 ```
 
-## Validation Tools Available
-```bash
-# Data validation commands
-node scripts/validate_db_integrity.mjs
-node scripts/validate_scraps.mjs [source]
-node scripts/sync_supabase_to_sqlite.mjs
-node scripts/validate_ai.mjs
-node scripts/validate_embeddings.mjs
-
-# Check archive completeness
-node -e "
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-// Quick completeness check
-const { count: total } = await supabase.from('scraps').select('*', { count: 'exact', head: true });
-const { count: summaries } = await supabase.from('scraps').select('*', { count: 'exact', head: true }).not('ai_summary', 'is', null);
-const { count: tags } = await supabase.from('scraps').select('*', { count: 'exact', head: true }).not('ai_tags', 'is', null);
-console.log(\`Archive: \${total} scraps, \${((summaries/total)*100).toFixed(1)}% summaries, \${((tags/total)*100).toFixed(1)}% tags\`);
-"
-```
-
-## Cost Tracking
-- **Current Lifetime Cost**: $13.46
-- **Circuit Breakers**: Active with smart rate limiting
-- **Safety Manager**: Batch limits and error protection enabled
+## Data Sources
+- `pinboard` - ~94% of scraps
+- `arena` - ~6% of scraps
 
 ## Environment Variables
-All required API keys are configured:
-- `OPENROUTER_API_KEY`: ✅ Configured
-- `OPENCAGE_API_KEY`: ✅ Configured (45b5bcf9b00b43e8a50c241f9523735f)
-- `SUPABASE_URL`: ✅ Configured
-- `SUPABASE_KEY`: ✅ Configured
+Required:
+- `OPENROUTER_API_KEY`
+- `OPENAI_API_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `OPENCAGE_API_KEY`
 
-## Next Priority Actions
-1. **CRITICAL**: Process the 9,000+ unprocessed scraps - the archive is only 16.7% complete!
-2. Run batch repair to add AI summaries (0% complete)
-3. Run batch repair to add AI tags (0% complete)
-4. Continue monitoring cron job execution to ensure clean exits
-5. Consider implementing progressive batch processing to handle backlog
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+Optional:
+- `PINBOARD_TOKEN`
+- `GITHUB_TOKEN`
+- `MASTODON_ACCESS_TOKEN`
+- `ARENA_ACCESS_TOKEN`

@@ -57,6 +57,7 @@ program
   .option('--fetch-content', 'Fetch full content from URLs', true)
   .option('-f, --force', 'Force regenerate all fields even if they exist')
   .option('--sync-to-pinboard', 'Sync repaired tags back to Pinboard after batch completes')
+  .option('--priority', 'Use priority_ids.json for weighted/interesting scraps first')
   .action(repair)
 
 async function repair(options) {
@@ -64,37 +65,78 @@ async function repair(options) {
 
   const spinner = ora('Finding scraps that need repair...').start()
 
-  // Get scraps that need repair - most recent first
-  let query = supabase
-    .from('scraps')
-    .select('*')
-    .order('created_at', { ascending: false })  // Most recent first
-    .limit(parseInt(options.limit))
+  let scraps = []
+  let error = null
 
-  if (options.source) {
-    query = query.eq('source', options.source)
-  }
+  // Priority mode: use pre-computed priority IDs
+  if (options.priority) {
+    const priorityFile = path.resolve(process.cwd(), 'priority_ids.json')
+    if (!fs.existsSync(priorityFile)) {
+      spinner.stop()
+      console.error(chalk.red('❌ priority_ids.json not found. Run: node scripts/prioritize_backlog.mjs'))
+      return
+    }
 
-  // Filter based on repair type
-  if (options.type === 'summary') {
-    query = query.or('summary.is.null,summary.eq.""')
-  } else if (options.type === 'tags') {
-    query = query.or('tags.is.null,tags.eq.{}')
-  } else if (options.type === 'relationships') {
-    query = query.or('relationships.is.null,relationships.eq.{}')
-  } else if (options.type === 'location') {
-    query = query.is('location', null)
-  } else if (options.type === 'financial') {
-    // For now, select all scraps since financial_analysis column may not exist yet
-    // query = query.is('financial_analysis', null);
-  } else if (options.type === 'screenshot') {
-    query = query.not('url', 'is', null).is('screenshot_url', null)
+    const allPriorityIds = JSON.parse(fs.readFileSync(priorityFile, 'utf8'))
+    const limit = parseInt(options.limit)
+    const idsToProcess = allPriorityIds.slice(0, limit)
+
+    console.log(chalk.yellow(`\n📊 Priority mode: processing ${idsToProcess.length} of ${allPriorityIds.length} prioritized scraps\n`))
+
+    // Fetch scraps by ID in batches (Supabase IN query limit)
+    const batchSize = 100
+    for (let i = 0; i < idsToProcess.length; i += batchSize) {
+      const batch = idsToProcess.slice(i, i + batchSize)
+      const { data, error: batchError } = await supabase
+        .from('scraps')
+        .select('*')
+        .in('id', batch)
+
+      if (batchError) {
+        error = batchError
+        break
+      }
+      scraps = scraps.concat(data || [])
+    }
+
+    // Sort by priority order (maintain priority_ids.json order)
+    const idOrder = new Map(idsToProcess.map((id, idx) => [id, idx]))
+    scraps.sort((a, b) => (idOrder.get(a.id) || 0) - (idOrder.get(b.id) || 0))
   } else {
-    // Get scraps missing any AI enrichment (excluding financial_analysis until column exists)
-    query = query.or('summary.is.null,tags.is.null,relationships.is.null,location.is.null')
-  }
+    // Standard mode: query by filters
+    let query = supabase
+      .from('scraps')
+      .select('*')
+      .order('created_at', { ascending: false })  // Most recent first
+      .limit(parseInt(options.limit))
 
-  const { data: scraps, error } = await query
+    if (options.source) {
+      query = query.eq('source', options.source)
+    }
+
+    // Filter based on repair type
+    if (options.type === 'summary') {
+      query = query.or('summary.is.null,summary.eq.""')
+    } else if (options.type === 'tags') {
+      query = query.or('tags.is.null,tags.eq.{}')
+    } else if (options.type === 'relationships') {
+      query = query.or('relationships.is.null,relationships.eq.{}')
+    } else if (options.type === 'location') {
+      query = query.is('location', null)
+    } else if (options.type === 'financial') {
+      // For now, select all scraps since financial_analysis column may not exist yet
+      // query = query.is('financial_analysis', null);
+    } else if (options.type === 'screenshot') {
+      query = query.not('url', 'is', null).is('screenshot_url', null)
+    } else {
+      // Get scraps missing any AI enrichment (excluding financial_analysis until column exists)
+      query = query.or('summary.is.null,tags.is.null,relationships.is.null,location.is.null')
+    }
+
+    const result = await query
+    scraps = result.data
+    error = result.error
+  }
 
   if (error) {
     spinner.stop()

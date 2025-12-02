@@ -70,6 +70,10 @@ console.log(
 )
 console.log('NODE_ENV:', process.env.NODE_ENV || 'not set')
 
+// Embedding generation toggle - disabled by default (not currently used)
+const ENABLE_EMBEDDINGS = process.env.ENABLE_EMBEDDINGS === 'true'
+console.log('ENABLE_EMBEDDINGS:', ENABLE_EMBEDDINGS)
+
 // Ensure logs directory exists
 const logsDir = path.join(process.cwd(), 'logs')
 if (!fs.existsSync(logsDir)) {
@@ -495,7 +499,7 @@ program
   .option('--fix', 'Fix missing data in existing scraps')
   .option('--fix-dry-run', 'Show what would be fixed without making changes')
   .option('--fix-images', 'Only fix missing images')
-  .option('--fix-embeddings', 'Only fix missing embeddings')
+  .option('--fix-embeddings', 'Only fix missing embeddings (requires ENABLE_EMBEDDINGS=true)')
   .option('--fix-ai', 'Only fix missing AI data')
   .option('--fix-pinboard', 'Fix only Pinboard scraps')
   .option('--fix-arena', 'Fix only Are.na scraps')
@@ -686,33 +690,37 @@ async function enrichScrapWithAI(scrapData) {
       return scrapData
     }
 
-    // Generate text embedding with retries
-    stepViz.startStep(5)  // EMBED step
-    let textEmbedding = null
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        textEmbedding = await limiter.schedule(() =>
-          generateEmbedding(contentToProcess, {
-            type: 'text',
-            scrapId: scrapIdentifier,
-            taskType: 'text_embedding',
-          }),
-        )
-        if (textEmbedding) {
-          scrapData.embedding = textEmbedding  // OpenAI text-embedding-3-small
-          stepViz.completeStep(5, '1536 dimensions')
-          trackStep('embeddings', true)
-          break
-        }
-      } catch (error) {
-        logger.error(
-          chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`),
-        )
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
-        if (attempt === 3) {
-          trackStep('embeddings', false)
+    // Generate text embedding with retries (if enabled)
+    if (ENABLE_EMBEDDINGS) {
+      stepViz.startStep(5)  // EMBED step
+      let textEmbedding = null
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          textEmbedding = await limiter.schedule(() =>
+            generateEmbedding(contentToProcess, {
+              type: 'text',
+              scrapId: scrapIdentifier,
+              taskType: 'text_embedding',
+            }),
+          )
+          if (textEmbedding) {
+            scrapData.embedding = textEmbedding  // OpenAI text-embedding-3-small
+            stepViz.completeStep(5, '1536 dimensions')
+            trackStep('embeddings', true)
+            break
+          }
+        } catch (error) {
+          logger.error(
+            chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`),
+          )
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+          if (attempt === 3) {
+            trackStep('embeddings', false)
+          }
         }
       }
+    } else {
+      stepViz.skipStep(5, 'disabled')
     }
 
     // Generate summary and tags
@@ -845,8 +853,9 @@ async function enrichScrapWithAI(scrapData) {
       }
     }
 
-    // Process images
-    if (scrapData.screenshot_url || scrapData.metadata?.image_url) {
+    // Process images for embeddings (if enabled)
+    // Note: processImagesForScrap generates image descriptions, not embeddings
+    if (ENABLE_EMBEDDINGS && (scrapData.screenshot_url || scrapData.metadata?.image_url)) {
       logger.info(chalk.blue('\n6️⃣  Processing image...'))
       const imageStartTime = Date.now()
 
@@ -2019,7 +2028,7 @@ async function identifyAndFixMissingData(options = {}) {
   const {
     batchSize = 50,
     processImages = true,
-    processEmbeddings = true,
+    processEmbeddings = ENABLE_EMBEDDINGS, // Uses global toggle, defaults to false
     processAI = true,
     dryRun = false,
     source = null,
