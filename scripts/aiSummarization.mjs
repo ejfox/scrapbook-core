@@ -1,10 +1,12 @@
 import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
 import { breakContentIntoChunks } from '../helpers.js'
+import { discoverThreadContext, formatThreadContext } from '../lib/threadContext.mjs'
 import Bottleneck from 'bottleneck'
 import fetch from 'node-fetch'
 
 const DEBUG = process.env.DEBUG === 'true'
+const ENABLE_THREADS = process.env.ENABLE_THREAD_CONTEXT === 'true' // Murphy's opt-in flag
 
 // Minimum content length to consider "real" content (not just title/metadata)
 const MIN_CONTENT_LENGTH = 100
@@ -21,7 +23,7 @@ const limiter = new Bottleneck({
 const blacklistPhrases = ['Here is a summary'] // Add more phrases as needed
 
 export async function summarizeContent(content, options = {}) {
-  const { scrapId, taskType = 'summarization', ...otherOptions } = options
+  const { scrapId, scrap, tags, taskType = 'summarization', ...otherOptions } = options
 
   if (!content) {
     log('❌ No content to summarize')
@@ -30,6 +32,19 @@ export async function summarizeContent(content, options = {}) {
 
   try {
     log(`🔍 Original content length: ${content.length}`)
+
+    // Murphy's "Stupid Simple" thread discovery
+    let threadContext = null
+    if (ENABLE_THREADS && scrap && tags && tags.length > 0) {
+      log('🧵 Discovering thread context...')
+      const discovered = await discoverThreadContext(scrap, { tags })
+      if (discovered && discovered.length > 0) {
+        threadContext = formatThreadContext(discovered)
+        log(`✅ Found ${discovered.length} related bookmarks`)
+      } else {
+        log('📭 No related bookmarks found')
+      }
+    }
 
     // Clean up HTML content if present
     const cleanContent = content
@@ -64,7 +79,12 @@ export async function summarizeContent(content, options = {}) {
         log(`Processing chunk ${i + 1}/${chunks.length}`)
         const summary = await limiter.schedule(async () => {
           log(`🔄 Starting chunk ${i + 1} summarization...`)
-          const result = await summarizeChunk(chunk, { ...otherOptions, scrapId, taskType })
+          const result = await summarizeChunk(chunk, {
+            ...otherOptions,
+            scrapId,
+            taskType,
+            threadContext: i === 0 ? threadContext : null // Only add context to first chunk
+          })
           log(
             `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`,
           )
@@ -195,7 +215,7 @@ export function isContentInsufficient(content) {
 }
 
 async function summarizeChunk(chunk, options = {}) {
-  const { scrapId, taskType = 'summarization', ...otherOptions } = options
+  const { scrapId, taskType = 'summarization', threadContext, ...otherOptions } = options
   const startTime = performance.now()
   let summary = null
   let retries = 0
@@ -212,11 +232,15 @@ async function summarizeChunk(chunk, options = {}) {
       'You are an expert content analyst helping someone build their digital memory. Your summaries help them remember why they saved something, what was interesting about it, and all the key information they might want to recall later. Be thorough, insightful, and capture the essence of why this content matters.',
   }
 
-  const userMessage = {
-    role: 'user',
-    content: `You are summarizing content for a digital memory system. Create a rich, detailed summary that captures everything interesting and useful.
+  // Build user message with optional thread context
+  let userContent = 'You are summarizing content for a digital memory system. Create a rich, detailed summary that captures everything interesting and useful.\n\n'
 
-Instructions:
+  // Murphy's thread context injection
+  if (threadContext) {
+    userContent += threadContext + '\n\n---\n\n'
+  }
+
+  userContent += `Instructions:
 • Generate as many bullet points as the content warrants (typically 5-15)
 • Each point must start with "• "
 • Be comprehensive - capture ALL interesting facts, insights, quotes, numbers, dates, names
@@ -230,7 +254,11 @@ Write in a natural, informative style. Be specific and detailed. Include context
 ${blacklistInstruction}
 
 Content to summarize:
-${chunk}`,
+${chunk}`
+
+  const userMessage = {
+    role: 'user',
+    content: userContent
   }
 
   while (summary === null && retries < 3) {
@@ -309,6 +337,94 @@ ${chunk}`,
   }
 
   return summary
+}
+
+/**
+ * Generate a META-summary: a ~140 character synthesis of all analysis outputs
+ * This combines insights from summary, tags, relationships, location, etc.
+ * into a compact, Twitter-length overview of the scrap.
+ */
+export function generateMetaSummary(scrap) {
+  const parts = []
+  const maxLength = 140
+
+  // Helper to strip HTML and markdown
+  const stripFormatting = (text) => {
+    if (!text) return ''
+    return text
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/__(.+?)__/g, '$1')
+      .replace(/_(.+?)_/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\n/g, ' ')
+      .trim()
+  }
+
+  // Start with content type if available
+  if (scrap.content_type && scrap.content_type !== 'bookmark') {
+    parts.push(scrap.content_type.toUpperCase())
+  }
+
+  // Add primary subject from title or first concept tag
+  if (scrap.title) {
+    const title = stripFormatting(scrap.title).substring(0, 40)
+    parts.push(title)
+  } else if (scrap.concept_tags && scrap.concept_tags.length > 0) {
+    parts.push(scrap.concept_tags[0])
+  }
+
+  // Add location if notable
+  if (scrap.location && scrap.location !== 'Unknown') {
+    parts.push(`@ ${scrap.location}`)
+  }
+
+  // Add relationship count if significant
+  if (scrap.relationships && scrap.relationships.length > 0) {
+    parts.push(`${scrap.relationships.length} connections`)
+  }
+
+  // Add financial context if present
+  if (scrap.financial_analysis?.tracked_assets?.length > 0) {
+    const symbols = scrap.financial_analysis.tracked_assets.map((a) => a.symbol).join(',')
+    parts.push(`$${symbols}`)
+  }
+
+  // Add key tags (max 2-3)
+  const keyTags = []
+  if (scrap.tags && Array.isArray(scrap.tags)) {
+    keyTags.push(...scrap.tags.slice(0, 2))
+  } else if (scrap.concept_tags && Array.isArray(scrap.concept_tags)) {
+    keyTags.push(...scrap.concept_tags.slice(0, 2))
+  }
+  if (keyTags.length > 0) {
+    parts.push(`#${keyTags.join(' #')}`)
+  }
+
+  // Combine parts and truncate to max length
+  let summary = parts.join(' · ')
+
+  // If we have room and a summary exists, add a snippet
+  if (summary.length < maxLength - 20 && scrap.summary) {
+    const cleanSummary = stripFormatting(scrap.summary)
+    const remainingSpace = maxLength - summary.length - 3 // -3 for " - "
+    if (remainingSpace > 20) {
+      const snippet = cleanSummary.substring(0, remainingSpace)
+      summary += ` - ${snippet}`
+    }
+  }
+
+  // Final truncation
+  if (summary.length > maxLength) {
+    summary = summary.substring(0, maxLength - 1) + '…'
+  }
+
+  return summary || 'No summary available'
 }
 
 export async function metaSummaryToTags(summary, options = {}) {
