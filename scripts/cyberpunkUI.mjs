@@ -87,14 +87,14 @@ export class StepVisualizer {
     this.scrapTitle = scrapTitle
     this.currentStep = 0
     this.steps = [
-      { name: 'FETCH', icon: '', color: cyber.cyan },
-      { name: 'PARSE', icon: '', color: cyber.purple },
-      { name: 'SUMMARIZE', icon: '', color: cyber.yellow },
-      { name: 'EXTRACT TAGS', icon: '', color: cyber.pink },
-      { name: 'FIND RELATIONS', icon: '', color: cyber.green },
-      { name: 'EMBED', icon: '', color: cyber.purple },
-      { name: 'REASON', icon: '', color: cyber.cyan },
-      { name: 'SAVE', icon: '', color: cyber.green },
+      { name: 'FETCH', icon: 'fetch', color: cyber.cyan },
+      { name: 'PARSE', icon: 'parse', color: cyber.purple },
+      { name: 'SUMMARIZE', icon: 'summarize', color: cyber.yellow },
+      { name: 'EXTRACT TAGS', icon: 'tag', color: cyber.pink },
+      { name: 'FIND RELATIONS', icon: 'relate', color: cyber.green },
+      { name: 'EMBED', icon: 'embed', color: cyber.purple },
+      { name: 'REASON', icon: 'reason', color: cyber.cyan },
+      { name: 'SAVE', icon: 'save', color: cyber.green },
     ]
   }
 
