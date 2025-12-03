@@ -281,8 +281,9 @@ async function repairScrapWithAI(scrap, options) {
   const scrapId = scrap.scrap_id
 
   // If a specific type is requested, ONLY process that type
-  const shouldProcessAll = !options.type || options.force
-  const shouldProcessType = (type) => !options.type || options.type === type || options.force
+  // Note: --force only affects NULL checks in query, NOT type filtering
+  const shouldProcessAll = !options.type
+  const shouldProcessType = (type) => !options.type || options.type === type
 
   // Determine what content to use for AI processing
   let content = scrap.content || scrap.title || ''
@@ -316,8 +317,8 @@ async function repairScrapWithAI(scrap, options) {
     }
   }
 
-  // Generate summary if missing
-  if (shouldProcessType('summary') && (!scrap.summary || scrap.summary.trim() === '')) {
+  // Generate summary if missing (or if --force is used)
+  if (shouldProcessType('summary') && (options.force || !scrap.summary || scrap.summary.trim() === '')) {
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping summary (insufficient content)'))
     } else {
@@ -399,8 +400,8 @@ async function repairScrapWithAI(scrap, options) {
     } // Close else block for tags content check
   }
 
-  // Extract relationships if missing
-  if (shouldProcessType('relationships') && (!scrap.relationships || scrap.relationships.length === 0)) {
+  // Extract relationships if missing (or if --force is used)
+  if (shouldProcessType('relationships') && (options.force || !scrap.relationships || scrap.relationships.length === 0)) {
     // Skip if no content
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping relationships (insufficient content)'))
@@ -458,8 +459,8 @@ async function repairScrapWithAI(scrap, options) {
     } // Close else block for content check
   }
 
-  // Extract locations if missing
-  if (shouldProcessType('location') && !scrap.location) {
+  // Extract locations if missing (or if --force is used)
+  if (shouldProcessType('location') && (options.force || !scrap.location)) {
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping location (insufficient content)'))
     } else {
