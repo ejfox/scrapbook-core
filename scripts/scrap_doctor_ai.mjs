@@ -60,10 +60,66 @@ program
   .option('--priority', 'Use priority_ids.json for weighted/interesting scraps first')
   .action(repair)
 
-async function repair(options) {
-  console.log(chalk.cyan('🔧 AI-Powered Scrap Doctor - Repair Mode\n'))
+// Cyberpunk UI helpers
+const cyber = {
+  banner: () => {
+    const lines = [
+      '╔═══════════════════════════════════════════════════════════════╗',
+      '║  ███████╗ ██████╗██████╗  █████╗ ██████╗     ██████╗  ██████╗ ║',
+      '║  ██╔════╝██╔════╝██╔══██╗██╔══██╗██╔══██╗    ██╔══██╗██╔═══██╗║',
+      '║  ███████╗██║     ██████╔╝███████║██████╔╝    ██║  ██║██║   ██║║',
+      '║  ╚════██║██║     ██╔══██╗██╔══██║██╔═══╝     ██║  ██║██║   ██║║',
+      '║  ███████║╚██████╗██║  ██║██║  ██║██║         ██████╔╝╚██████╔╝║',
+      '║  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝         ╚═════╝  ╚═════╝ ║',
+      '║                                                                 ║',
+      '║         A I - P O W E R E D   M E M O R Y   D O C T O R        ║',
+      '╚═══════════════════════════════════════════════════════════════╝'
+    ]
+    console.log(chalk.cyan(lines.join('\n')))
+    console.log(chalk.magenta('    > Initializing neural pathways...\n'))
+  },
 
-  const spinner = ora('Finding scraps that need repair...').start()
+  bar: (current, total) => {
+    const width = 40
+    const percentage = Math.floor((current / total) * 100)
+    const filled = Math.floor((current / total) * width)
+    const empty = width - filled
+    const bar = chalk.cyan('█').repeat(filled) + chalk.gray('░').repeat(empty)
+    return `${bar} ${chalk.magenta(percentage + '%')} ${chalk.gray(`[${current}/${total}]`)}`
+  },
+
+  stats: (repaired, failed, total, threads = 0) => {
+    const box = [
+      chalk.gray('┌─────────────────────────────────────┐'),
+      chalk.gray('│') + chalk.cyan(' STATS ') + chalk.gray('                             │'),
+      chalk.gray('├─────────────────────────────────────┤'),
+      chalk.gray('│') + chalk.green(' ✓ Repaired: ') + chalk.white(repaired.toString().padEnd(22)) + chalk.gray('│'),
+      chalk.gray('│') + chalk.red(' ✗ Failed:   ') + chalk.white(failed.toString().padEnd(22)) + chalk.gray('│'),
+      chalk.gray('│') + chalk.magenta(' 🧵 Threads:  ') + chalk.white(threads.toString().padEnd(21)) + chalk.gray('│'),
+      chalk.gray('│') + chalk.yellow(' ⚡ Rate:     ') + chalk.white(`${((repaired/(repaired+failed))*100).toFixed(1)}%`.padEnd(21)) + chalk.gray('│'),
+      chalk.gray('└─────────────────────────────────────┘')
+    ]
+    return box.join('\n')
+  },
+
+  divider: () => chalk.gray('━'.repeat(65)),
+
+  glitch: (text) => {
+    const glitchChars = '▒▓█░'
+    const random = glitchChars[Math.floor(Math.random() * glitchChars.length)]
+    return chalk.red(`${random} ${text} ${random}`)
+  }
+}
+
+async function repair(options) {
+  console.clear()
+  cyber.banner()
+
+  const spinner = ora({
+    text: 'Scanning memory banks...',
+    spinner: 'dots12',
+    color: 'cyan'
+  }).start()
 
   let scraps = []
   let error = null
@@ -149,34 +205,55 @@ async function repair(options) {
   spinner.stop()
 
   if (!scraps || scraps.length === 0) {
-    console.log(chalk.green('✅ No scraps need repair!'))
+    console.log(chalk.green('\n✅ No scraps need repair! Memory banks are clean.\n'))
     return
   }
 
-  console.log(chalk.yellow(`Found ${scraps.length} scraps that need repair.\n`))
+  console.log(cyber.divider())
+  console.log(chalk.magenta(`    > ${scraps.length} memory fragments detected`))
+  console.log(chalk.cyan(`    > Thread discovery: ${process.env.ENABLE_THREAD_CONTEXT === 'true' ? 'ENABLED' : 'DISABLED'}`))
+  console.log(cyber.divider())
+  console.log()
 
   let repaired = 0
   let failed = 0
+  let threadsFound = 0
   const retryQueue = [] // Queue for scraps that failed content fetch
+  const startTime = Date.now()
 
   for (const [index, scrap] of scraps.entries()) {
-    const progress = `[${index + 1}/${scraps.length}]`
-    console.log(chalk.gray(`${progress} Repairing: ${scrap.title?.substring(0, 60) || scrap.url?.substring(0, 60) || scrap.scrap_id}...`))
+    const progress = index + 1
+    const title = scrap.title?.substring(0, 50) || scrap.url?.substring(0, 50) || scrap.scrap_id
+
+    // Progress bar
+    console.log('\n' + cyber.bar(progress, scraps.length))
+    console.log(chalk.gray('━'.repeat(65)))
+    console.log(chalk.cyan('▶ ') + chalk.white(`${title}...`))
 
     try {
       const result = await repairScrapWithAI(scrap, options)
 
+      // Track thread discoveries
+      if (result && result.foundThreads) {
+        threadsFound++
+      }
+
       // Check if content fetch failed or returned insufficient content
       if (result && result.needsRetry) {
         retryQueue.push({ scrap, reason: result.retryReason, attempts: 1 })
-        console.log(chalk.yellow(`  ⏭️  Queued for retry: ${result.retryReason}`))
+        console.log(chalk.yellow('  ⏭  ') + chalk.gray(`Queued: ${result.retryReason}`))
       } else {
         repaired++
-        console.log(chalk.green('  ✅ Repaired'))
+        console.log(chalk.green('  ✓  ') + chalk.cyan('Repaired'))
       }
     } catch (error) {
       failed++
-      console.log(chalk.red(`  ❌ Failed: ${error.message}`))
+      console.log(cyber.glitch(`FAILED: ${error.message.substring(0, 40)}`))
+    }
+
+    // Show stats every 10 items
+    if ((index + 1) % 10 === 0) {
+      console.log('\n' + cyber.stats(repaired, failed, scraps.length, threadsFound))
     }
 
     // Process retry queue every 10 scraps
@@ -254,10 +331,19 @@ async function repair(options) {
     }
   }
 
-  console.log(chalk.blue('\n📊 Repair Summary:'))
-  console.log(`  ✅ Repaired: ${repaired}`)
-  console.log(`  ❌ Failed: ${failed}`)
-  console.log(`  📈 Success rate: ${Math.round((repaired / scraps.length) * 100)}%`)
+  // Final stats
+  const elapsed = Math.floor((Date.now() - startTime) / 1000)
+  const minutes = Math.floor(elapsed / 60)
+  const seconds = elapsed % 60
+  const rate = (repaired / (repaired + failed) * 100).toFixed(1)
+
+  console.log('\n' + cyber.divider())
+  console.log(chalk.cyan.bold('\n    ▓▓▓ MISSION COMPLETE ▓▓▓\n'))
+  console.log(cyber.stats(repaired, failed, scraps.length, threadsFound))
+  console.log()
+  console.log(chalk.gray('    Time elapsed: ') + chalk.white(`${minutes}m ${seconds}s`))
+  console.log(chalk.gray('    Avg per scrap: ') + chalk.white(`${(elapsed / scraps.length).toFixed(1)}s`))
+  console.log(cyber.divider())
 
   // Sync tags back to Pinboard if requested
   if (options.syncToPinboard && repaired > 0) {
