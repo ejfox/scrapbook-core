@@ -225,3 +225,86 @@ export function showSuccess() {
 export function separator() {
   console.log(cyber.gray('\n  ' + '─'.repeat(63)))
 }
+
+// Glitch effect for errors and warnings
+export function glitch(text) {
+  const glitchChars = '▒▓█░▀▄'
+  const random1 = glitchChars[Math.floor(Math.random() * glitchChars.length)]
+  const random2 = glitchChars[Math.floor(Math.random() * glitchChars.length)]
+  return cyber.red(`${random1}${random2} `) + chalk.bgRed.white.bold(` ${text} `) + cyber.red(` ${random2}${random1}`)
+}
+
+// Thread context indicator - shows when related scraps are found
+export function showThreadContext(count, candidates) {
+  if (count === 0) return
+
+  const threadBar = '🧵'.repeat(Math.min(count, 5))
+  console.log(cyber.cyan('\n  ╭─ THREAD CONTEXT ') + cyber.gray('─'.repeat(43)))
+  console.log(cyber.gray('  │ ') + cyber.purple(threadBar) + cyber.white(` Found ${count} related bookmark${count > 1 ? 's' : ''}`))
+
+  // Show top 3 candidates
+  if (candidates && candidates.length > 0) {
+    candidates.slice(0, 3).forEach((c, i) => {
+      const title = c.title?.substring(0, 45) || 'Untitled'
+      const overlap = c.overlapping_tags?.slice(0, 2).join(', ') || ''
+      console.log(cyber.gray('  │   ') + cyber.yellow(`${i + 1}.`) + ' ' + cyber.white(title))
+      if (overlap) {
+        console.log(cyber.gray('  │      ') + cyber.gray('Tags: ') + cyber.pink(overlap))
+      }
+    })
+  }
+
+  console.log(cyber.cyan('  ╰' + '─'.repeat(63)))
+}
+
+// Cost meter - shows real-time cost tracking
+export function showCostMeter(cost, tokens, model) {
+  const dollarSign = cost > 0.01 ? '💰' : '💸'
+  const color = cost > 0.05 ? cyber.red : cost > 0.01 ? cyber.yellow : cyber.green
+
+  console.log(cyber.gray('      └─ ') + dollarSign + ' ' + color(`$${cost.toFixed(4)}`) + cyber.gray(` | ${tokens} tokens | ${model}`))
+}
+
+// Pulsing dot animation for waiting
+export function waitingDots(iteration = 0) {
+  const dots = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  return cyber.cyan(dots[iteration % dots.length])
+}
+
+// Matrix-style success cascade
+export function matrixSuccess() {
+  const symbols = ['█', '▓', '▒', '░']
+  const line = symbols.map(() => symbols[Math.floor(Math.random() * symbols.length)]).join('')
+  console.log(cyber.green('  ' + line))
+}
+
+// Neural network visualization
+export function showNeuralActivity(layer, active = true) {
+  const neurons = '●'.repeat(5)
+  const connections = '━'.repeat(3)
+  const pulse = active ? cyber.cyan : cyber.gray
+
+  console.log(pulse(`  ${neurons} ${connections}▶ `) + cyber.white(layer))
+}
+
+// Rate limit warning
+export function rateLimitWarning(level, waitTime) {
+  const levels = {
+    0: { icon: '🟢', text: 'NORMAL', color: cyber.green },
+    1: { icon: '🟡', text: 'ELEVATED', color: cyber.yellow },
+    2: { icon: '🟠', text: 'HIGH', color: cyber.pink },
+    3: { icon: '🔴', text: 'CRITICAL', color: cyber.red }
+  }
+
+  const l = levels[level] || levels[0]
+  console.log('\n' + l.icon + ' ' + l.color(`RATE LIMIT: ${l.text}`) + cyber.gray(` | Cooldown: ${waitTime}ms`))
+}
+
+// Embed/vector visualization
+export function showEmbedding(dimensions, model) {
+  const bars = Array.from({ length: 10 }, () => {
+    const height = Math.floor(Math.random() * 5)
+    return '▁▂▃▄▅'[height]
+  }).join('')
+
+  console.log(cyber.gray('      └─ ') + cyber.purple('🧠 ') + cyber.purple(bars) + cyber.gray(` | ${dimensions}D | ${model}`))
