@@ -9,7 +9,7 @@ import path from 'path'
 import fs from 'fs'
 
 // Import AI services and utilities
-import { summarizeContent } from './aiSummarization.mjs'
+import { summarizeContent, generateMetaSummary } from './aiSummarization.mjs'
 import { extractRelationships } from './aiRelationshipExtraction.mjs'
 import { extractLocation } from './aiGeolocation.mjs'
 import { extractFinancialAnalysis } from './aiFinancialAnalysis.mjs'
@@ -114,23 +114,25 @@ async function repair(options) {
       query = query.eq('source', options.source)
     }
 
-    // Filter based on repair type
-    if (options.type === 'summary') {
-      query = query.or('summary.is.null,summary.eq.""')
-    } else if (options.type === 'tags') {
-      query = query.or('tags.is.null,tags.eq.{}')
-    } else if (options.type === 'relationships') {
-      query = query.or('relationships.is.null,relationships.eq.{}')
-    } else if (options.type === 'location') {
-      query = query.is('location', null)
-    } else if (options.type === 'financial') {
-      // For now, select all scraps since financial_analysis column may not exist yet
-      // query = query.is('financial_analysis', null);
-    } else if (options.type === 'screenshot') {
-      query = query.not('url', 'is', null).is('screenshot_url', null)
-    } else {
-      // Get scraps missing any AI enrichment (excluding financial_analysis until column exists)
-      query = query.or('summary.is.null,tags.is.null,relationships.is.null,location.is.null')
+    // Filter based on repair type (skip filters if --force is specified)
+    if (!options.force) {
+      if (options.type === 'summary') {
+        query = query.or('summary.is.null,summary.eq.""')
+      } else if (options.type === 'tags') {
+        query = query.or('tags.is.null,tags.eq.{}')
+      } else if (options.type === 'relationships') {
+        query = query.or('relationships.is.null,relationships.eq.{}')
+      } else if (options.type === 'location') {
+        query = query.is('location', null)
+      } else if (options.type === 'financial') {
+        // For now, select all scraps since financial_analysis column may not exist yet
+        // query = query.is('financial_analysis', null);
+      } else if (options.type === 'screenshot') {
+        query = query.not('url', 'is', null).is('screenshot_url', null)
+      } else {
+        // Get scraps missing any AI enrichment (excluding financial_analysis until column exists)
+        query = query.or('summary.is.null,tags.is.null,relationships.is.null,location.is.null')
+      }
     }
 
     const result = await query
@@ -324,6 +326,8 @@ async function repairScrapWithAI(scrap, options) {
       try {
         const summary = await summarizeContent(content, {
           scrapId,
+          scrap, // Pass full scrap object for thread discovery
+          tags: scrap.tags || scrap.concept_tags, // Use existing tags for thread discovery
           taskType: 'summarization',
           url: scrap.url,
           title: scrap.title,
@@ -351,10 +355,25 @@ async function repairScrapWithAI(scrap, options) {
     } // Close else block for summary content check
   }
 
-  // Generate tags if missing or bad (only has 'pinboard')
-  const hasBadTags = scrap.tags && scrap.tags.length === 1 && scrap.tags[0] === 'pinboard'
-  if (shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags)) {
-    if (!content || content.length < 50) {
+  // Generate tags if missing or bad (only has 'pinboard', or has capitalized/stop words)
+  const stopWords = ['of', 'and', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', '-', 'or']
+  const badCapWords = ['Artificial', 'Intelligence', 'Machine', 'Learning', 'Table', 'Contents']
+  const hasBadTags = scrap.tags && (
+    (scrap.tags.length === 1 && scrap.tags[0] === 'pinboard') ||
+    scrap.tags.some(tag => stopWords.includes(tag) || badCapWords.includes(tag) ||
+      (tag[0] && tag[0] === tag[0].toUpperCase() && tag.length > 2 && /^[A-Z]/.test(tag)))
+  )
+  if (shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags || options.force)) {
+    // Need substantial content to generate good tags - skip if:
+    // - No content or too short (< 200 chars)
+    // - Content is just placeholder like "[no title]"
+    const isPlaceholder = content && (
+      content.trim() === '[no title]' ||
+      content.trim() === scrap.title ||
+      content.length < 200
+    )
+
+    if (!content || isPlaceholder) {
       console.log(chalk.dim('    ⏭️  Skipping tags (insufficient content)'))
     } else {
       console.log(chalk.dim('    Generating AI tags...'))
@@ -594,6 +613,31 @@ async function repairScrapWithAI(scrap, options) {
     }
   }
 
+  // Generate META-summary after all other analysis is complete
+  // This synthesizes summary, tags, relationships, location, etc. into ~140 chars
+  if (shouldProcessType('summary') || shouldProcessType('tags') || shouldProcessType('relationships')) {
+    const tempScrap = {
+      ...scrap,
+      ...updates,
+    }
+
+    // Only generate if we have enough data to make a useful meta-summary
+    if (tempScrap.summary || tempScrap.title || tempScrap.tags?.length > 0) {
+      try {
+        const metaSummary = generateMetaSummary(tempScrap)
+        if (metaSummary && metaSummary !== 'No summary available') {
+          // TEMP: Commented out until meta_summary column is added to Supabase
+          // Run: migrations/add_meta_summary.sql in Supabase SQL Editor
+          // updates.meta_summary = metaSummary
+          console.log(chalk.dim(`    ✓ META-summary: ${metaSummary.substring(0, 60)}... (not saved - column missing)`))
+        }
+      } catch (error) {
+        console.error(chalk.red('    ✗ META-SUMMARY GENERATION FAILED'))
+        console.error(chalk.red(`      Error: ${error.message}`))
+      }
+    }
+  }
+
   // Update the scrap if we have any updates
   if (Object.keys(updates).length > 0) {
     updates.updated_at = new Date().toISOString()
@@ -648,38 +692,49 @@ async function repairScrapWithAI(scrap, options) {
 async function generateTags(content, scrap) {
   const model = getModelForTask('tagging')
 
-  // User's existing tags from ejfox.com/tags.json
-  const userTags = ['!inspo','!tobuy','!tohire','3d','3dmodel','aboutme','activism','advice','america','analog','anarchism','api','ar','ar15','arduino','art','audio','automation','beacon','blender','book','callofduty','camping','cannabis','cheatsheet','chess','cli','climatechange','clothes','cms','code','coding','comedy','cooking','covid','crypto','cryptocurrency','css','culture','d3','data','database','datajournalism','dataset','dataviz','demo','design','dj','documentary','drama','ecology','editing','education','election2020','elections','electronics','event','exercise','Fashion','food','funny','game','games','generative','git','github','gpt3','guns','hackers','hacking','hardware','health','howto','html','hudsonvalley','infographic','inspiration','internet','ios','irc','javascript','jiujitsu','journalism','jquery','js','json','lackofdata','legal','linocut','livestream','machinelearning','mapping','maps','markdown','mastodon','media','meditation','military','militias','minecraft','motorcycle','movies','music','nature','network','nft','node','nodejs','ny','nypd','oakland','occupy','occupyoakland','opensource','opinion','osint','osx','pdf','People','personal','photography','photojournalism','pico8','podcast','police','politics','pottery','process','product','programming','project','protest','psychedelics','qgis','quantifiedself','quote','R','raspberrypi','recipe','reference','research','resource','security','sex','shapefile','shortcut','soap','sqlite','startups','study','systemsthinking','tactics','teaching','tech','technique','tool','travel','tributary','tv','twitter','typography','ui','utility','ux','video','videogames','vim','vinyl','visualization','visuals','vj','vr','vue','watercolor','webdesign','woodworking','writing','youtube']
+  // Load current tags from ejfox.com/tags.json
+  const { loadCoreTags } = await import('./llmService.mjs')
+  const userTags = await loadCoreTags()
 
-  const prompt = `You are a content tagger. Analyze this content and select appropriate tags.
+  // Get current date for context
+  const currentDate = new Date().toISOString().split('T')[0]
+  const currentYear = new Date().getFullYear()
+
+  const prompt = `You are a content tagger. Your job is to select the BEST MATCHING tags from the user's existing tag vocabulary.
+
+CURRENT DATE: ${currentDate} (Year: ${currentYear})
 
 ${scrap.title ? `Title: ${scrap.title}` : ''}
 ${scrap.url ? `URL: ${scrap.url}` : ''}
+${scrap.tags?.length > 0 ? `Existing tags: ${scrap.tags.join(', ')}` : ''}
 
 Content: ${content.substring(0, 3000)}
 
-EXISTING TAGS TO PREFER (use these when relevant):
-${userTags.slice(0, 100).join(', ')}
+YOUR EXISTING TAG VOCABULARY (YOU MUST CHOOSE FROM THESE):
+${userTags.join(', ')}
 
-RULES:
-1. Use SINGLE WORDS only (e.g., "javascript" not "javascript-framework")
-2. Prefer tags from the existing tags list above when they match the content
-3. Use lowercase only
-4. Concatenate multi-word concepts into one word (e.g., "machinelearning", "dataviz", "opensource")
-5. Generate 5-10 relevant tags
+CRITICAL RULES:
+1. ONLY use tags from the vocabulary list above
+2. If a perfect match doesn't exist, choose the CLOSEST related tag from the list
+3. NEVER invent new tags - only use what's in the vocabulary
+4. Choose 5-10 tags maximum
+5. IGNORE: Footer text, legal disclaimers, navigation, ads, terms of service
+6. FOCUS ON: Main subject matter, product type, article topic, core concepts
+7. REPLACE OUTDATED temporal tags: If existing tags contain outdated years (like "election2020" for a ${currentYear} story), replace with current year or generic version from vocabulary
 
-FOCUS ON:
-- Technologies mentioned (javascript, python, react, nodejs, arduino)
-- Concepts (machinelearning, dataviz, security, privacy)
-- Content type (tutorial, documentation, tool, demo, video)
-- Domains (art, music, design, journalism, gaming)
+MATCHING STRATEGY:
+- For "neural networks" → use "machinelearning" or "ai" from vocabulary
+- For "evolutionary computing" → use "machinelearning" or "ai" from vocabulary
+- For specific products → use category from vocabulary (electronics, hardware, tool)
+- For article topics → use domain from vocabulary (journalism, education, coding)
 
-NEVER USE:
-- Generic tags like "pinboard", "bookmark", "web", "article", "post"
-- Hyphenated words
-- Multiple word phrases
+EXAMPLES:
+Content about neural networks → machinelearning, ai, python, tutorial
+Content about a laptop → hardware, electronics, product, !tobuy
+Content about woodworking → woodworking, design, howto, tutorial
+${currentYear} election article with "election2020" tag → elections, politics, legal (replace outdated year)
 
-Return ONLY a comma-separated list of lowercase single-word tags. No explanations.`
+Return ONLY comma-separated tags from the vocabulary list. No explanations. No new tags.`
 
   try {
     const response = await completion({
@@ -696,16 +751,38 @@ Return ONLY a comma-separated list of lowercase single-word tags. No explanation
 
     if (content && typeof content === 'string') {
       // Parse the tags from the response
-      const rawTags = content
+      let rawTags = content
         .toLowerCase()
-        .replace(/[\n\r]/g, ' ')  // Remove newlines
+        .replace(/[\n\r]/g, ',')  // Convert newlines to commas
         .split(',')
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0 && tag.length < 30)  // Max length for single word tags
 
-      // Filter out useless generic tags
-      const uselessTags = ['pinboard', 'bookmark', 'link', 'url', 'web', 'website', 'page', 'bookmarks', 'article', 'post']
-      const filteredTags = rawTags.filter(tag => !uselessTags.includes(tag))
+      // Basic sanity filtering - trust the AI's judgment, just catch obvious errors
+      // Known 2-char vocabulary tags
+      const twoCharTags = ['ai', 'ar', 'vr', 'ui', 'ux', 'js', 'ny', 'r', 'd3']
+
+      const filteredTags = rawTags.filter(tag => {
+        // Remove structural mistakes
+        if (tag.includes(' ')) return false  // Multi-word tags
+        // Allow 2-char tags only if they're known vocabulary or start with !
+        if (tag.length <= 2) {
+          if (tag.startsWith('!') || twoCharTags.includes(tag)) {
+            return true
+          }
+          return false
+        }
+        if (tag === '-' || tag === '&') return false  // Pure punctuation
+
+        // Remove if AI ignored the lowercase instruction (means it word-split a title)
+        const originalTag = content.split(/[,\n]/).find(t => t.trim().toLowerCase() === tag)?.trim()
+        if (originalTag && /[A-Z]/.test(originalTag)) return false
+
+        // Remove obvious meta-tags about the platform itself
+        if (['pinboard', 'bookmark', 'webpage'].includes(tag)) return false
+
+        return true
+      })
 
       // Track the cost
       if (response.usage) {
