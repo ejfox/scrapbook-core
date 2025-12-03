@@ -1,7 +1,7 @@
 import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
 import { breakContentIntoChunks } from '../helpers.js'
-import { discoverThreadContext, formatThreadContext } from '../lib/threadContext.mjs'
+import { discoverThreadContext } from '../lib/threadContext.mjs'
 import Bottleneck from 'bottleneck'
 import fetch from 'node-fetch'
 
@@ -37,10 +37,10 @@ export async function summarizeContent(content, options = {}) {
     let threadContext = null
     if (ENABLE_THREADS && scrap && tags && tags.length > 0) {
       log('🧵 Discovering thread context...')
-      const discovered = await discoverThreadContext(scrap, { tags })
-      if (discovered && discovered.length > 0) {
-        threadContext = formatThreadContext(discovered)
-        log(`✅ Found ${discovered.length} related bookmarks`)
+      // discoverThreadContext() already returns formatted string, not array
+      threadContext = await discoverThreadContext(scrap, { tags })
+      if (threadContext) {
+        log(`✅ Found related bookmarks`)
       } else {
         log('📭 No related bookmarks found')
       }

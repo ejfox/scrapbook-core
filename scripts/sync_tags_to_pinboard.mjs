@@ -9,6 +9,7 @@ import Bottleneck from 'bottleneck'
 import { program } from 'commander'
 import path from 'path'
 import fs from 'fs'
+import { decode } from 'html-entities'
 
 // Load environment variables
 const envPath = path.resolve(process.cwd(), '.env')
@@ -51,6 +52,9 @@ function setupCLI() {
     .option('-r, --reverse', 'Process oldest bookmarks first (default: newest first)')
     .option('-d, --dry-run', 'Show what would be updated without making changes')
     .option('-s, --source <source>', 'Only sync specific source (default: pinboard)', 'pinboard')
+    .option('--sync-titles', 'Also sync improved AI-generated titles')
+    .option('--sync-summaries', 'Also sync AI summaries to extended description (240 chars)')
+    .option('--flag-for-reprocessing', 'Flag scraps with only useless tags for reprocessing')
     .action(syncTags)
 
   program
@@ -60,20 +64,30 @@ function setupCLI() {
 }
 
 async function syncTags(options) {
-  console.log(chalk.cyan('🏷️ Syncing AI Tags to Pinboard\n'))
+  console.log(chalk.cyan('🏷️ Syncing AI Data to Pinboard\n'))
 
   const isDryRun = options.dryRun
   if (isDryRun) {
     console.log(chalk.yellow('🔍 DRY RUN MODE - No changes will be made\n'))
   }
 
-  const spinner = ora('Fetching bookmarks with AI-generated tags...').start()
+  // Show what we're syncing
+  const syncItems = []
+  if (!options.syncTitles && !options.syncSummaries) syncItems.push('tags')
+  else {
+    syncItems.push('tags')
+    if (options.syncTitles) syncItems.push('titles')
+    if (options.syncSummaries) syncItems.push('summaries')
+  }
+  console.log(chalk.dim(`Syncing: ${syncItems.join(', ')}\n`))
+
+  const spinner = ora('Fetching bookmarks with AI-generated data...').start()
 
   try {
     // Get bookmarks with AI tags from database
     let query = supabase
       .from('scraps')
-      .select('scrap_id, url, title, tags, metadata')
+      .select('scrap_id, url, title, tags, summary, metadata')
       .eq('source', options.source)
       .not('tags', 'is', null)
       .not('url', 'is', null)
@@ -102,14 +116,45 @@ async function syncTags(options) {
     let synced = 0
     let skipped = 0
     let failed = 0
+    let flaggedForReprocessing = 0
+
+    // Define useless tags once
+    const USELESS_TAGS = ['pinboard', 'bookmark', 'link', 'url', 'web', 'website', 'page', 'bookmarks']
 
     for (const [index, bookmark] of bookmarks.entries()) {
       const progress = `[${index + 1}/${bookmarks.length}]`
       const bookmarkId = bookmark.scrap_id.replace('pinboard-', '')
 
-      console.log(chalk.gray(`${progress} Processing: ${bookmark.title?.substring(0, 60) || bookmark.url?.substring(0, 60)}...`))
+      console.log(chalk.gray(`\n${progress} Processing: ${bookmark.title?.substring(0, 60) || bookmark.url?.substring(0, 60)}...`))
 
       try {
+        // Filter out useless tags from AI-generated tags FIRST
+        const aiTags = (bookmark.tags || []).filter(tag => !USELESS_TAGS.includes(tag.toLowerCase()))
+
+        // Check if this bookmark needs reprocessing (only has useless tags)
+        // Do this BEFORE checking Pinboard tags to avoid unnecessary API call
+        const needsReprocessing = aiTags.length === 0 && bookmark.tags?.length > 0
+        if (needsReprocessing && options.flagForReprocessing) {
+          console.log(chalk.red('  ⚠️ Only has useless tags - flagging for reprocessing'))
+          console.log(chalk.dim(`     Current tags: ${bookmark.tags.join(', ')}`))
+          if (!isDryRun) {
+            await supabase
+              .from('scraps')
+              .update({
+                metadata: {
+                  ...bookmark.metadata,
+                  needs_reprocessing: true,
+                  needs_reprocessing_reason: 'only_useless_tags',
+                  flagged_at: new Date().toISOString(),
+                },
+              })
+              .eq('scrap_id', bookmark.scrap_id)
+          }
+          flaggedForReprocessing++
+          skipped++
+          continue
+        }
+
         // Get current bookmark from Pinboard to preserve existing tags
         const currentBookmark = await pinboardLimiter.schedule(() =>
           getPinboardBookmark(bookmark.url),
@@ -121,58 +166,120 @@ async function syncTags(options) {
           continue
         }
 
-        // Parse existing tags
+        // Parse existing tags from Pinboard
         const existingTags = currentBookmark.tags ? currentBookmark.tags.split(' ').filter(t => t) : []
 
-        // Filter out useless tags from AI-generated tags
-        const uselessTags = ['pinboard', 'bookmark', 'link', 'url', 'web', 'website', 'page', 'bookmarks']
-        const aiTags = (bookmark.tags || []).filter(tag => !uselessTags.includes(tag.toLowerCase()))
+        // Filter out outdated temporal tags (like election2020, covid19, trump2016, etc.)
+        const currentYear = new Date().getFullYear()
+        const outdatedTags = []
+        const filteredExistingTags = existingTags.filter(tag => {
+          // Match patterns like: election2020, trump2016, covid19, etc.
+          const yearMatch = tag.match(/(\d{4})/)
+          if (yearMatch) {
+            const year = parseInt(yearMatch[1])
+            // If tag contains a year that's more than 1 year old, consider it outdated
+            if (year < currentYear - 1 && year > 1900) {
+              outdatedTags.push(tag)
+              return false
+            }
+          }
+          return true
+        })
 
-        // Merge tags (additive only)
-        const mergedTags = [...new Set([...existingTags, ...aiTags])]
+        if (outdatedTags.length > 0) {
+          console.log(chalk.dim(`  🗑️  Removing outdated tags: ${outdatedTags.join(', ')}`))
+        }
 
-        // Check if any new tags were added
+        // Merge tags (additive only, but with outdated tags removed)
+        const mergedTags = [...new Set([...filteredExistingTags, ...aiTags])]
+
+        // Check if any new tags were added (compare against original existingTags, not filtered)
         const newTags = aiTags.filter(tag => !existingTags.includes(tag))
+        const removedCount = outdatedTags.length
 
-        if (newTags.length === 0) {
-          console.log(chalk.dim('  ⏭️ No new tags to add'))
+        // Prepare title (use AI title if syncing titles, otherwise use current)
+        let finalTitle = currentBookmark.description || bookmark.title || ''
+        const titleChanged = options.syncTitles && bookmark.title && bookmark.title !== currentBookmark.description
+        if (options.syncTitles && bookmark.title) {
+          finalTitle = bookmark.title
+        }
+
+        // Prepare summary (clean HTML entities and truncate to 240 chars)
+        let finalSummary = currentBookmark.extended || ''
+        const summaryChanged = options.syncSummaries && bookmark.summary
+        if (options.syncSummaries && bookmark.summary) {
+          const cleanSummary = decode(bookmark.summary)
+          finalSummary = cleanSummary.substring(0, 240)
+          if (cleanSummary.length > 240) {
+            finalSummary += '...'
+          }
+        }
+
+        // Check if we have anything to update
+        const hasChanges = newTags.length > 0 || titleChanged || summaryChanged || removedCount > 0
+
+        if (!hasChanges) {
+          console.log(chalk.dim('  ⏭️ No changes needed'))
           skipped++
           continue
         }
 
-        console.log(chalk.dim(`  Existing tags: ${existingTags.join(', ') || 'none'}`))
-        console.log(chalk.green(`  New AI tags: ${newTags.join(', ')}`))
-        console.log(chalk.blue(`  Final tags: ${mergedTags.join(', ')}`))
+        // Show what's changing
+        if (newTags.length > 0) {
+          console.log(chalk.dim(`  Existing tags: ${existingTags.join(', ') || 'none'}`))
+          console.log(chalk.green(`  New AI tags: ${newTags.join(', ')}`))
+          console.log(chalk.blue(`  Final tags: ${mergedTags.join(', ')}`))
+        }
+
+        if (titleChanged) {
+          console.log(chalk.dim(`  Old title: ${currentBookmark.description?.substring(0, 60) || 'none'}`))
+          console.log(chalk.cyan(`  New title: ${finalTitle.substring(0, 60)}`))
+        }
+
+        if (summaryChanged) {
+          console.log(chalk.dim(`  Old summary: ${currentBookmark.extended?.substring(0, 60) || 'none'}`))
+          console.log(chalk.magenta(`  New summary: ${finalSummary.substring(0, 60)}...`))
+        }
 
         if (!isDryRun) {
-          // Update bookmark on Pinboard with merged tags
+          // Update bookmark on Pinboard with merged data
           await pinboardLimiter.schedule(() =>
             updatePinboardBookmark({
               url: bookmark.url,
-              description: currentBookmark.description || bookmark.title || '',
-              extended: currentBookmark.extended || '',
+              description: finalTitle,
+              extended: finalSummary,
               tags: mergedTags.join(' '),
               replace: 'yes', // Required to update existing bookmark
             }),
           )
 
           // Update metadata in database to track sync
+          const syncMetadata = {
+            ...bookmark.metadata,
+            tags_synced_to_pinboard: true,
+            tags_synced_at: new Date().toISOString(),
+            pinboard_tags_count: mergedTags.length,
+          }
+          if (titleChanged) syncMetadata.title_synced_to_pinboard = true
+          if (summaryChanged) syncMetadata.summary_synced_to_pinboard = true
+
           await supabase
             .from('scraps')
-            .update({
-              metadata: {
-                ...bookmark.metadata,
-                tags_synced_to_pinboard: true,
-                tags_synced_at: new Date().toISOString(),
-                pinboard_tags_count: mergedTags.length,
-              },
-            })
+            .update({ metadata: syncMetadata })
             .eq('scrap_id', bookmark.scrap_id)
 
-          console.log(chalk.green(`  ✅ Synced ${newTags.length} new tags to Pinboard`))
+          const changes = []
+          if (newTags.length > 0) changes.push(`${newTags.length} tags`)
+          if (titleChanged) changes.push('title')
+          if (summaryChanged) changes.push('summary')
+          console.log(chalk.green(`  ✅ Synced: ${changes.join(', ')}`))
           synced++
         } else {
-          console.log(chalk.yellow(`  🔍 Would sync ${newTags.length} new tags (dry run)`))
+          const changes = []
+          if (newTags.length > 0) changes.push(`${newTags.length} tags`)
+          if (titleChanged) changes.push('title')
+          if (summaryChanged) changes.push('summary')
+          console.log(chalk.yellow(`  🔍 Would sync: ${changes.join(', ')} (dry run)`))
           synced++
         }
 
@@ -187,6 +294,9 @@ async function syncTags(options) {
     console.log(`  ✅ Synced: ${synced}`)
     console.log(`  ⏭️ Skipped: ${skipped}`)
     console.log(`  ❌ Failed: ${failed}`)
+    if (flaggedForReprocessing > 0) {
+      console.log(chalk.red(`  ⚠️ Flagged for reprocessing: ${flaggedForReprocessing}`))
+    }
 
     if (isDryRun) {
       console.log(chalk.yellow('\n🔍 This was a dry run. Use without --dry-run to apply changes.'))
