@@ -87,14 +87,14 @@ export class StepVisualizer {
     this.scrapTitle = scrapTitle
     this.currentStep = 0
     this.steps = [
-      { name: 'FETCH', icon: '📡', color: cyber.cyan },
-      { name: 'PARSE', icon: '🔍', color: cyber.purple },
-      { name: 'SUMMARIZE', icon: '📝', color: cyber.yellow },
-      { name: 'EXTRACT TAGS', icon: '🏷️', color: cyber.pink },
-      { name: 'FIND RELATIONS', icon: '🔗', color: cyber.green },
-      { name: 'EMBED', icon: '🧠', color: cyber.purple },
-      { name: 'REASON', icon: '💭', color: cyber.cyan },
-      { name: 'SAVE', icon: '💾', color: cyber.green },
+      { name: 'FETCH', icon: '', color: cyber.cyan },
+      { name: 'PARSE', icon: '', color: cyber.purple },
+      { name: 'SUMMARIZE', icon: '', color: cyber.yellow },
+      { name: 'EXTRACT TAGS', icon: '', color: cyber.pink },
+      { name: 'FIND RELATIONS', icon: '', color: cyber.green },
+      { name: 'EMBED', icon: '', color: cyber.purple },
+      { name: 'REASON', icon: '', color: cyber.cyan },
+      { name: 'SAVE', icon: '', color: cyber.green },
     ]
   }
 
@@ -238,7 +238,7 @@ export function glitch(text) {
 export function showThreadContext(count, candidates) {
   if (count === 0) return
 
-  const threadBar = '🧵'.repeat(Math.min(count, 5))
+  const threadBar = '﬿'.repeat(Math.min(count, 5))
   console.log(cyber.cyan('\n  ╭─ THREAD CONTEXT ') + cyber.gray('─'.repeat(43)))
   console.log(cyber.gray('  │ ') + cyber.purple(threadBar) + cyber.white(` Found ${count} related bookmark${count > 1 ? 's' : ''}`))
 
@@ -259,7 +259,7 @@ export function showThreadContext(count, candidates) {
 
 // Cost meter - shows real-time cost tracking
 export function showCostMeter(cost, tokens, model) {
-  const dollarSign = cost > 0.01 ? '💰' : '💸'
+  const dollarSign = cost > 0.01 ? '' : ''
   const color = cost > 0.05 ? cyber.red : cost > 0.01 ? cyber.yellow : cyber.green
 
   console.log(cyber.gray('      └─ ') + dollarSign + ' ' + color(`$${cost.toFixed(4)}`) + cyber.gray(` | ${tokens} tokens | ${model}`))
@@ -290,10 +290,10 @@ export function showNeuralActivity(layer, active = true) {
 // Rate limit warning
 export function rateLimitWarning(level, waitTime) {
   const levels = {
-    0: { icon: '🟢', text: 'NORMAL', color: cyber.green },
-    1: { icon: '🟡', text: 'ELEVATED', color: cyber.yellow },
-    2: { icon: '🟠', text: 'HIGH', color: cyber.pink },
-    3: { icon: '🔴', text: 'CRITICAL', color: cyber.red }
+    0: { icon: cyber.green(''), text: 'NORMAL', color: cyber.green },
+    1: { icon: cyber.yellow(''), text: 'ELEVATED', color: cyber.yellow },
+    2: { icon: cyber.pink(''), text: 'HIGH', color: cyber.pink },
+    3: { icon: cyber.red(''), text: 'CRITICAL', color: cyber.red }
   }
 
   const l = levels[level] || levels[0]
@@ -307,4 +307,4 @@ export function showEmbedding(dimensions, model) {
     return '▁▂▃▄▅'[height]
   }).join('')
 
-  console.log(cyber.gray('      └─ ') + cyber.purple('🧠 ') + cyber.purple(bars) + cyber.gray(` | ${dimensions}D | ${model}`))
+  console.log(cyber.gray('      └─ ') + cyber.purple(' ') + cyber.purple(bars) + cyber.gray(` | ${dimensions}D | ${model}`))
