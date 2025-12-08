@@ -8,7 +8,7 @@ import path from 'path'
 import winston from 'winston'
 import chalk from 'chalk'
 
-// Initialize logger
+// Initialize logger for NDJSON output
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -16,7 +16,12 @@ const logger = winston.createLogger({
     winston.format.json(),
   ),
   transports: [
-    new winston.transports.File({ filename: 'logs/cost-tracking.log' }),
+    // NDJSON log file for detailed per-request tracking
+    new winston.transports.File({
+      filename: 'logs/cost-tracking.ndjson',
+      format: winston.format.json(), // One JSON object per line
+    }),
+    // Human-readable console output
     new winston.transports.Console({ format: winston.format.simple() }),
   ],
 })
@@ -134,11 +139,12 @@ export function calculateCost(modelId, usage) {
 
 // Track cost for a request
 export function trackCost(modelId, usage, options = {}) {
-  const { scrapId, taskType, source } = options
+  const { scrapId, taskType, source, script, feature } = options
 
   const cost = calculateCost(modelId, usage)
   const timestamp = new Date().toISOString()
   const dateKey = timestamp.split('T')[0] // YYYY-MM-DD format
+  const hourKey = timestamp.substring(11, 13) // HH (hour of day)
 
   // Update session tracking
   costTracking.session.totalCost += cost.totalCost
@@ -164,11 +170,24 @@ export function trackCost(modelId, usage, options = {}) {
         cost: 0,
         tokens: 0,
         requests: 0,
+        byModel: {},
       }
     }
     costTracking.session.byTask[taskType].cost += cost.totalCost
     costTracking.session.byTask[taskType].tokens += cost.breakdown.totalTokens
     costTracking.session.byTask[taskType].requests += 1
+
+    // Track model usage within this task type
+    if (!costTracking.session.byTask[taskType].byModel[modelId]) {
+      costTracking.session.byTask[taskType].byModel[modelId] = {
+        cost: 0,
+        tokens: 0,
+        requests: 0,
+      }
+    }
+    costTracking.session.byTask[taskType].byModel[modelId].cost += cost.totalCost
+    costTracking.session.byTask[taskType].byModel[modelId].tokens += cost.breakdown.totalTokens
+    costTracking.session.byTask[taskType].byModel[modelId].requests += 1
   }
 
   // Track by scrap
@@ -214,14 +233,23 @@ export function trackCost(modelId, usage, options = {}) {
     costTracking.historical.dailyStats[dateKey].scrapCount += 1
   }
 
-  // Log the cost tracking
+  // Log detailed NDJSON entry for analysis
   logger.info('Cost tracked', {
-    modelId,
-    scrapId,
-    taskType,
-    cost: cost.totalCost,
-    tokens: cost.breakdown.totalTokens,
     timestamp,
+    date: dateKey,
+    hour: hourKey,
+    modelId,
+    taskType,
+    source,
+    script,
+    feature,
+    scrapId,
+    cost: cost.totalCost,
+    promptCost: cost.promptCost,
+    completionCost: cost.completionCost,
+    promptTokens: cost.breakdown.promptTokens,
+    completionTokens: cost.breakdown.completionTokens,
+    totalTokens: cost.breakdown.totalTokens,
   })
 
   // Save historical data periodically (every 10 requests)
