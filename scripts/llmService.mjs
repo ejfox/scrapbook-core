@@ -5,6 +5,7 @@ import chalk from 'chalk'
 import sharp from 'sharp'
 import { FormData } from '@web-std/form-data'
 import { File, Blob } from 'node:buffer'
+import { execSync } from 'child_process'
 import { processImagesForScrap, getImageDescription } from './imageDescriptions.mjs'
 import winston from 'winston'
 import sgMail from '@sendgrid/mail'
@@ -48,6 +49,27 @@ const DEBUG = process.env.DEBUG === 'true'
 
 // Load configuration
 const config = loadConfig()
+
+// macOS notification helper with debouncing
+let lastCreditNotification = 0
+const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes between notifications
+
+function notifyCreditsExhausted(service = 'OpenRouter') {
+  const now = Date.now()
+  if (now - lastCreditNotification < NOTIFICATION_COOLDOWN_MS) {
+    return // Skip if we notified recently
+  }
+  lastCreditNotification = now
+
+  try {
+    const message = `${service} credits exhausted - falling back to OpenAI`
+    execSync(`osascript -e 'display notification "${message}" with title "Scrapbook Alert" sound name "Basso"'`)
+    console.log(chalk.magenta(`🔔 Desktop notification sent: ${message}`))
+  } catch (err) {
+    // Silently fail if not on macOS or osascript unavailable
+    console.log(chalk.gray(`(notification skipped: ${err.message})`))
+  }
+}
 
 // Initialize smart rate limiters
 const openRouterLimiter = new SmartRateLimiter('aiServices', {
@@ -441,6 +463,7 @@ const service = {
           // Handle payment errors (402) by falling back to free models
           if (error.response?.status === 402 && !useFreeModels) {
             console.log(chalk.yellow(`💳 Payment required for ${currentModel}, trying free models...`))
+            notifyCreditsExhausted('OpenRouter')
             const freeModels = getFallbackModelsForModel(currentModel)
             if (freeModels.length > 0) {
               const freeModel = freeModels[0]

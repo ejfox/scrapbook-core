@@ -382,6 +382,7 @@ async function repairScrapWithAI(scrap, options) {
       const fetchedContent = await fetchPageContent(scrap.url)
       if (fetchedContent && fetchedContent.length > content.length) {
         content = fetchedContent
+        updates.content = fetchedContent
         console.log(chalk.dim(`    ✓ Fetched ${fetchedContent.length} chars of content`))
       }
     } catch (error) {
@@ -559,9 +560,11 @@ async function repairScrapWithAI(scrap, options) {
           title: scrap.title,
         })
 
-        if (locationData) {
-          updates.location = locationData
-          console.log(chalk.dim(`    ✓ Extracted location: ${locationData.location || 'Unknown'}`))
+        if (locationData && locationData.location) {
+          updates.location = locationData.location
+          if (locationData.latitude) updates.latitude = locationData.latitude
+          if (locationData.longitude) updates.longitude = locationData.longitude
+          console.log(chalk.dim(`    ✓ Extracted location: ${locationData.location}${locationData.latitude ? ` (${locationData.latitude.toFixed(2)}, ${locationData.longitude.toFixed(2)})` : ''}`))
         } else {
           console.log(chalk.yellow('    ⚠ Location extraction returned null'))
           console.log(chalk.gray(`      Scrap ID: ${scrapId}`))
@@ -723,6 +726,21 @@ async function repairScrapWithAI(scrap, options) {
         console.error(chalk.red(`      Error: ${error.message}`))
       }
     }
+  }
+
+  // Fix type field if unknown - derive from source (type is source-level terminology)
+  // type = bookmark|block|repo|status (from source system)
+  // content_type = article|video|news|etc (AI-classified content kind)
+  if (!scrap.type || scrap.type === 'unknown') {
+    const sourceToType = {
+      pinboard: 'bookmark',
+      arena: 'block',
+      github: 'repo',
+      mastodon: 'status'
+    }
+    const derivedType = sourceToType[scrap.source] || 'bookmark'
+    updates.type = derivedType
+    console.log(chalk.dim(`    ✓ Fixed type: ${derivedType} (from source: ${scrap.source})`))
   }
 
   // Update the scrap if we have any updates
