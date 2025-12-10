@@ -433,54 +433,85 @@ export async function metaSummaryToTags(summary, options = {}) {
     return []
   }
 
-  try {
-    log('🏷️ Generating tags...')
-    const coreTags = await loadCoreTags()
+  const MAX_RETRIES = 3
+  const coreTags = await loadCoreTags()
 
-    // Convert prompt to messages array format
-    const messages = [
-      {
-        role: 'system',
-        content:
-          'You are a precise content tagger that selects the most relevant tags from a predefined list.',
-      },
-      {
-        role: 'user',
-        content: `Choose 2-3 most relevant tags from this list:
+  if (!coreTags || coreTags.length === 0) {
+    log('❌ No core tags available - cannot generate tags')
+    return []
+  }
+
+  // Create a Set for O(1) validation lookup (lowercase for case-insensitive matching)
+  const coreTagsSet = new Set(coreTags.map(t => t.toLowerCase()))
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      log(`🏷️ Generating tags (attempt ${attempt}/${MAX_RETRIES})...`)
+
+      // Convert prompt to messages array format
+      const messages = [
+        {
+          role: 'system',
+          content:
+            'You are a precise content tagger that selects the most relevant tags from a predefined list. Only return tags that exactly match items in the provided list.',
+        },
+        {
+          role: 'user',
+          content: `Choose 2-3 most relevant tags from this list:
 ${coreTags.join('\n')}
 
 Content to tag:
 ${summary}
 
-Return only valid tags from the list above, one per line, no explanations.`,
-      },
-    ]
+Return only valid tags from the list above, one per line, no explanations. Tags must exactly match the list.`,
+        },
+      ]
 
-    const startTime = performance.now()
-    const response = await completion({
-      messages,
-      temperature: 0.2,
-      maxTokens: 100,
-      // model: MODELS.CLAUDE_3_SONNET,
-      // lets use a cheaper model for this
-      model: MODELS.GPT_3_5_TURBO,
-      scrapId: options.scrapId,
-      taskType: 'tagging',
-    })
-    const endTime = performance.now()
-    log(`✅ Tags generated in ${endTime - startTime}ms`)
+      const startTime = performance.now()
+      const response = await completion({
+        messages,
+        temperature: 0.2 + (attempt - 1) * 0.1, // Slightly increase temperature on retries
+        maxTokens: 100,
+        model: MODELS.GPT_3_5_TURBO,
+        scrapId: options.scrapId,
+        taskType: 'tagging',
+      })
+      const endTime = performance.now()
+      log(`✅ Tags response in ${endTime - startTime}ms`)
 
-    const tags = response
-      .split('\n')
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
+      // Parse and validate tags against core list
+      const rawTags = response
+        .split('\n')
+        .map((tag) => tag.trim().toLowerCase())
+        .filter((tag) => tag.length > 0)
 
-    log(`✅ Generated ${tags.length} tags:`, tags)
-    return tags
-  } catch (error) {
-    console.error('❌ Error generating tags:', error)
-    return []
+      // Only keep tags that exist in the core tags list
+      const validTags = rawTags.filter((tag) => coreTagsSet.has(tag))
+
+      if (validTags.length === 0 && rawTags.length > 0) {
+        log(`⚠️ LLM returned ${rawTags.length} tags but none matched core list: ${rawTags.join(', ')}`)
+      }
+
+      if (validTags.length > 0) {
+        log(`✅ Generated ${validTags.length} valid tags:`, validTags)
+        return validTags
+      }
+
+      // No valid tags - retry if we have attempts left
+      if (attempt < MAX_RETRIES) {
+        log(`⚠️ No valid tags generated, retrying...`)
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt))
+      }
+    } catch (error) {
+      console.error(`❌ Error generating tags (attempt ${attempt}):`, error.message)
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt))
+      }
+    }
   }
+
+  log('❌ Failed to generate valid tags after all retries')
+  return []
 }
 
 // CLI testing

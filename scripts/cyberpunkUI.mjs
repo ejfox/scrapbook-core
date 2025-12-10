@@ -308,3 +308,4 @@ export function showEmbedding(dimensions, model) {
   }).join('')
 
   console.log(cyber.gray('      └─ ') + cyber.purple(' ') + cyber.purple(bars) + cyber.gray(` | ${dimensions}D | ${model}`))
+}
