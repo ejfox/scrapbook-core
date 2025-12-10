@@ -38,3 +38,6 @@ Thumbs.db
 # Screenshots and temporary files
 temp/
 tmp/
+
+# Deprecated scripts (kept locally for reference)
+scripts/deprecated/
