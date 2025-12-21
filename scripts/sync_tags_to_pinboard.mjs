@@ -53,6 +53,7 @@ function setupCLI() {
     .option('-d, --dry-run', 'Show what would be updated without making changes')
     .option('-s, --source <source>', 'Only sync specific source (default: pinboard)', 'pinboard')
     .option('--sync-titles', 'Also sync improved AI-generated titles')
+    .option('--sync-titles-if-missing', 'Sync AI title only when Pinboard has no title (or just URL)', true)
     .option('--sync-summaries', 'Also sync AI summaries to extended description (240 chars)')
     .option('--flag-for-reprocessing', 'Flag scraps with only useless tags for reprocessing')
     .action(syncTags)
@@ -72,13 +73,10 @@ async function syncTags(options) {
   }
 
   // Show what we're syncing
-  const syncItems = []
-  if (!options.syncTitles && !options.syncSummaries) syncItems.push('tags')
-  else {
-    syncItems.push('tags')
-    if (options.syncTitles) syncItems.push('titles')
-    if (options.syncSummaries) syncItems.push('summaries')
-  }
+  const syncItems = ['tags']
+  if (options.syncTitles) syncItems.push('titles')
+  if (options.syncTitlesIfMissing) syncItems.push('titles (if missing)')
+  if (options.syncSummaries) syncItems.push('summaries')
   console.log(chalk.dim(`Syncing: ${syncItems.join(', ')}\n`))
 
   const spinner = ora('Fetching bookmarks with AI-generated data...').start()
@@ -199,9 +197,19 @@ async function syncTags(options) {
 
         // Prepare title (use AI title if syncing titles, otherwise use current)
         let finalTitle = currentBookmark.description || bookmark.title || ''
-        const titleChanged = options.syncTitles && bookmark.title && bookmark.title !== currentBookmark.description
-        if (options.syncTitles && bookmark.title) {
+        let titleChanged = false
+
+        // Check if Pinboard has no real title (empty or just the URL)
+        const pinboardHasNoTitle = !currentBookmark.description ||
+          currentBookmark.description === bookmark.url ||
+          currentBookmark.description === bookmark.url.replace(/^https?:\/\//, '')
+
+        // Sync title if: --sync-titles OR (--sync-titles-if-missing AND Pinboard has no title)
+        const shouldSyncTitle = options.syncTitles || (options.syncTitlesIfMissing && pinboardHasNoTitle)
+
+        if (shouldSyncTitle && bookmark.title && bookmark.title !== currentBookmark.description) {
           finalTitle = bookmark.title
+          titleChanged = true
         }
 
         // Prepare summary (clean HTML entities and truncate to 240 chars)
@@ -483,6 +491,7 @@ export async function autoSyncRecentTags({
         dryRun: false,
         source,
         reverse: false,
+        syncTitlesIfMissing: true, // Auto-fill missing titles from AI
       })
       return { success: true, count, synced: Math.min(count, maxLimit) }
     }
