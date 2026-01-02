@@ -20,6 +20,7 @@ import { getModelForTask } from '../lib/config.mjs'
 import { fetchPageContent } from '../helpers.js'
 import { trackCost } from './costTracking.mjs'
 import { autoSyncRecentTags } from './sync_tags_to_pinboard.mjs'
+import { applyNewsworthinessTag } from './aiNewsworthiness.mjs'
 import Bottleneck from 'bottleneck'
 
 /**
@@ -712,15 +713,6 @@ async function repairScrapWithAI(scrap, options) {
       if (tempScrap.concept_tags) updates.concept_tags = tempScrap.concept_tags
       if (tempScrap.extraction_confidence) updates.extraction_confidence = tempScrap.extraction_confidence
 
-      // Auto-add !news tag for news articles
-      if (tempScrap.content_type === 'news' && (updates.tags || scrap.tags)) {
-        const currentTags = updates.tags || scrap.tags || []
-        if (!currentTags.includes('!news')) {
-          updates.tags = ['!news', ...currentTags]
-          console.log(chalk.dim(`    ✓ Auto-added !news tag`))
-        }
-      }
-
       const conceptCount = (tempScrap.concept_tags || []).length
       console.log(chalk.dim(`    ✓ ${tempScrap.content_type}, ${conceptCount} concepts`))
       if (conceptCount > 0) {
@@ -775,6 +767,35 @@ async function repairScrapWithAI(scrap, options) {
         console.error(chalk.red(`      Error: ${error.message}`))
         console.error(chalk.red(`      Stack: ${error.stack}`))
       }
+    }
+  }
+
+  // Evaluate newsworthiness for !news tag (editorial curation, ~3/day)
+  // Only evaluate if we have a summary and it looks like potential news content
+  const currentSummaryForNews = updates.summary || scrap.summary
+  const currentTagsForNews = updates.tags || scrap.tags || []
+  const potentialNewsTypes = ['news', 'article', 'report', null, undefined]
+
+  if (currentSummaryForNews && !currentTagsForNews.includes('!news') &&
+      potentialNewsTypes.includes(scrap.content_type || updates.content_type)) {
+    console.log(chalk.dim('    Evaluating newsworthiness...'))
+    try {
+      const tempScrapForNews = {
+        ...scrap,
+        ...updates,
+        summary: currentSummaryForNews,
+        tags: currentTagsForNews
+      }
+      const newsResult = await applyNewsworthinessTag(tempScrapForNews, { scrapId })
+
+      if (newsResult.isNewsworthy) {
+        updates.tags = newsResult.tags
+        console.log(chalk.green(`    ✓ !NEWS: ${newsResult.reason}`))
+      } else if (newsResult.evaluated) {
+        console.log(chalk.gray(`    ℹ Not newsworthy: ${newsResult.reason}`))
+      }
+    } catch (error) {
+      console.log(chalk.yellow(`    ⚠ Newsworthiness check failed: ${error.message}`))
     }
   }
 
