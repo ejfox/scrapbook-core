@@ -20,6 +20,7 @@ import { generateEmbedding } from './llmService.mjs'
 import { extractLocation } from './aiGeolocation.mjs'
 import { extractRelationships } from './aiRelationshipExtraction.mjs'
 import { extractAndAddFinancialAnalysis } from './aiFinancialAnalysis.mjs'
+import { applyNewsworthinessTag } from './aiNewsworthiness.mjs'
 import { enrichWithReasoningFields } from './reasoningFields.mjs'
 import { resetSession, printCostSummary, checkCostAlerts } from './costTracking.mjs'
 import { showHeader, StepVisualizer, showSummary, showTags, showConfidence, showSuccess, separator } from './cyberpunkUI.mjs'
@@ -817,6 +818,26 @@ async function enrichScrapWithAI(scrapData) {
         )
       } else {
         logger.info(chalk.yellow('ℹ️  No location found'))
+      }
+
+      // Evaluate newsworthiness for !news tag (editorial curation, ~3/day)
+      const potentialNewsTypes = ['news', 'article', 'report', null, undefined]
+      if (scrapData.summary && !(scrapData.tags || []).includes('!news') &&
+          potentialNewsTypes.includes(scrapData.content_type)) {
+        logger.info(chalk.blue('\n6️⃣  Evaluating newsworthiness...'))
+        try {
+          const newsResult = await applyNewsworthinessTag(scrapData, {
+            scrapId: scrapData.scrap_id || scrapData.id
+          })
+          if (newsResult.isNewsworthy) {
+            scrapData.tags = newsResult.tags
+            logger.info(chalk.green(`✅ !NEWS: ${newsResult.reason}`))
+          } else if (newsResult.evaluated) {
+            logger.info(chalk.gray(`ℹ️  Not newsworthy: ${newsResult.reason}`))
+          }
+        } catch (error) {
+          logger.warn(chalk.yellow(`⚠️  Newsworthiness check failed: ${error.message}`))
+        }
       }
     } else {
       logger.info(chalk.yellow('⚠️  Failed to generate summary'))
