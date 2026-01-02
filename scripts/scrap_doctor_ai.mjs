@@ -22,6 +22,63 @@ import { trackCost } from './costTracking.mjs'
 import { autoSyncRecentTags } from './sync_tags_to_pinboard.mjs'
 import Bottleneck from 'bottleneck'
 
+/**
+ * Generate a title from summary content when title is missing
+ * Uses the first bullet point or sentence as the title
+ */
+function generateTitleFromSummary(summary, url) {
+  if (!summary || summary.trim().length === 0) {
+    // Fallback: derive from URL
+    if (url) {
+      try {
+        const urlObj = new URL(url)
+        const pathParts = urlObj.pathname.split('/').filter(p => p && p !== 'index.html')
+        if (pathParts.length > 0) {
+          // Use last meaningful path segment
+          const lastPart = pathParts[pathParts.length - 1]
+            .replace(/[-_]/g, ' ')
+            .replace(/\.[^.]+$/, '') // Remove file extension
+          return lastPart.charAt(0).toUpperCase() + lastPart.slice(1)
+        }
+        return urlObj.hostname.replace('www.', '')
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
+
+  // Clean up markdown formatting
+  const cleanSummary = summary
+    .replace(/^#+\s*/gm, '')  // headers
+    .replace(/\*\*/g, '')      // bold
+    .trim()
+
+  // Split into lines and find first bullet point
+  const lines = cleanSummary.split('\n')
+  for (const line of lines) {
+    const trimmed = line.trim()
+    // Check if line starts with bullet (•, -, *)
+    if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      let title = trimmed.slice(1).trim()  // Remove bullet char
+      if (title.length > 100) title = title.slice(0, 97) + '...'
+      if (title.length > 10) return title
+    }
+  }
+
+  // Fallback: first sentence (split on period followed by space)
+  const firstSentence = cleanSummary.split('. ')[0]
+  if (firstSentence && firstSentence.length > 10) {
+    let title = firstSentence.trim()
+    if (title.length > 100) title = title.slice(0, 97) + '...'
+    return title
+  }
+
+  // Last resort: first 100 chars
+  const short = cleanSummary.slice(0, 100).trim()
+  return cleanSummary.length > 100 ? short + '...' : short
+}
+
 // Load environment variables
 const envPath = path.resolve(process.cwd(), '.env')
 if (fs.existsSync(envPath)) {
@@ -365,6 +422,7 @@ async function repair(options) {
 async function repairScrapWithAI(scrap, options) {
   const updates = {}
   const scrapId = scrap.scrap_id
+  const errors = [] // Track errors to potentially add !hide tag
 
   // If a specific type is requested, ONLY process that type
   // Note: --force only affects NULL checks in query, NOT type filtering
@@ -387,6 +445,7 @@ async function repairScrapWithAI(scrap, options) {
       }
     } catch (error) {
       contentFetchFailed = true
+      errors.push({ type: 'content_fetch', message: error.message })
       console.log(chalk.dim(`    ⚠ Could not fetch content: ${error.message}`))
     }
   }
@@ -441,6 +500,21 @@ async function repairScrapWithAI(scrap, options) {
         throw error // Re-throw to stop repair
       }
     } // Close else block for summary content check
+  }
+
+  // Generate title from summary if missing or empty
+  // This ensures downstream consumers never see "[no title]"
+  const currentSummary = updates.summary || scrap.summary
+  const isTitleMissing = !scrap.title || scrap.title.trim() === '' || scrap.title === '[no title]'
+  if (isTitleMissing && currentSummary) {
+    console.log(chalk.dim('    Generating title from summary...'))
+    const generatedTitle = generateTitleFromSummary(currentSummary, scrap.url)
+    if (generatedTitle) {
+      updates.title = generatedTitle
+      console.log(chalk.dim(`    ✓ Generated title: ${generatedTitle.substring(0, 60)}${generatedTitle.length > 60 ? '...' : ''}`))
+    } else {
+      console.log(chalk.yellow('    ⚠ Could not generate title from summary'))
+    }
   }
 
   // Generate tags if missing or bad (only has 'pinboard', or has capitalized/stop words)
@@ -694,6 +768,7 @@ async function repairScrapWithAI(scrap, options) {
           console.log(chalk.yellow(`      Response: ${JSON.stringify(screenshot)}`))
         }
       } catch (error) {
+        errors.push({ type: 'screenshot', message: error.message })
         console.error(chalk.red('    ✗ SCREENSHOT GENERATION FAILED'))
         console.error(chalk.red(`      Scrap ID: ${scrapId}`))
         console.error(chalk.red(`      URL: ${scrap.url}`))
@@ -741,6 +816,22 @@ async function repairScrapWithAI(scrap, options) {
     const derivedType = sourceToType[scrap.source] || 'bookmark'
     updates.type = derivedType
     console.log(chalk.dim(`    ✓ Fixed type: ${derivedType} (from source: ${scrap.source})`))
+  }
+
+  // Add !hide tag if we encountered critical errors (no content, failed summary, etc.)
+  // This lets downstream consumers filter out broken scraps
+  const criticalErrors = errors.filter(e =>
+    e.type === 'content_fetch' || e.type === 'summary' || e.type === 'screenshot'
+  )
+  const hasNoUsefulContent = !scrap.summary && !updates.summary && (!content || content.length < 100)
+
+  if (criticalErrors.length > 0 || hasNoUsefulContent) {
+    const currentTags = updates.tags || scrap.tags || []
+    if (!currentTags.includes('!hide')) {
+      updates.tags = ['!hide', ...currentTags]
+      const reasons = criticalErrors.map(e => e.type).join(', ') || 'no content'
+      console.log(chalk.yellow(`    ⚠ Added !hide tag (${reasons})`))
+    }
   }
 
   // Update the scrap if we have any updates

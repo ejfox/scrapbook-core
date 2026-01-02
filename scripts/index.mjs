@@ -733,6 +733,16 @@ async function enrichScrapWithAI(scrapData) {
       showSummary(scrapData.summary, 2)
       showTags(scrapData.tags, null)
 
+      // Generate title from summary if missing or empty
+      const isTitleMissing = !scrapData.title || scrapData.title.trim() === '' || scrapData.title === '[no title]'
+      if (isTitleMissing && scrapData.summary) {
+        const generatedTitle = generateTitleFromSummary(scrapData.summary, scrapData.url)
+        if (generatedTitle) {
+          scrapData.title = generatedTitle
+          logger.info(chalk.green(`📝 TITLE → ${generatedTitle.substring(0, 60)}${generatedTitle.length > 60 ? '...' : ''}`))
+        }
+      }
+
       // Extract relationships from the summary
       stepViz.startStep(4)  // FIND RELATIONS step
       const enrichedWithRelationships =
@@ -1360,6 +1370,60 @@ const INSTANCE_NAME = process.env.FLY_ALLOC_ID
     process.env.NODE_ENV || 'dev'
   }`
 const STUCK_THRESHOLD_MINS = 5
+
+/**
+ * Generate a title from summary content when title is missing
+ * Uses the first bullet point or sentence as the title
+ */
+function generateTitleFromSummary(summary, url) {
+  if (!summary || summary.trim().length === 0) {
+    // Fallback: derive from URL
+    if (url) {
+      try {
+        const urlObj = new URL(url)
+        const pathParts = urlObj.pathname.split('/').filter(p => p && p !== 'index.html')
+        if (pathParts.length > 0) {
+          const lastPart = pathParts[pathParts.length - 1]
+            .replace(/[-_]/g, ' ')
+            .replace(/\.[^.]+$/, '')
+          return lastPart.charAt(0).toUpperCase() + lastPart.slice(1)
+        }
+        return urlObj.hostname.replace('www.', '')
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
+
+  // Clean up markdown formatting
+  const cleanSummary = summary
+    .replace(/^#+\s*/gm, '')  // headers
+    .replace(/\*\*/g, '')      // bold
+    .trim()
+
+  // Split into lines and find first bullet point
+  const lines = cleanSummary.split('\n')
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      let title = trimmed.slice(1).trim()
+      if (title.length > 100) title = title.slice(0, 97) + '...'
+      if (title.length > 10) return title
+    }
+  }
+
+  // Fallback: first sentence
+  const firstSentence = cleanSummary.split('. ')[0]
+  if (firstSentence && firstSentence.length > 10) {
+    let title = firstSentence.trim()
+    if (title.length > 100) title = title.slice(0, 97) + '...'
+    return title
+  }
+
+  const short = cleanSummary.slice(0, 100).trim()
+  return cleanSummary.length > 100 ? short + '...' : short
+}
 
 // Add this helper function
 async function processContent(data) {
