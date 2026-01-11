@@ -175,7 +175,8 @@ ${chunk}`
       summary = response
       log(`✅ Got response of ${summary.length} chars`)
 
-      if (blacklistPhrases.some((phrase) => summary?.trim().includes(phrase))) {
+      // Case-insensitive blacklist check
+      if (blacklistPhrases.some((phrase) => summary?.trim().toLowerCase().includes(phrase.toLowerCase()))) {
         log(
           `⚠️ Summary contains blacklisted phrase. Retrying... (Attempt ${
             retries + 1

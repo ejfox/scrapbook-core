@@ -22,7 +22,7 @@ console.log('  - breakContentIntoChunks:', typeof breakContentIntoChunks === 'fu
 console.log('  - isContentInsufficient:', typeof isContentInsufficient === 'function')
 
 // Test 3: Chunking functionality
-const testContent = 'This is a test sentence. ' .repeat(1000)
+const testContent = 'This is a test sentence.'.repeat(1000)
 const chunks = breakContentIntoChunks(testContent, 1000)
 console.log('\n✓ Chunking works:', chunks.length, 'chunks created')
 
