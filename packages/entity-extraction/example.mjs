@@ -48,7 +48,7 @@ for what would eventually become Apple Music.
 
 async function main() {
   console.log('📚 Entity Extraction Example\n')
-  console.log('=' .repeat(60))
+  console.log('='.repeat(60))
   
   console.log('\n📝 Content to analyze:')
   console.log(exampleContent.trim())

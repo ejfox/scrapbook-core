@@ -58,7 +58,7 @@ export function breakContentIntoChunks(content, chunkSizeTokens = 6144) {
   if (!content) return []
 
   // Ensure content is a string
-  const text = String(content || '')
+  const text = String(content)
 
   // Split into sentences more reliably
   const sentences = text
@@ -182,10 +182,7 @@ ${chunk}`
             retries + 1
           })`,
         )
-        messages.push({
-          role: 'user',
-          content: userMessage.content,
-        })
+        // Add the rejected response to conversation history for context
         messages.push({
           role: 'assistant',
           content:
