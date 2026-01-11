@@ -10,7 +10,8 @@ async function getSupabaseClient() {
       const supabase = await import('@supabase/supabase-js')
       createClient = supabase.createClient
     } catch (e) {
-      // Supabase not available, that's OK
+      // Supabase not available, that's OK - package works without it
+      console.warn('@scrapbook/entity-extraction: Supabase not available, continuing without example relationships')
       return null
     }
   }
