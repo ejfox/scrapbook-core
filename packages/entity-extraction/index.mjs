@@ -144,7 +144,7 @@ function validateRelationship(rel) {
 export async function extractRelationships(content, options = {}) {
   if (!content) return []
 
-  const { url, isRawText = false, model = null, llmProvider, supabaseClient } = options
+  const { url, model = null, llmProvider, supabaseClient } = options
 
   if (!llmProvider || typeof llmProvider.completion !== 'function') {
     throw new Error('llmProvider with completion method is required')
@@ -206,7 +206,7 @@ ${url ? `\nURL: ${url}` : ''}`,
         const match = line.match(/^\[(.+?)\]-\[(.+?)\]->\[(.+?)\]$/)
         if (!match) return null
 
-        const [_, sourceRaw, relationship, targetRaw] = match
+        const [, sourceRaw, relationship, targetRaw] = match
 
         // Parse entity and type from format "Entity:Type" or just "Entity"
         const parseEntity = (entityStr) => {
