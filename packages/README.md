@@ -9,6 +9,11 @@ Extract entities and relationships from text content using AI. Perfect for build
 
 **Status**: ✅ Fully implemented and standalone
 
+**Documentation**:
+- [README](./entity-extraction/README.md) - Full API documentation
+- [USAGE Guide](./entity-extraction/USAGE.md) - **Step-by-step standalone usage guide**
+- [Example](./entity-extraction/example.mjs) - Runnable code example
+
 ```bash
 npm install @scrapbook/entity-extraction
 ```
@@ -17,6 +22,10 @@ npm install @scrapbook/entity-extraction
 AI-powered content summarization with automatic chunking and rate limiting.
 
 **Status**: ✅ Fully implemented and standalone
+
+**Documentation**:
+- [README](./content-summarization/README.md) - Full API documentation
+- [USAGE Guide](./content-summarization/USAGE.md) - **Step-by-step standalone usage guide**
 
 ```bash
 npm install @scrapbook/content-summarization
@@ -27,6 +36,10 @@ Extract and geocode geographic locations from text using AI and OpenCage.
 
 **Status**: 🚧 Package structure created, full standalone version coming soon
 
+**Documentation**:
+- [README](./content-geolocation/README.md) - API documentation and overview
+- [USAGE Guide](./content-geolocation/USAGE.md) - **Current usage guide and future roadmap**
+
 ```bash
 npm install @scrapbook/content-geolocation
 ```
@@ -35,6 +48,10 @@ npm install @scrapbook/content-geolocation
 Extract financial assets and analyze sentiment. Tracks 40+ stocks, crypto, ETFs, and commodities.
 
 **Status**: 🚧 Package structure created, full standalone version coming soon
+
+**Documentation**:
+- [README](./financial-analysis/README.md) - API documentation and tracked assets
+- [USAGE Guide](./financial-analysis/USAGE.md) - **Current usage guide and future roadmap**
 
 ```bash
 npm install @scrapbook/financial-analysis
