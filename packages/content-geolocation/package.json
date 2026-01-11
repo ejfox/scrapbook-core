@@ -1,0 +1,30 @@
+{
+  "name": "@scrapbook/content-geolocation",
+  "version": "1.0.0",
+  "description": "Extract and geocode geographic locations from text content using AI",
+  "main": "index.mjs",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "keywords": [
+    "geolocation",
+    "geocoding",
+    "location-extraction",
+    "ai",
+    "nlp",
+    "opencage"
+  ],
+  "author": "EJ Fox",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ejfox/scrapbook-core.git",
+    "directory": "packages/content-geolocation"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "bottleneck": "^2.19.5",
+    "dotenv": "^16.4.5"
+  }
+}

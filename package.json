@@ -56,7 +56,14 @@
     }
   },
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "dependencies": {
+    "@scrapbook/content-geolocation": "file:./packages/content-geolocation",
+    "@scrapbook/content-summarization": "file:./packages/content-summarization",
+    "@scrapbook/entity-extraction": "file:./packages/entity-extraction",
+    "@scrapbook/financial-analysis": "file:./packages/financial-analysis",
     "@danielxceron/youtube-transcript": "^1.2.3",
     "@mozilla/readability": "^0.6.0",
     "@octokit/rest": "^21.0.1",

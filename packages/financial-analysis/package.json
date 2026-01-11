@@ -1,0 +1,28 @@
+{
+  "name": "@scrapbook/financial-analysis",
+  "version": "1.0.0",
+  "description": "Extract financial entities and analyze sentiment from text content using AI",
+  "main": "index.mjs",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "keywords": [
+    "financial-analysis",
+    "sentiment-analysis",
+    "stock-market",
+    "ai",
+    "nlp",
+    "fintech"
+  ],
+  "author": "EJ Fox",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ejfox/scrapbook-core.git",
+    "directory": "packages/financial-analysis"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
