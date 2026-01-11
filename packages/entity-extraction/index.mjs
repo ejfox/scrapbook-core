@@ -1,7 +1,21 @@
-import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 
 dotenv.config()
+
+// Lazy import for optional Supabase dependency
+let createClient = null
+async function getSupabaseClient() {
+  if (!createClient) {
+    try {
+      const supabase = await import('@supabase/supabase-js')
+      createClient = supabase.createClient
+    } catch (e) {
+      // Supabase not available, that's OK
+      return null
+    }
+  }
+  return createClient
+}
 
 /**
  * @typedef {Object} LLMProvider
@@ -26,12 +40,19 @@ dotenv.config()
 
 // Lazy-load supabase client for relationship examples
 let supabaseClient = null
-function getSupabase(providedClient = null) {
+async function getSupabase(providedClient = null) {
   if (providedClient) {
     return providedClient
   }
   if (!supabaseClient && process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-    supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+    try {
+      const createClientFn = await getSupabaseClient()
+      if (createClientFn) {
+        supabaseClient = createClientFn(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+      }
+    } catch (e) {
+      // Supabase not available
+    }
   }
   return supabaseClient
 }
@@ -44,7 +65,7 @@ function getSupabase(providedClient = null) {
  */
 async function getRecentRelationshipExamples(count = 9, supabaseClient = null) {
   try {
-    const supabase = getSupabase(supabaseClient)
+    const supabase = await getSupabase(supabaseClient)
     if (!supabase) return []
 
     const { data: scraps } = await supabase
