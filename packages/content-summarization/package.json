@@ -1,0 +1,29 @@
+{
+  "name": "@scrapbook/content-summarization",
+  "version": "1.0.0",
+  "description": "AI-powered content summarization with chunking and multi-provider support",
+  "main": "index.mjs",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "keywords": [
+    "summarization",
+    "ai",
+    "llm",
+    "content-analysis",
+    "nlp",
+    "text-processing"
+  ],
+  "author": "EJ Fox",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ejfox/scrapbook-core.git",
+    "directory": "packages/content-summarization"
+  },
+  "dependencies": {
+    "bottleneck": "^2.19.5",
+    "dotenv": "^16.4.5"
+  }
+}
