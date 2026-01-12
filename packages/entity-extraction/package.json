@@ -1,0 +1,36 @@
+{
+  "name": "@scrapbook/entity-extraction",
+  "version": "1.0.0",
+  "description": "Extract entities and relationships from text content using AI",
+  "main": "index.mjs",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "keywords": [
+    "entity-extraction",
+    "relationship-extraction",
+    "nlp",
+    "ai",
+    "knowledge-graph",
+    "cypher"
+  ],
+  "author": "EJ Fox",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ejfox/scrapbook-core.git",
+    "directory": "packages/entity-extraction"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.43.4"
+  },
+  "peerDependenciesMeta": {
+    "@supabase/supabase-js": {
+      "optional": true
+    }
+  }
+}

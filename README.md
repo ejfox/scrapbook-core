@@ -12,6 +12,17 @@ Think of it as an automated digital memory that captures what you read, create, 
 
 <img width="1912" alt="Screenshot 2024-07-07 at 10 02 54 PM" src="https://github.com/ejfox/scrapbook-core/assets/530073/614513b9-c85c-4815-8a24-e2c43cf5dad4">
 
+## Modular Packages 📦
+
+Scrapbook Core's AI analysis tools are available as **standalone packages** that you can use in your own projects:
+
+- **[@scrapbook/entity-extraction](./packages/entity-extraction)** - Extract entities and relationships from text
+- **[@scrapbook/content-summarization](./packages/content-summarization)** - AI-powered content summarization
+- **[@scrapbook/content-geolocation](./packages/content-geolocation)** - Extract and geocode locations
+- **[@scrapbook/financial-analysis](./packages/financial-analysis)** - Financial entity and sentiment extraction
+
+Each package is LLM-agnostic and can work with OpenAI, Anthropic, OpenRouter, or any other provider. See the [packages directory](./packages) for detailed documentation.
+
 ## Features
 
 - Fetches data from multiple sources:
