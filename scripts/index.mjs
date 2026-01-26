@@ -38,17 +38,7 @@ import path from 'path'
 import winston from 'winston'
 import LokiTransport from 'winston-loki'
 import { generateScreenshot, cleanupTempFiles, checkExistingScreenshot } from './generateScreenshot.mjs'
-import {
-  getInstanceId,
-  acquireLock,
-  releaseLock,
-  releaseAllLocks,
-  checkFieldsExist,
-  cleanStaleLocks,
-  getLockStats,
-  acquireRunLock,
-  releaseRunLock
-} from './distributedLock.mjs'
+import { getInstanceId, acquireRunLock, releaseRunLock } from './distributedLock.mjs'
 import { v2 as cloudinary } from 'cloudinary'
 import os from 'os'
 import axios from 'axios'
