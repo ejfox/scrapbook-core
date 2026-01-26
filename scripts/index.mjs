@@ -37,7 +37,18 @@ import fs from 'fs'
 import path from 'path'
 import winston from 'winston'
 import LokiTransport from 'winston-loki'
-import { generateScreenshot, cleanupTempFiles } from './generateScreenshot.mjs'
+import { generateScreenshot, cleanupTempFiles, checkExistingScreenshot } from './generateScreenshot.mjs'
+import {
+  getInstanceId,
+  acquireLock,
+  releaseLock,
+  releaseAllLocks,
+  checkFieldsExist,
+  cleanStaleLocks,
+  getLockStats,
+  acquireRunLock,
+  releaseRunLock
+} from './distributedLock.mjs'
 import { v2 as cloudinary } from 'cloudinary'
 import os from 'os'
 import axios from 'axios'
@@ -693,30 +704,34 @@ async function enrichScrapWithAI(scrapData) {
 
     // Generate text embedding with retries (if enabled)
     if (ENABLE_EMBEDDINGS) {
-      stepViz.startStep(5)  // EMBED step
-      let textEmbedding = null
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          textEmbedding = await limiter.schedule(() =>
-            generateEmbedding(contentToProcess, {
-              type: 'text',
-              scrapId: scrapIdentifier,
-              taskType: 'text_embedding',
-            }),
-          )
-          if (textEmbedding) {
-            scrapData.embedding = textEmbedding  // OpenAI text-embedding-3-small
-            stepViz.completeStep(5, '1536 dimensions')
-            trackStep('embeddings', true)
-            break
-          }
-        } catch (error) {
-          logger.error(
-            chalk.red(`❌ Embedding generation failed (attempt ${attempt}/3)`),
-          )
-          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
-          if (attempt === 3) {
-            trackStep('embeddings', false)
+      // Skip if already has embedding
+      if (scrapData.embedding && scrapData.embedding.length > 0) {
+        stepViz.skipStep(5, 'exists')
+        logger.info(chalk.gray(`Skipping embedding - already has ${scrapData.embedding.length}D vector`))
+      } else {
+        stepViz.startStep(5)  // EMBED step
+        let textEmbedding = null
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            textEmbedding = await limiter.schedule(() =>
+              generateEmbedding(contentToProcess, {
+                type: 'text',
+                scrapId: scrapIdentifier,
+                taskType: 'text_embedding',
+              }),
+            )
+            if (textEmbedding) {
+              scrapData.embedding = textEmbedding  // OpenAI text-embedding-3-small
+              stepViz.completeStep(5, '1536 dimensions')
+              trackStep('embeddings', true)
+              break
+            }
+          } catch (error) {
+            logger.error(`Embedding failed (${attempt}/3): ${error.message}`)
+            await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+            if (attempt === 3) {
+              trackStep('embeddings', false)
+            }
           }
         }
       }
@@ -1260,6 +1275,12 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
 
 // Add this helper function near the top with other helper functions
 async function generateSummaryAndTags(scrapObj, scrapId) {
+  // Skip if already has summary (avoid duplicate AI work)
+  if (scrapObj.summary && scrapObj.summary.length > 50) {
+    logger.info(chalk.gray(`Skipping summary generation - already has ${scrapObj.summary.length} char summary`))
+    return scrapObj
+  }
+
   // Gather all possible content sources
   const contentToProcess = [
     scrapObj.content,
@@ -1384,12 +1405,8 @@ async function shouldProcessScrap(scrapData) {
   return hoursSinceLastCheck > 24
 }
 
-// Get instance ID using Fly.io's allocation ID or fallback for local dev
-const INSTANCE_NAME = process.env.FLY_ALLOC_ID
-  ? `fly-${process.env.FLY_ALLOC_ID}`
-  : `local-${os.hostname().toLowerCase()}-${process.platform}-${
-    process.env.NODE_ENV || 'dev'
-  }`
+// Get instance ID from distributed lock module
+const INSTANCE_NAME = getInstanceId()
 const STUCK_THRESHOLD_MINS = 5
 
 /**
@@ -2639,15 +2656,29 @@ async function main() {
 
 // Extract processing logic to reusable function
 async function runProcessing() {
-  // Check initial safety conditions
-  logger.info(chalk.blue('\n🛡️  Checking Safety Conditions...'))
-  const initialSafetyCheck = shouldContinueProcessing(true)
-  if (!initialSafetyCheck.safe) {
-    logger.error(chalk.red(`🚨 Cannot start processing: ${initialSafetyCheck.reason}`))
-    logger.info(chalk.gray(`   Recommendation: ${initialSafetyCheck.recommendation}`))
-    printSafetyStatus()
+  // Acquire global run lock to prevent overlapping cron runs
+  logger.info(chalk.blue('\n🔒 Acquiring Run Lock...'))
+  const runLockResult = await acquireRunLock()
+  if (!runLockResult.acquired) {
+    logger.warn(chalk.yellow(`⏭️  Skipping run: ${runLockResult.reason}`))
+    if (runLockResult.startedAt) {
+      const mins = Math.round((Date.now() - new Date(runLockResult.startedAt).getTime()) / 60000)
+      logger.info(chalk.gray(`   Run started ${mins} minutes ago`))
+    }
     return
   }
+  logger.info(chalk.green('✅ Run lock acquired'))
+
+  try {
+    // Check initial safety conditions
+    logger.info(chalk.blue('\n🛡️  Checking Safety Conditions...'))
+    const initialSafetyCheck = shouldContinueProcessing(true)
+    if (!initialSafetyCheck.safe) {
+      logger.error(chalk.red(`🚨 Cannot start processing: ${initialSafetyCheck.reason}`))
+      logger.info(chalk.gray(`   Recommendation: ${initialSafetyCheck.recommendation}`))
+      printSafetyStatus()
+      return
+    }
 
   // Reset cost tracking for this run
   resetSession()
@@ -2749,6 +2780,11 @@ async function runProcessing() {
   // Print final safety status
   logger.info(chalk.blue('\n🛡️  FINAL SAFETY STATUS:'))
   printSafetyStatus()
+  } finally {
+    // Always release the run lock
+    logger.info(chalk.blue('\n🔓 Releasing run lock...'))
+    await releaseRunLock()
+  }
 }
 
 // Track step failures and send alerts for degraded services

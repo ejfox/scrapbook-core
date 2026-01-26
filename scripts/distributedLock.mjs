@@ -357,12 +357,126 @@ export async function cleanStaleLocks() {
   return { cleaned: data?.length || 0, scraps: data }
 }
 
+/**
+ * Global run lock - prevents multiple instances from running full processing simultaneously.
+ * Uses a special scrap_id "__run_lock__" to coordinate.
+ */
+const RUN_LOCK_ID = '__run_lock__'
+const RUN_LOCK_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes - longer than typical run
+let hasRunLock = false
+
+export async function acquireRunLock() {
+  const now = new Date().toISOString()
+  const staleThreshold = new Date(Date.now() - RUN_LOCK_TIMEOUT_MS).toISOString()
+
+  // Check if run lock exists and is held
+  const { data: existing } = await supabase
+    .from('scraps')
+    .select('processing_instance_id, processing_started_at')
+    .eq('scrap_id', RUN_LOCK_ID)
+    .single()
+
+  if (existing) {
+    // Lock exists - check if stale or ours
+    if (existing.processing_instance_id &&
+        existing.processing_instance_id !== INSTANCE_ID &&
+        existing.processing_started_at > staleThreshold) {
+      return {
+        acquired: false,
+        reason: `run_in_progress_by_${existing.processing_instance_id}`,
+        startedAt: existing.processing_started_at
+      }
+    }
+
+    // Update existing lock
+    const { error } = await supabase
+      .from('scraps')
+      .update({
+        processing_instance_id: INSTANCE_ID,
+        processing_started_at: now
+      })
+      .eq('scrap_id', RUN_LOCK_ID)
+      .or(`processing_instance_id.is.null,processing_instance_id.eq.${INSTANCE_ID},processing_started_at.lt.${staleThreshold}`)
+
+    if (error) {
+      return { acquired: false, reason: `update_failed: ${error.message}` }
+    }
+  } else {
+    // Create the lock record (use pinboard as source since it's a valid enum)
+    const { error } = await supabase
+      .from('scraps')
+      .insert({
+        scrap_id: RUN_LOCK_ID,
+        source: 'pinboard',
+        type: 'bookmark',
+        processing_instance_id: INSTANCE_ID,
+        processing_started_at: now,
+        content: 'Global run lock for scrapbook processing',
+        title: 'Run Lock',
+        created_at: now,
+        updated_at: now
+      })
+
+    if (error && !error.message.includes('duplicate')) {
+      return { acquired: false, reason: `insert_failed: ${error.message}` }
+    }
+  }
+
+  hasRunLock = true
+  return { acquired: true }
+}
+
+export async function releaseRunLock() {
+  if (!hasRunLock) return
+
+  await supabase
+    .from('scraps')
+    .update({
+      processing_instance_id: null,
+      processing_started_at: null
+    })
+    .eq('scrap_id', RUN_LOCK_ID)
+    .eq('processing_instance_id', INSTANCE_ID)
+
+  hasRunLock = false
+}
+
+export async function isRunLockHeld() {
+  const staleThreshold = new Date(Date.now() - RUN_LOCK_TIMEOUT_MS).toISOString()
+
+  const { data } = await supabase
+    .from('scraps')
+    .select('processing_instance_id, processing_started_at')
+    .eq('scrap_id', RUN_LOCK_ID)
+    .not('processing_instance_id', 'is', null)
+    .gt('processing_started_at', staleThreshold)
+    .single()
+
+  if (data) {
+    return {
+      held: true,
+      by: data.processing_instance_id,
+      since: data.processing_started_at,
+      isOurs: data.processing_instance_id === INSTANCE_ID
+    }
+  }
+
+  return { held: false }
+}
+
 // Cleanup on process exit
-process.on('SIGTERM', releaseAllLocks)
-process.on('SIGINT', releaseAllLocks)
+process.on('SIGTERM', async () => {
+  await releaseRunLock()
+  await releaseAllLocks()
+})
+process.on('SIGINT', async () => {
+  await releaseRunLock()
+  await releaseAllLocks()
+})
 process.on('exit', () => {
   // Sync cleanup - can't await here
   activeLocks.clear()
+  hasRunLock = false
   stopHeartbeat()
 })
 
@@ -375,5 +489,8 @@ export default {
   claimBatch,
   withLock,
   getLockStats,
-  cleanStaleLocks
+  cleanStaleLocks,
+  acquireRunLock,
+  releaseRunLock,
+  isRunLockHeld
 }
