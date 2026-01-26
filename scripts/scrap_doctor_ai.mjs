@@ -747,7 +747,7 @@ async function repairScrapWithAI(scrap, options) {
       console.log(chalk.gray(`      URL: ${scrap.url.substring(0, 80)}`))
       try {
         const screenshot = await browserLimiter.schedule(() =>
-          generateScreenshot(scrap.url),
+          generateScreenshot(scrap.url, scrap.scrap_id),
         )
 
         if (screenshot?.url) {

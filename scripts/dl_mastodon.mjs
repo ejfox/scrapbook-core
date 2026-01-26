@@ -177,7 +177,8 @@ export async function processStatus(status, isValidation = false) {
     let screenshot_url = null
     if (url) {
       try {
-        screenshot_url = await generateScreenshot(url)
+        const result = await generateScreenshot(url, scrapId)
+        screenshot_url = result?.url || null
       } catch (error) {
         logger.warn(`Failed to generate screenshot for ${url}:`, error)
       }

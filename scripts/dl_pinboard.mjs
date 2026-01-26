@@ -402,7 +402,7 @@ export async function processBookmark(bookmark) {
       try {
         const screenshotStartTime = Date.now()
         const screenshot = await screenshotLimiter.schedule(() =>
-          generateScreenshot(bookmark.href),
+          generateScreenshot(bookmark.href, processed.scrap_id),
         )
 
         if (screenshot?.url) {

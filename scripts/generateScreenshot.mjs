@@ -24,6 +24,30 @@ if (isCloudinaryConfigured) {
   })
 }
 
+/**
+ * Check if a screenshot already exists in Cloudinary for this scrap.
+ * Returns the existing URL if found, null otherwise.
+ */
+export async function checkExistingScreenshot(scrapId) {
+  if (!isCloudinaryConfigured || !scrapId) return null
+
+  const publicId = `scrapbook/screenshots/${scrapId}`
+
+  try {
+    const result = await cloudinary.api.resource(publicId, { resource_type: 'image' })
+    if (result?.secure_url) {
+      return { url: result.secure_url, public_id: result.public_id, existing: true }
+    }
+  } catch (error) {
+    // 404 means doesn't exist - that's fine
+    if (error?.error?.http_code !== 404) {
+      // Log unexpected errors but don't fail
+      console.warn(`Cloudinary check failed for ${scrapId}:`, error?.error?.message || error.message)
+    }
+  }
+  return null
+}
+
 // Create temp directory for screenshots if it doesn't exist
 const TEMP_DIR = path.join(os.tmpdir(), 'scrapbook-screenshots')
 async function ensureTempDir() {
@@ -60,16 +84,22 @@ export async function cleanupTempFiles() {
 }
 
 // Helper function to upload to Cloudinary with timeout
-async function uploadToCloudinary(buffer, timeoutMs = 45000) {
+// Uses scrap_id as public_id to prevent duplicates - same scrap = same file
+async function uploadToCloudinary(buffer, scrapId, timeoutMs = 45000) {
   if (!isCloudinaryConfigured) {
     throw new Error('Cloudinary is not configured - screenshot upload skipped')
   }
+
+  // Use scrap_id directly as public_id (e.g., "pinboard-90fa78eb14c2dbe56fa2fc1115b4327b")
+  const publicId = scrapId || undefined
 
   return Promise.race([
     new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'scrapbook/screenshots',
+          public_id: publicId,
+          overwrite: true, // Replace existing screenshot for same scrap
           format: 'jpg',
           quality: 'auto:good',
         },
@@ -218,7 +248,8 @@ async function takeScreenshotWithRetry(page, retries = 2) {
 }
 
 // Update the screenshot function with better cleanup
-export async function generateScreenshot(url) {
+// scrapId is used as Cloudinary public_id to prevent duplicates
+export async function generateScreenshot(url, scrapId = null) {
   if (!url || url === null || url === undefined || url === '') {
     logger.warn(`Skipping screenshot generation - invalid URL: ${url}`)
     return null
@@ -234,6 +265,15 @@ export async function generateScreenshot(url) {
   } catch (error) {
     logger.warn(`Invalid URL format: ${urlString}`)
     throw new Error(`Invalid URL format: ${urlString}`)
+  }
+
+  // Check if screenshot already exists in Cloudinary (skip if so)
+  if (scrapId) {
+    const existing = await checkExistingScreenshot(scrapId)
+    if (existing) {
+      logger.info(`Screenshot already exists for ${scrapId}, skipping generation`)
+      return existing
+    }
   }
 
   let browser
@@ -350,12 +390,13 @@ export async function generateScreenshot(url) {
     }
 
     try {
-      const result = await uploadToCloudinary(screenshot)
+      const result = await uploadToCloudinary(screenshot, scrapId)
+      logger.info(`Screenshot uploaded for ${scrapId || 'unknown'}: ${result.public_id}`)
       // Trigger temp file cleanup
       cleanupTempFiles().catch((error) =>
         logger.error('Background cleanup failed:', error),
       )
-      return { url: result.secure_url }
+      return { url: result.secure_url, public_id: result.public_id }
     } catch (error) {
       logger.error('Failed to upload screenshot to Cloudinary:', error)
       return { url: null, localPath: tempFilePath }
@@ -425,11 +466,14 @@ export async function handleArenaImage(scrap) {
     // Upload directly to Cloudinary using the URL
     const result = await cloudinary.uploader.upload(imageUrl, {
       folder: 'scrapbook/arena',
+      public_id: scrap.scrap_id,
+      overwrite: true,
       format: 'jpg',
       quality: 'auto:good',
     })
 
-    return { url: result.secure_url }
+    logger.info(`Arena image uploaded for ${scrap.scrap_id}: ${result.public_id}`)
+    return { url: result.secure_url, public_id: result.public_id }
   } catch (error) {
     logger.error(`Failed to upload Arena image: ${error.message}`)
     return { url: null, originalUrl: imageUrl }

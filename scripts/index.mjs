@@ -864,7 +864,7 @@ async function enrichScrapWithAI(scrapData) {
         process.stdout.write(chalk.blue(`📸 SCREENSHOT → ${urlShort}... `))
         try {
           const screenshot = await browserLimiter.schedule(() =>
-            generateScreenshot(scrapData.url),
+            generateScreenshot(scrapData.url, scrapData.scrap_id),
           )
           const duration = ((Date.now() - startTime) / 1000).toFixed(1)
           if (screenshot?.url) {
@@ -2227,7 +2227,7 @@ async function identifyAndFixMissingData(options = {}) {
           }
           logger.info(chalk.blue(`📸 Generating screenshot for ${scrap.url}`))
           const screenshot = await browserLimiter.schedule(() =>
-            generateScreenshot(scrap.url),
+            generateScreenshot(scrap.url, scrap.scrap_id),
           )
 
           if (screenshot?.url) {
