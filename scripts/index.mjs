@@ -2,7 +2,7 @@
 
 // First do all imports
 import { program } from 'commander'
-import { fetchAllBlocks, processBlock } from './dl_arena.mjs'
+import { processBlock } from './dl_arena.mjs'
 import { fetchStatuses, fetchUserId, processStatus } from './dl_mastodon.mjs'
 import { fetchBookmarksWithCache, processBookmark } from './dl_pinboard.mjs'
 import { fetchGithubData } from './dl_github.mjs'
@@ -15,7 +15,6 @@ import {
   summarizeGitHubActivity,
   gitHubSummaryToTags,
 } from './aiGithubSummarization.mjs'
-import { generateMastodonTags } from './aiMastodonSummarization.mjs'
 import { generateEmbedding } from './llmService.mjs'
 import { extractLocation } from './aiGeolocation.mjs'
 import { extractRelationships } from './aiRelationshipExtraction.mjs'
@@ -37,7 +36,7 @@ import fs from 'fs'
 import path from 'path'
 import winston from 'winston'
 import LokiTransport from 'winston-loki'
-import { generateScreenshot, cleanupTempFiles, checkExistingScreenshot } from './generateScreenshot.mjs'
+import { generateScreenshot, cleanupTempFiles } from './generateScreenshot.mjs'
 import { getInstanceId, acquireRunLock, releaseRunLock } from './distributedLock.mjs'
 import { v2 as cloudinary } from 'cloudinary'
 import os from 'os'
