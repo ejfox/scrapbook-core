@@ -100,7 +100,7 @@
   },
   "api": {
     "endpoints": {
-      "openrouter": "https://openrouter.ai/api/v1",
+      "openrouter": "https://router.tools.ejfox.com/v1",
       "nomic": "https://api-atlas.nomic.ai/v1",
       "coreTags": "https://ejfox.com/tags.json"
     }
