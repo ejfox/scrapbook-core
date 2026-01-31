@@ -10,17 +10,17 @@
       "githubProcessing": "google/gemini-2.5-flash",
       "fastProcessing": "google/gemini-2.5-flash",
       "heavyAnalysis": "google/gemini-2.5-flash",
-      "costEffective": "deepseek/deepseek-chat-v3.1:free",
+      "costEffective": "deepseek/deepseek-r1-0528:free",
       "superCheap": "google/gemma-3-12b-it",
       "textEmbedding": "text-embedding-3-small",
       "imageEmbedding": "text-embedding-3-small"
     },
     "fallbacks": [
-      "deepseek/deepseek-chat-v3.1:free",
-      "deepseek/deepseek-chat:free",
+      "deepseek/deepseek-r1-0528:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
       "nousresearch/hermes-3-llama-3.1-405b:free",
-      "mistralai/mistral-small-3.2-24b-instruct:free",
-      "meta-llama/llama-3.1-8b-instruct:free"
+      "mistralai/mistral-small-3.1-24b-instruct:free",
+      "meta-llama/llama-3.2-3b-instruct:free"
     ]
   },
   "processing": {
