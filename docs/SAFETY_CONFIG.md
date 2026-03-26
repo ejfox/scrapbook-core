@@ -110,31 +110,31 @@ SAFETY_MAX_MEMORY_MB=1500
 ### Check Current Status
 ```bash
 # View current safety status
-node scripts/test_safety.mjs --status
+node tests/test_safety.mjs --status
 ```
 
 ### Reset Safety States
 ```bash
 # Reset cost circuit breaker
-node scripts/test_safety.mjs --reset-cost
+node tests/test_safety.mjs --reset-cost
 
 # Reset error tracking
-node scripts/test_safety.mjs --reset-errors
+node tests/test_safety.mjs --reset-errors
 
 # Reset all safety states
-node scripts/test_safety.mjs --reset-all
+node tests/test_safety.mjs --reset-all
 ```
 
 ### Test Safety Mechanisms
 ```bash
 # Simulate cost limit breach
-node scripts/test_safety.mjs --test-cost
+node tests/test_safety.mjs --test-cost
 
 # Simulate consecutive failures
-node scripts/test_safety.mjs --test-failures
+node tests/test_safety.mjs --test-failures
 
 # Simulate memory pressure
-node scripts/test_safety.mjs --test-memory
+node tests/test_safety.mjs --test-memory
 ```
 
 ## Safety Logs

@@ -95,7 +95,7 @@ Financial analysis results are stored in the `financial_analysis` field:
 
 Run the test suite:
 ```bash
-node scripts/test_financial_analysis.mjs
+node tests/test_financial_analysis.mjs
 ```
 
 Test specific content:

@@ -151,7 +151,7 @@ ${chunk}`
 
   const userMessage = {
     role: 'user',
-    content: userContent
+    content: userContent,
   }
 
   while (summary === null && retries < 3) {
@@ -227,28 +227,35 @@ ${chunk}`
 
 /**
  * Summarize content with automatic chunking and multi-chunk handling
- * 
+ *
  * @param {string} content - Content to summarize
  * @param {SummarizeOptions} options - Summarization options
  * @returns {Promise<string|null>} Generated summary or null
- * 
+ *
  * @example
  * ```js
  * import { summarizeContent } from '@scrapbook/content-summarization'
- * 
+ *
  * const llmProvider = {
  *   async completion({ messages, temperature, maxTokens }) {
  *     // Your LLM API call here
  *     return responseText
  *   }
  * }
- * 
+ *
  * const summary = await summarizeContent(longArticle, { llmProvider })
  * console.log(summary)
  * ```
  */
 export async function summarizeContent(content, options = {}) {
-  const { scrapId, scrap, tags, taskType = 'summarization', llmProvider, ...otherOptions } = options
+  const {
+    scrapId,
+    scrap: _scrap,
+    tags: _tags,
+    taskType = 'summarization',
+    llmProvider,
+    ...otherOptions
+  } = options
 
   if (!content) {
     log('❌ No content to summarize')
@@ -300,7 +307,7 @@ export async function summarizeContent(content, options = {}) {
             scrapId,
             taskType,
             llmProvider,
-            threadContext: i === 0 ? options.threadContext : null // Only add context to first chunk
+            threadContext: i === 0 ? options.threadContext : null, // Only add context to first chunk
           })
           log(
             `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`,

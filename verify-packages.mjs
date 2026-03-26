@@ -13,7 +13,7 @@ const packages = [
   'entity-extraction',
   'content-summarization',
   'content-geolocation',
-  'financial-analysis'
+  'financial-analysis',
 ]
 
 const requiredFiles = ['package.json', 'index.mjs', 'README.md']
@@ -25,14 +25,14 @@ let allValid = true
 for (const pkg of packages) {
   const pkgPath = path.join(packagesDir, pkg)
   console.log(`📦 Checking @scrapbook/${pkg}...`)
-  
+
   // Check if directory exists
   if (!fs.existsSync(pkgPath)) {
     console.log(`  ❌ Directory not found: ${pkgPath}`)
     allValid = false
     continue
   }
-  
+
   // Check required files
   for (const file of requiredFiles) {
     const filePath = path.join(pkgPath, file)
@@ -44,29 +44,29 @@ for (const pkg of packages) {
       allValid = false
     }
   }
-  
+
   // Check package.json content
   const packageJsonPath = path.join(pkgPath, 'package.json')
   if (fs.existsSync(packageJsonPath)) {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
-    
+
     // Validate essential fields
     const essentialFields = ['name', 'version', 'description', 'main', 'type', 'exports']
     let missingFields = []
-    
+
     for (const field of essentialFields) {
       if (!packageJson[field]) {
         missingFields.push(field)
       }
     }
-    
+
     if (missingFields.length === 0) {
-      console.log(`  ✓ package.json is valid`)
+      console.log('  ✓ package.json is valid')
     } else {
       console.log(`  ⚠️  package.json missing fields: ${missingFields.join(', ')}`)
     }
   }
-  
+
   console.log()
 }
 

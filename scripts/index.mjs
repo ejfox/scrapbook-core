@@ -50,6 +50,7 @@ import readline from 'readline'
 import cron from 'node-cron'
 import { run_terminal_cmd } from './utils.mjs'
 import { autoSyncRecentTags } from './sync_tags_to_pinboard.mjs'
+import { validateTypedRelationship } from '../lib/relationshipExtraction.mjs'
 
 // Load environment variables from .env file
 const envPath = path.resolve(process.cwd(), '.env')
@@ -626,14 +627,7 @@ function validateAIOutput(type, data) {
 
     case 'relationships':
       if (!Array.isArray(data)) return []
-      return data.filter(
-        (r) =>
-          r &&
-            typeof r === 'object' &&
-            typeof r.source === 'string' &&
-            typeof r.relationship === 'string' &&
-            typeof r.target === 'string',
-      )
+      return data.filter((relationship) => validateTypedRelationship(relationship))
 
     case 'location':
       if (!data || typeof data !== 'object') return null
@@ -831,7 +825,7 @@ async function enrichScrapWithAI(scrapData) {
         logger.info(chalk.blue('\n6️⃣  Evaluating newsworthiness...'))
         try {
           const newsResult = await applyNewsworthinessTag(scrapData, {
-            scrapId: scrapData.scrap_id || scrapData.id
+            scrapId: scrapData.scrap_id || scrapData.id,
           })
           if (newsResult.isNewsworthy) {
             scrapData.tags = newsResult.tags
@@ -1164,8 +1158,8 @@ async function upsertWithRetry(scrapData, retries = 3) {
 
 // Extract and add relationships to scrap
 async function extractAndAddRelationships(scrapObj, scrapId) {
-  const content = scrapObj.summary || scrapObj.content
-  if (!content) return scrapObj
+  const primaryContent = scrapObj.content || scrapObj.summary
+  if (!primaryContent) return scrapObj
 
   try {
     if (process.env.OPENROUTER_API_KEY) {
@@ -1183,10 +1177,13 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
           logger.info(chalk.blue(`🔗 Attempt ${attempt + 1}/3 with ${model}...`))
 
           extractedRelationships = await limiter.schedule(() =>
-            extractRelationships(content, {
+            extractRelationships(primaryContent, {
               isRawText: !scrapObj.summary,
               url: scrapObj.url,
               scrapId,
+              source: scrapObj.source,
+              summary: scrapObj.summary,
+              title: scrapObj.title,
               model,
             }),
           )
@@ -1215,14 +1212,9 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
 
       function validateRelationships(relationships) {
         if (!Array.isArray(relationships)) return []
-        return relationships.filter((r) => {
-          // Validate each relationship object has required fields
-          return r &&
-            typeof r === 'object' &&
-            typeof r.source === 'string' &&
-            typeof r.relationship === 'string' &&
-            typeof r.target === 'string'
-        })
+        return relationships.filter((relationship) =>
+          validateTypedRelationship(relationship),
+        )
       }
 
       // Validate the relationships before assigning
@@ -2060,7 +2052,7 @@ async function checkOpenRouterCredits() {
     )
 
     const startTime = Date.now()
-    const response = await axios.get('https://openrouter.ai/api/v1/auth/key', {
+    const response = await axios.get('https://openrouter.ai/api/v1/key', {
       headers: {
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'HTTP-Referer': 'https://github.com/ejfox/scrapbook-core',
@@ -2084,18 +2076,20 @@ async function checkOpenRouterCredits() {
       return { enabled: false, reason: 'Invalid API response' }
     }
 
-    const { usage, limit, is_free_tier, rate_limit } = response.data.data
+    const { usage, limit, limit_remaining, is_free_tier, rate_limit } = response.data.data
 
     logMetric('openrouter_credits', {
       usage,
       limit,
+      limit_remaining,
       is_free_tier,
       rate_limit_requests: rate_limit?.requests,
       rate_limit_interval: rate_limit?.interval,
       duration_ms: duration,
     })
 
-    if (limit !== null && usage >= limit) {
+    if ((limit_remaining !== null && limit_remaining !== undefined && limit_remaining <= 0) ||
+        (limit !== null && usage >= limit)) {
       logStatus(
         'warn',
         `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. AI features will be disabled.`,
@@ -2103,7 +2097,7 @@ async function checkOpenRouterCredits() {
       return { enabled: false, reason: 'Credit limit exceeded' }
     }
 
-    return { enabled: true, usage, limit, is_free_tier }
+    return { enabled: true, usage, limit, limit_remaining, is_free_tier }
   } catch (error) {
     // Don't log credential errors as harshly - they're configuration issues, not bugs
     const logLevel = error.code === 401 || error.code === 'ERR_BAD_REQUEST' ? 'warn' : 'error'
@@ -2669,106 +2663,106 @@ async function runProcessing() {
       return
     }
 
-  // Reset cost tracking for this run
-  resetSession()
-  logger.info(chalk.cyan('💰 Cost tracking session reset'))
+    // Reset cost tracking for this run
+    resetSession()
+    logger.info(chalk.cyan('💰 Cost tracking session reset'))
 
-  // Check OpenRouter credits but don't stop processing if check fails
-  logger.info(chalk.blue('\n1️⃣ Checking OpenRouter Credits...'))
-  const aiStatus = await checkOpenRouterCredits()
-  if (!aiStatus.enabled) {
-    logger.warn(chalk.yellow(`AI features disabled: ${aiStatus.reason}`))
-  }
+    // Check OpenRouter credits but don't stop processing if check fails
+    logger.info(chalk.blue('\n1️⃣ Checking OpenRouter Credits...'))
+    const aiStatus = await checkOpenRouterCredits()
+    if (!aiStatus.enabled) {
+      logger.warn(chalk.yellow(`AI features disabled: ${aiStatus.reason}`))
+    }
 
-  // Initialize database if needed
-  logger.info(chalk.blue('\n2️⃣ Initializing Database...'))
-  await initializeDatabaseIfNeeded()
+    // Initialize database if needed
+    logger.info(chalk.blue('\n2️⃣ Initializing Database...'))
+    await initializeDatabaseIfNeeded()
 
-  // Clear any stuck processing before starting
-  logger.info(chalk.blue('\n3️⃣ Cleaning Up Stuck Processing...'))
-  await clearStuckProcessing()
+    // Clear any stuck processing before starting
+    logger.info(chalk.blue('\n3️⃣ Cleaning Up Stuck Processing...'))
+    await clearStuckProcessing()
 
-  // Run cleanup job
-  logger.info(chalk.blue('\n4️⃣ Running Cleanup Job...'))
-  await runCleanupJob()
+    // Run cleanup job
+    logger.info(chalk.blue('\n4️⃣ Running Cleanup Job...'))
+    await runCleanupJob()
 
-  // Process each source with safety checks
-  logger.info(chalk.blue('\n5️⃣ Processing Sources...'))
-  for (const source of ['pinboard', 'github', 'mastodon', 'arena']) {
-    if (options.all || options[source]) {
+    // Process each source with safety checks
+    logger.info(chalk.blue('\n5️⃣ Processing Sources...'))
+    for (const source of ['pinboard', 'github', 'mastodon', 'arena']) {
+      if (options.all || options[source]) {
       // Check safety before each source
-      const sourceSafetyCheck = shouldContinueProcessing(true)
-      if (!sourceSafetyCheck.safe) {
-        logger.warn(chalk.yellow(`🛑 Stopping at ${source}: ${sourceSafetyCheck.reason}`))
-        break
-      }
+        const sourceSafetyCheck = shouldContinueProcessing(true)
+        if (!sourceSafetyCheck.safe) {
+          logger.warn(chalk.yellow(`🛑 Stopping at ${source}: ${sourceSafetyCheck.reason}`))
+          break
+        }
 
-      logger.info(
-        chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`),
-      )
-
-      const sourceFunctions = {
-        pinboard: fetchAndUpsertPinboardBookmarks,
-        github: fetchAndUpsertGithubData,
-        mastodon: fetchAndUpsertMastodonStatuses,
-        arena: fetchAndUpsertArenaBlocks,
-      }
-
-      try {
-        await sourceFunctions[source]()
-      } catch (error) {
-        logger.error(
-          chalk.red(`❌ Error processing ${source}:`),
-          {
-            source,
-            error: error.message,
-            stack: error.stack,
-            function: 'runProcessing',
-          },
+        logger.info(
+          chalk.green(`\n🔄 Starting ${chalk.bold(source)} processing...`),
         )
-        if (DEBUG) {
-          logger.error(chalk.gray('Full error:'), error)
+
+        const sourceFunctions = {
+          pinboard: fetchAndUpsertPinboardBookmarks,
+          github: fetchAndUpsertGithubData,
+          mastodon: fetchAndUpsertMastodonStatuses,
+          arena: fetchAndUpsertArenaBlocks,
+        }
+
+        try {
+          await sourceFunctions[source]()
+        } catch (error) {
+          logger.error(
+            chalk.red(`❌ Error processing ${source}:`),
+            {
+              source,
+              error: error.message,
+              stack: error.stack,
+              function: 'runProcessing',
+            },
+          )
+          if (DEBUG) {
+            logger.error(chalk.gray('Full error:'), error)
+          }
         }
       }
     }
-  }
 
-  // Print cost summary and check for alerts at the end of processing
-  logger.info(chalk.cyan('\n💰 PROCESSING RUN COMPLETE - COST SUMMARY:'))
-  printCostSummary()
+    // Print cost summary and check for alerts at the end of processing
+    logger.info(chalk.cyan('\n💰 PROCESSING RUN COMPLETE - COST SUMMARY:'))
+    printCostSummary()
 
-  // Check for cost alerts
-  const alerts = checkCostAlerts()
-  if (alerts.length > 0) {
-    logger.warn(chalk.yellow(`⚠️  ${alerts.length} cost alerts:`))
-    alerts.forEach(alert => {
-      const icon = alert.severity === 'critical' ? '🚨' : '⚠️'
-      logger.warn(chalk.yellow(`   ${icon} ${alert.message}`))
-    })
-  }
-
-  // Sync tags back to Pinboard if Pinboard was processed
-  if (options.all || options.pinboard) {
-    logger.info(chalk.blue('\n🔄 Syncing AI tags back to Pinboard...'))
-    const result = await autoSyncRecentTags({
-      supabaseClient: supabase,
-      source: 'pinboard',
-    })
-
-    if (result.success) {
-      if (result.synced > 0) {
-        logger.info(chalk.green(`✅ Synced ${result.synced} Pinboard tags`))
-      } else {
-        logger.info(chalk.gray('No recent Pinboard scraps to sync'))
-      }
-    } else {
-      logger.error(chalk.red(`❌ Pinboard sync failed: ${result.error}`))
+    // Check for cost alerts
+    const alerts = checkCostAlerts()
+    if (alerts.length > 0) {
+      logger.warn(chalk.yellow(`⚠️  ${alerts.length} cost alerts:`))
+      alerts.forEach(alert => {
+        const icon = alert.severity === 'critical' ? '🚨' : '⚠️'
+        logger.warn(chalk.yellow(`   ${icon} ${alert.message}`))
+      })
     }
-  }
 
-  // Print final safety status
-  logger.info(chalk.blue('\n🛡️  FINAL SAFETY STATUS:'))
-  printSafetyStatus()
+    // Sync tags back to Pinboard if Pinboard was processed
+    if (options.all || options.pinboard) {
+      logger.info(chalk.blue('\n🔄 Syncing AI tags back to Pinboard...'))
+      const result = await autoSyncRecentTags({
+        supabaseClient: supabase,
+        source: 'pinboard',
+      })
+
+      if (result.success) {
+        if (result.synced > 0) {
+          logger.info(chalk.green(`✅ Synced ${result.synced} Pinboard tags`))
+        } else {
+          logger.info(chalk.gray('No recent Pinboard scraps to sync'))
+        }
+      } else {
+        logger.error(chalk.red(`❌ Pinboard sync failed: ${result.error}`))
+      }
+    }
+
+    // Print final safety status
+    logger.info(chalk.blue('\n🛡️  FINAL SAFETY STATUS:'))
+    printSafetyStatus()
   } finally {
     // Always release the run lock
     logger.info(chalk.blue('\n🔓 Releasing run lock...'))

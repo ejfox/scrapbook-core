@@ -131,7 +131,7 @@ const cyber = {
       '║  ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝         ╚═════╝  ╚═════╝ ║',
       '║                                                                 ║',
       '║         A I - P O W E R E D   M E M O R Y   D O C T O R        ║',
-      '╚═══════════════════════════════════════════════════════════════╝'
+      '╚═══════════════════════════════════════════════════════════════╝',
     ]
     console.log(chalk.cyan(lines.join('\n')))
     console.log(chalk.magenta('    > Initializing neural pathways...\n'))
@@ -155,7 +155,7 @@ const cyber = {
       chalk.gray('│') + chalk.red(' ✗ Failed:   ') + chalk.white(failed.toString().padEnd(22)) + chalk.gray('│'),
       chalk.gray('│') + chalk.magenta(' 🧵 Threads:  ') + chalk.white(threads.toString().padEnd(21)) + chalk.gray('│'),
       chalk.gray('│') + chalk.yellow(' ⚡ Rate:     ') + chalk.white(`${((repaired/(repaired+failed))*100).toFixed(1)}%`.padEnd(21)) + chalk.gray('│'),
-      chalk.gray('└─────────────────────────────────────┘')
+      chalk.gray('└─────────────────────────────────────┘'),
     ]
     return box.join('\n')
   },
@@ -166,7 +166,7 @@ const cyber = {
     const glitchChars = '▒▓█░'
     const random = glitchChars[Math.floor(Math.random() * glitchChars.length)]
     return chalk.red(`${random} ${text} ${random}`)
-  }
+  },
 }
 
 async function repair(options) {
@@ -176,7 +176,7 @@ async function repair(options) {
   const spinner = ora({
     text: 'Scanning memory banks...',
     spinner: 'dots12',
-    color: 'cyan'
+    color: 'cyan',
   }).start()
 
   let scraps = []
@@ -784,7 +784,7 @@ async function repairScrapWithAI(scrap, options) {
         ...scrap,
         ...updates,
         summary: currentSummaryForNews,
-        tags: currentTagsForNews
+        tags: currentTagsForNews,
       }
       const newsResult = await applyNewsworthinessTag(tempScrapForNews, { scrapId })
 
@@ -832,7 +832,7 @@ async function repairScrapWithAI(scrap, options) {
       pinboard: 'bookmark',
       arena: 'block',
       github: 'repo',
-      mastodon: 'status'
+      mastodon: 'status',
     }
     const derivedType = sourceToType[scrap.source] || 'bookmark'
     updates.type = derivedType
@@ -842,7 +842,7 @@ async function repairScrapWithAI(scrap, options) {
   // Add !hide tag if we encountered critical errors (no content, failed summary, etc.)
   // This lets downstream consumers filter out broken scraps
   const criticalErrors = errors.filter(e =>
-    e.type === 'content_fetch' || e.type === 'summary' || e.type === 'screenshot'
+    e.type === 'content_fetch' || e.type === 'summary' || e.type === 'screenshot',
   )
   const hasNoUsefulContent = !scrap.summary && !updates.summary && (!content || content.length < 100)
 
@@ -899,7 +899,7 @@ async function repairScrapWithAI(scrap, options) {
       console.error(chalk.red(`      Scrap ID: ${scrapId}`))
       console.error(chalk.red(`      Final error: ${lastError.message}`))
       // Don't throw - just log and continue to avoid losing progress
-      console.log(chalk.yellow(`    ⏭️  Continuing to next scrap despite DB failure`))
+      console.log(chalk.yellow('    ⏭️  Continuing to next scrap despite DB failure'))
     }
   } else {
     console.log(chalk.gray('    ℹ No updates needed'))

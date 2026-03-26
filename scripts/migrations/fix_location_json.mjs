@@ -14,7 +14,7 @@ import 'dotenv/config'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 )
 
 async function migrate() {
@@ -42,7 +42,7 @@ async function migrate() {
       const parsed = JSON.parse(scrap.location)
 
       const updates = {
-        location: parsed.location || null
+        location: parsed.location || null,
       }
 
       // Only update lat/long if the scrap doesn't already have them

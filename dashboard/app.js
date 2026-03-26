@@ -180,7 +180,7 @@ const app = createApp({
 
     let updateInterval = null
     let fpsInterval = null
-    let frameCount = 0
+    let _frameCount = 0
 
     // Mock data generator for testing - replace with real API/WebSocket
     const generateMockScrap = () => {
@@ -260,7 +260,7 @@ const app = createApp({
             updateStats()
 
             // *WHOOSH* Trigger animation!
-            frameCount++
+            _frameCount++
           }
         }
 

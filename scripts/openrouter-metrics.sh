@@ -22,7 +22,7 @@ if [ -z "$OPENROUTER_API_KEY" ]; then
 fi
 
 # Fetch usage from OpenRouter
-RESPONSE=$(curl -s "https://openrouter.ai/api/v1/auth/key" \
+RESPONSE=$(curl -s "https://openrouter.ai/api/v1/key" \
     -H "Authorization: Bearer $OPENROUTER_API_KEY")
 
 # Parse values

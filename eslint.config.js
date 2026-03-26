@@ -2,6 +2,18 @@ import js from '@eslint/js'
 import globals from 'globals'
 
 export default [
+  {
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'coverage/**',
+      '*.min.js',
+      'dashboard/dist/**',
+      'dashboard/node_modules/**',
+      'scripts/deprecated/**',
+    ],
+  },
   js.configs.recommended,
   {
     languageOptions: {
@@ -15,7 +27,8 @@ export default [
     rules: {
       'no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
+        varsIgnorePattern: '^_|^[A-Z][A-Za-z0-9_]*$',
+        caughtErrors: 'none',
       }],
       'no-console': 'off',
       'no-undef': 'error',
@@ -26,16 +39,13 @@ export default [
       'no-multiple-empty-lines': ['warn', { max: 2 }],
       'eol-last': ['warn', 'always'],
       'no-trailing-spaces': 'warn',
-      'max-depth': ['warn', 4],
+      'max-depth': ['warn', 6],
     },
-    ignores: [
-      'node_modules/**',
-      'dist/**',
-      'build/**',
-      'coverage/**',
-      '*.min.js',
-      'dashboard/dist/**',
-      'dashboard/node_modules/**',
-    ],
+  },
+  {
+    files: ['scripts/**/*.mjs', 'tests/**/*.mjs', 'examples/**/*.mjs'],
+    rules: {
+      'no-unused-vars': 'off',
+    },
   },
 ]

@@ -1,4 +1,3 @@
-import CryptoJS from 'crypto-js'
 import { md5 } from 'js-md5'
 import cheerio from 'cheerio'
 import puppeteer from 'puppeteer-core' // Using puppeteer-core
@@ -100,7 +99,7 @@ export function generateShortId(uuid) {
   return uuid.substring(0, 8).replace(/[^0-9a-f]/g, '0')
 }
 
-export function generateScrapId(source, uniqueIdentifier) {
+export function generateScrapId(_source, _uniqueIdentifier) {
   // Generate proper UUID v4
   const uuid = crypto.randomUUID()
   return uuid

@@ -1,263 +1,886 @@
-import { completion, MODELS, PROMPTS } from './llmService.mjs'
+import { completion } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
-import { createClient } from '@supabase/supabase-js'
-import dotenv from 'dotenv'
+import {
+  buildEntityTypePrompt,
+  buildPredicatePrompt,
+  isArticleLikeDocument,
+  isGitHubDocument,
+  isLowValueRelationship,
+  isThinVideoShell,
+  isVideoLikeDocument,
+  normalizeEntityName,
+  normalizeRelationshipForDocument,
+  normalizeTypedRelationship,
+  parseJsonObjectFromResponse,
+  validateTypedRelationship,
+} from '../lib/relationshipExtraction.mjs'
 
-dotenv.config()
+const MAX_CONTENT_CHARS = 14000
+const MAX_GITHUB_PASSAGES = 12
 
-// Lazy-load supabase client for relationship examples
-let supabaseClient = null
-function getSupabase() {
-  if (!supabaseClient && process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-    supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+const BASE_EXTRACTION_EXAMPLES = [
+  {
+    source: { name: 'Carl Zimmer', type: 'Person' },
+    type: 'WORKS_FOR',
+    target: { name: 'The New York Times', type: 'Organization' },
+    evidence: 'Carl Zimmer is a science columnist for The New York Times.',
+  },
+  {
+    source: { name: 'Palantir', type: 'Organization' },
+    type: 'CONTRACTS_WITH',
+    target: { name: 'ICE', type: 'Organization' },
+    evidence: 'Palantir has a contract with ICE.',
+  },
+  {
+    source: { name: 'OpenAI', type: 'Organization' },
+    type: 'DEVELOPS',
+    target: { name: 'GPT-4o', type: 'Model' },
+    evidence: 'OpenAI developed GPT-4o.',
+  },
+]
+
+const REVIEW_EXAMPLE_CASES = [
+  {
+    label: 'GitHub keep as asserted',
+    input: {
+      index: 0,
+      source: { name: 'MLXAudio', type: 'Organization' },
+      type: 'DEVELOPS',
+      target: { name: 'Sortformer speaker diarization model', type: 'Model' },
+      evidence: 'This GitHub repository, maintained by MLXAudio, focuses on the implementation of the Sortformer speaker diarization model.',
+    },
+    output: {
+      index: 0,
+      source: { name: 'MLXAudio', type: 'Organization' },
+      type: 'DEVELOPS',
+      target: { name: 'Sortformer speaker diarization model', type: 'Model' },
+      evidence: 'This GitHub repository, maintained by MLXAudio, focuses on the implementation of the Sortformer speaker diarization model.',
+      decision: 'asserted',
+      confidence: 0.87,
+      reason: 'Explicit repository summary with named maintainer and concrete model implementation.',
+    },
+  },
+  {
+    label: 'Article keep as reported',
+    input: {
+      index: 1,
+      source: { name: 'Arizona Department of Corrections', type: 'Organization' },
+      type: 'DEVELOPS',
+      target: { name: 'Inmate management software', type: 'Tool' },
+      evidence: 'According to Arizona Department of Corrections whistleblowers, the inmate management software cannot interpret current sentencing laws.',
+    },
+    output: {
+      index: 1,
+      source: { name: 'Arizona Department of Corrections', type: 'Organization' },
+      type: 'DEVELOPS',
+      target: { name: 'Inmate management software', type: 'Tool' },
+      evidence: 'According to Arizona Department of Corrections whistleblowers, the inmate management software cannot interpret current sentencing laws.',
+      decision: 'reported',
+      confidence: 0.52,
+      reason: 'Grounded in the article but framed through whistleblower reporting rather than a directly established fact.',
+    },
+  },
+  {
+    label: 'Drop article background infrastructure',
+    input: {
+      index: 5,
+      source: { name: 'Arizona Department of Corrections', type: 'Organization' },
+      type: 'OPERATES',
+      target: { name: 'Arizona prisons', type: 'Location' },
+      evidence: 'According to Arizona Department of Corrections whistleblowers, hundreds of incarcerated people who should be eligible for release are being held in prison because the inmate management software cannot interpret current sentencing laws.',
+    },
+    output: {
+      index: 5,
+      decision: 'drop',
+      drop_reason: 'background_context',
+      reason: 'This is broad institutional background, but the article’s real graph-worthy relationship is the source-bound software claim.',
+    },
+  },
+  {
+    label: 'Drop generic actor',
+    input: {
+      index: 6,
+      source: { name: 'Federal officers', type: 'Organization' },
+      type: 'USES',
+      target: { name: 'Less lethal weapons', type: 'Tool' },
+      evidence: 'Federal officers used less lethal weapons on protesters.',
+    },
+    output: {
+      index: 6,
+      decision: 'drop',
+      drop_reason: 'generic_actor',
+      reason: 'The source is a generic actor label, not a stable named entity for the graph.',
+    },
+  },
+  {
+    label: 'Drop abstract social phenomenon',
+    input: {
+      index: 7,
+      source: { name: 'Robert F. Kennedy Jr.', type: 'Person' },
+      type: 'FUNDS',
+      target: { name: 'Vaccine skepticism', type: 'Movement' },
+      evidence: 'Robert F. Kennedy Jr. has drawn back public-health funding and fomented vaccine skepticism.',
+    },
+    output: {
+      index: 7,
+      decision: 'drop',
+      drop_reason: 'abstract_phenomenon',
+      reason: 'Vaccine skepticism is an abstract social condition here, not a named movement or other core entity.',
+    },
+  },
+  {
+    label: 'Keep named movement',
+    input: {
+      index: 8,
+      source: { name: 'Martin Luther King Jr.', type: 'Person' },
+      type: 'LEADS',
+      target: { name: 'Civil Rights Movement', type: 'Movement' },
+      evidence: 'Martin Luther King Jr. was a leading figure in the Civil Rights Movement.',
+    },
+    output: {
+      index: 8,
+      source: { name: 'Martin Luther King Jr.', type: 'Person' },
+      type: 'LEADS',
+      target: { name: 'Civil Rights Movement', type: 'Movement' },
+      evidence: 'Martin Luther King Jr. was a leading figure in the Civil Rights Movement.',
+      decision: 'asserted',
+      confidence: 0.93,
+      reason: 'This is a named, socially legible movement and the leadership relation is explicit.',
+    },
+  },
+]
+
+function buildExtractionExamplePayload(options = {}) {
+  const examples = [...BASE_EXTRACTION_EXAMPLES]
+
+  if (isGitHubDocument(options)) {
+    examples.push({
+      source: { name: 'MLXAudio', type: 'Organization' },
+      type: 'DEVELOPS',
+      target: { name: 'Sortformer speaker diarization model', type: 'Model' },
+      evidence: 'This GitHub repository, maintained by MLXAudio, focuses on the implementation of the Sortformer speaker diarization model.',
+    })
+  } else if (isArticleLikeDocument(options, options.content || '')) {
+    examples.push({
+      source: { name: 'Donald Trump', type: 'Person' },
+      type: 'LEADS',
+      target: { name: 'Immigration Crackdown', type: 'Project' },
+      evidence: 'President Donald Trump’s immigration crackdown in cities across the country.',
+    })
+    examples.push({
+      source: { name: 'Arizona Department of Corrections', type: 'Organization' },
+      type: 'DEVELOPS',
+      target: { name: 'Inmate management software', type: 'Tool' },
+      evidence: 'According to Arizona Department of Corrections whistleblowers, the inmate management software cannot interpret current sentencing laws.',
+    })
+    examples.push({
+      source: { name: 'Martin Luther King Jr.', type: 'Person' },
+      type: 'LEADS',
+      target: { name: 'Civil Rights Movement', type: 'Movement' },
+      evidence: 'Martin Luther King Jr. was a leading figure in the Civil Rights Movement.',
+    })
+  } else {
+    examples.push({
+      source: { name: 'Trevor Paglen', type: 'Person' },
+      type: 'CREATED',
+      target: { name: 'ImageNet Roulette', type: 'Artwork' },
+      evidence: 'Trevor Paglen created ImageNet Roulette.',
+    })
   }
-  return supabaseClient
+
+  return JSON.stringify({ relationships: examples }, null, 2)
 }
 
-// Fetch real examples from recent scraps
-async function getRecentRelationshipExamples(count = 9) {
+function buildExtractionCounterexamples(options = {}) {
+  const examples = [
+    '- Drop generic actors like `Federal officers -> USES -> Less lethal weapons` even if the sentence is literally true.',
+    '- Drop abstract social conditions or sentiments like `Robert F. Kennedy Jr. -> FUNDS -> Vaccine skepticism` unless the text clearly names a real movement entity.',
+  ]
+
+  if (isGitHubDocument(options)) {
+    examples.push('- Drop install/distribution noise like `ttylag -> INTEGRATES_WITH -> Homebrew`.')
+  }
+
+  if (isArticleLikeDocument(options, options.content || '')) {
+    examples.push('- Only type something as Movement when it is a named, socially legible movement or coalition, such as `Civil Rights Movement`, `Black Lives Matter`, or `QAnon`.')
+    examples.push('- If a relationship is explicit but journalistic or source-bound, still extract it and let the reviewer classify it as `reported` later.')
+    examples.push('- When an investigative article centers on a software, tool, model, or system failure, prefer the technical relationship over broad institutional background like `Organization -> OPERATES -> Location`.')
+  }
+
+  return examples.join('\n')
+}
+
+function buildReviewExamplePayload(options = {}) {
+  const examples = REVIEW_EXAMPLE_CASES.filter((example) => {
+    if (isGitHubDocument(options)) {
+      return ['GitHub keep as asserted', 'Drop generic actor', 'Drop abstract social phenomenon'].includes(example.label)
+    }
+
+    if (isArticleLikeDocument(options, options.content || '')) {
+      return ['Article keep as reported', 'Drop article background infrastructure', 'Drop generic actor', 'Drop abstract social phenomenon', 'Keep named movement'].includes(example.label)
+    }
+
+    return ['Drop generic actor', 'Keep named movement'].includes(example.label)
+  })
+
+  return examples
+    .map((example) => `${example.label}
+Input:
+${JSON.stringify(example.input, null, 2)}
+Output:
+${JSON.stringify(example.output, null, 2)}`)
+    .join('\n\n')
+}
+
+function truncateContent(content) {
+  if (content.length <= MAX_CONTENT_CHARS) {
+    return content
+  }
+
+  const head = content.slice(0, 9500)
+  const tail = content.slice(-3500)
+  return `${head}\n\n[TRUNCATED MIDDLE]\n\n${tail}`
+}
+
+function cleanPassage(passage) {
+  return passage
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function splitIntoPassages(content) {
+  return content
+    .split(/\n{2,}/)
+    .map(cleanPassage)
+    .filter((passage) => passage.length >= 40)
+}
+
+function scoreGitHubPassage(passage) {
+  const lower = passage.toLowerCase()
+  let score = 0
+
+  if (lower.includes('summary')) score += 5
+  if (lower.includes('maintained by')) score += 6
+  if (lower.includes('author')) score += 5
+  if (lower.includes('license and attribution')) score += 5
+  if (lower.includes('copyright') || lower.includes('(c)')) score += 4
+  if (lower.includes('repository')) score += 3
+  if (lower.includes('implementation')) score += 4
+  if (lower.includes('model')) score += 3
+  if (lower.includes('library')) score += 3
+  if (lower.includes('requires ')) score += 2
+  if (lower.includes('depends on')) score += 2
+  if (lower.includes('uses ')) score += 2
+  if (lower.includes('built with')) score += 2
+  if (lower.includes('ported')) score += 2
+  if (lower.includes('owner')) score += 2
+  if (/[A-Z][A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/.test(passage)) score += 2
+
+  if (
+    lower.includes('navigation menu') ||
+    lower.includes('skip to content') ||
+    lower.includes('saved searches') ||
+    lower.includes('sign up') ||
+    lower.includes('pull requests') ||
+    lower.includes('actions') ||
+    lower.includes('security') ||
+    lower.includes('insights')
+  ) {
+    score -= 8
+  }
+
+  if (
+    lower.includes('brew install') ||
+    lower.includes('go install') ||
+    lower.includes('pip install') ||
+    lower.includes('npm install') ||
+    lower.includes('cargo install') ||
+    lower.includes('homebrew')
+  ) {
+    score -= 5
+  }
+
+  if (passage.length > 800) score -= 2
+  if (passage.length < 60) score -= 1
+
+  return score
+}
+
+function selectGitHubContent(content, options = {}) {
+  const summary = normalizeEntityName(options.summary || '')
+  const passages = splitIntoPassages(content)
+  const scored = passages
+    .map((passage, index) => ({ passage, index, score: scoreGitHubPassage(passage) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, MAX_GITHUB_PASSAGES)
+    .sort((a, b) => a.index - b.index)
+    .map((entry) => entry.passage)
+
+  const sections = []
+  if (summary) {
+    sections.push(`Repository summary:\n${summary}`)
+  }
+  if (scored.length > 0) {
+    sections.push(`Selected repository passages:\n${scored.join('\n\n')}`)
+  } else {
+    sections.push(`Repository content:\n${truncateContent(content)}`)
+  }
+
+  return sections.join('\n\n')
+}
+
+function selectExtractionContent(content, options = {}) {
+  if (isGitHubDocument(options)) {
+    return selectGitHubContent(content, options)
+  }
+
+  return buildDocumentPayload(content, options)
+}
+
+function buildDocumentPayload(content, options = {}) {
+  const sections = []
+  const normalizedSummary = normalizeEntityName(options.summary || '')
+
+  if (normalizedSummary) {
+    sections.push(`Supplemental summary:\n${normalizedSummary}`)
+  }
+
+  sections.push(`Primary text:\n${truncateContent(content)}`)
+
+  return sections.join('\n\n')
+}
+
+function buildSourceSpecificNotes(options = {}) {
+  if (isGitHubDocument(options)) {
+    return [
+      '- For GitHub and package pages, prefer DEVELOPS for maintainers/authors of tools, models, datasets, and repos.',
+      '- Do not use INTEGRATES_WITH when the text is only about installation or distribution channels like Homebrew, pip, npm, Cargo, or go install.',
+      '- Use FOUNDED only when the text explicitly says founded/co-founded, not when someone simply built, authored, or maintains a repo.',
+    ].join('\n')
+  }
+
+  if (isArticleLikeDocument(options, options.content || '')) {
+    return [
+      '- On article/report pages, avoid CREATED edges for generic in-story media artifacts such as “a video”, “videos”, “a clip”, or descriptive phrases unless there is a clearly named work.',
+      '- Prefer durable institutional or actor relationships over ephemeral media-production edges.',
+      '- If the article is centrally about a tool, model, software system, or technical bug, extract that technical relationship rather than a broader background institution/location relation.',
+    ].join('\n')
+  }
+
+  return '- Prefer durable institutional, financial, technical, and location relationships over ephemeral media references.'
+}
+
+function buildMessages(documentPayload, options = {}, mode = 'default') {
+  const entityPrompt = buildEntityTypePrompt()
+  const predicatePrompt = buildPredicatePrompt()
+  const examplePayload = buildExtractionExamplePayload(options)
+  const counterexamplePayload = buildExtractionCounterexamples(options)
+  const contextLines = [
+    options.title ? `Title: ${options.title}` : null,
+    options.url ? `URL: ${options.url}` : null,
+  ].filter(Boolean)
+  const modeNotes = mode === 'recovery'
+    ? '- This is a second-pass recall recovery for a long-form document. Extract at most 4 high-confidence relationships that are explicitly supported.\n- Prioritize organizations, people, models, datasets, tools, projects, and locations that have durable ties.\n- If the text only supports ephemeral media mentions or descriptive content production, return no relationship.'
+    : '- Extract only the strongest supported semantic relationships.'
+  const sourceSpecificNotes = buildSourceSpecificNotes({
+    ...options,
+    content: documentPayload,
+  })
+
+  return [
+    {
+      role: 'system',
+      content: `You are an investigative relationship extraction specialist.
+
+Your job is to extract only high-signal semantic relationships from a document.
+
+Rules:
+- Return valid JSON only.
+- Use only the approved entity types and approved predicates.
+- Omit weak, generic, structural, speculative, or page-chrome relationships.
+- Prefer fewer, cleaner relationships over broad coverage.
+- Use canonical predicate direction only.
+- Keep evidence short, direct, and as close to verbatim from the text as possible.`,
+    },
+    {
+      role: 'user',
+      content: `Extract semantic relationships from this content.
+
+Approved entity types:
+${entityPrompt}
+
+Approved predicates:
+${predicatePrompt}
+
+Return JSON with this shape:
+{
+  "relationships": [
+    {
+      "source": { "name": "Entity name", "type": "ApprovedType" },
+      "type": "APPROVED_PREDICATE",
+      "target": { "name": "Entity name", "type": "ApprovedType" },
+      "evidence": "Short evidence grounded in the text",
+      "confidence": 0.0
+    }
+  ]
+}
+
+Notes:
+- confidence is optional and should be between 0 and 1
+- if there are no valid relationships, return {"relationships":[]}
+- do not wrap the JSON in markdown fences
+- creative works -> Artwork + CREATED
+- named political/social formations -> Movement
+- do not turn abstract sentiments or conditions into entities
+${modeNotes}
+${sourceSpecificNotes}
+
+Positive examples:
+${examplePayload}
+
+Counterexamples:
+${counterexamplePayload}
+
+Document context:
+${contextLines.join('\n')}
+
+Content:
+${documentPayload}`,
+    },
+  ]
+}
+
+async function repairJsonResponse(rawResponse, model) {
+  const repairMessages = [
+    {
+      role: 'system',
+      content: 'Repair malformed model output into valid JSON. Output JSON only.',
+    },
+    {
+      role: 'user',
+      content: `Convert this into valid JSON with shape {"relationships":[...]}.
+Do not invent new relationships. Preserve only relationships already present.
+
+Raw output:
+${rawResponse}`,
+    },
+  ]
+
+  return completion({
+    messages: repairMessages,
+    temperature: 0,
+    maxTokens: 1800,
+    model,
+    taskType: 'relationshipAnalysisRepair',
+  })
+}
+
+async function repairReviewResponse(rawResponse, model) {
+  const repairMessages = [
+    {
+      role: 'system',
+      content: 'Repair malformed model output into valid JSON. Output JSON only.',
+    },
+    {
+      role: 'user',
+      content: `Convert this into valid JSON with shape {"decisions":[...]}.
+Each decision item must contain:
+- index
+- decision ("asserted", "reported", or "drop")
+- reason
+- optional drop_reason for dropped candidates
+- and, if decision is not "drop", the original relationship fields
+
+Do not invent new relationships. Preserve only the relationships already present in the raw output.
+
+Raw output:
+${rawResponse}`,
+    },
+  ]
+
+  return completion({
+    messages: repairMessages,
+    temperature: 0,
+    maxTokens: 2200,
+    model,
+    taskType: 'relationshipAnalysisReviewRepair',
+  })
+}
+
+async function runExtractionPass(content, options = {}, mode = 'default') {
+  const model = options.model || getModelForTask('relationshipAnalysis')
+  const documentPayload = selectExtractionContent(content, options)
+  const response = await completion({
+    messages: buildMessages(documentPayload, options, mode),
+    temperature: mode === 'recovery' ? 0.05 : 0.1,
+    maxTokens: mode === 'recovery' ? 1200 : 1800,
+    model,
+    scrapId: options.scrapId,
+    taskType: mode === 'recovery' ? 'relationshipAnalysisRecovery' : 'relationshipAnalysis',
+  })
+
+  if (!response) {
+    return null
+  }
+
+  let payload = parseJsonObjectFromResponse(response)
+  if (!payload) {
+    const repaired = await repairJsonResponse(response, model)
+    payload = parseJsonObjectFromResponse(repaired)
+  }
+
+  if (!payload || !Array.isArray(payload.relationships)) {
+    return null
+  }
+
+  return payload.relationships
+}
+
+function buildReviewMessages(documentPayload, candidates, options = {}, mode = 'default') {
+  const entityPrompt = buildEntityTypePrompt()
+  const predicatePrompt = buildPredicatePrompt()
+  const candidatePayload = JSON.stringify({ relationships: candidates }, null, 2)
+  const examplePayload = buildReviewExamplePayload(options)
+  const contextLines = [
+    options.title ? `Title: ${options.title}` : null,
+    options.url ? `URL: ${options.url}` : null,
+    isGitHubDocument(options) ? 'Source mode: GitHub/repository page' : null,
+    isArticleLikeDocument(options, options.content || '') ? 'Source mode: article/report page' : null,
+  ].filter(Boolean)
+
+  const modeNotes = mode === 'recovery'
+    ? '- Be extra conservative on second-pass recovery output, but still classify grounded source-bound relationships as "reported" instead of automatically dropping them.\n- If a candidate is explicit in the text but sounds like journalism, whistleblower reporting, allegations, lawsuits, investigations, or quoted findings, prefer "reported".'
+    : '- Keep only candidates that are clearly durable semantic relationships, or classify them as "reported" if they are grounded but source-bound.'
+
+  return [
+    {
+      role: 'system',
+      content: `You are an ontology adjudicator for an investigative graph.
+
+Your job is to review candidate relationships and keep only the ones that deserve to enter the graph.
+
+Rules:
+- Return valid JSON only.
+- Prefer dropping uncertain candidates over keeping weak ones.
+- You must classify every candidate as exactly one of: "asserted", "reported", or "drop".
+- If a candidate is grounded and useful but reads like a reported or source-bound claim rather than a durable semantic fact, classify it as "reported" instead of dropping it.
+- Prefer "reported" for attributed, source-bound, allegation-like article claims.
+- When article candidates include both a broad background relation and a more specific technical/system claim, prefer the technical/system claim.
+- Drop abstract sentiments/conditions that are being coerced into entities. Keep named movements.
+- Preserve plausible predicates when already grounded in the text.
+- Keep evidence short and anchored to the supplied document text.`,
+    },
+    {
+      role: 'user',
+      content: `Review these candidate relationships.
+
+Approved entity types:
+${entityPrompt}
+
+Approved predicates:
+${predicatePrompt}
+
+Decision rules:
+${modeNotes}
+
+Return JSON with this shape:
+{
+  "decisions": [
+    {
+      "index": 0,
+      "decision": "asserted",
+      "source": { "name": "Entity name", "type": "ApprovedType" },
+      "type": "APPROVED_PREDICATE",
+      "target": { "name": "Entity name", "type": "ApprovedType" },
+      "evidence": "Short evidence grounded in the text",
+      "confidence": 0.0
+    }
+    {
+      "index": 1,
+      "decision": "reported",
+      "source": { "name": "Entity name", "type": "ApprovedType" },
+      "type": "APPROVED_PREDICATE",
+      "target": { "name": "Entity name", "type": "ApprovedType" },
+      "evidence": "Short evidence grounded in the text",
+      "confidence": 0.0
+    },
+    {
+      "index": 2,
+      "decision": "drop",
+      "drop_reason": "generic_actor",
+      "reason": "brief reason"
+    }
+  ]
+}
+
+Examples:
+${examplePayload}
+
+Document context:
+${contextLines.join('\n')}
+
+Document text:
+${documentPayload}
+
+Candidate relationships:
+${candidatePayload}`,
+    },
+  ]
+}
+
+async function adjudicateRelationships(candidates, content, options = {}, mode = 'default') {
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    return []
+  }
+
+  const model = options.reviewModel || getModelForTask('relationshipReview') || options.model || getModelForTask('relationshipAnalysis')
+  const documentPayload = selectExtractionContent(content, options)
+  const response = await completion({
+    messages: buildReviewMessages(documentPayload, candidates, options, mode),
+    temperature: 0.05,
+    maxTokens: 2200,
+    model,
+    scrapId: options.scrapId,
+    taskType: mode === 'recovery' ? 'relationshipAnalysisReviewRecovery' : 'relationshipAnalysisReview',
+  })
+
+  if (!response) {
+    return candidates
+  }
+
+  let payload = parseJsonObjectFromResponse(response)
+  if (!payload) {
+    const repaired = await repairReviewResponse(response, model)
+    payload = parseJsonObjectFromResponse(repaired)
+  }
+
+  if (!payload || !Array.isArray(payload.decisions)) {
+    return candidates
+  }
+
+  return payload.decisions
+    .filter((decision) => decision && ['asserted', 'reported'].includes(decision.decision))
+    .map((decision) => ({
+      ...decision,
+      claim_mode: decision.decision,
+    }))
+}
+
+function dedupeRelationships(relationships) {
+  const seen = new Set()
+  const deduped = []
+
+  for (const relationship of relationships) {
+    const key = [
+      relationship.source.name,
+      relationship.source.type,
+      relationship.type,
+      relationship.target.name,
+      relationship.target.type,
+    ].join('|')
+
+    if (!seen.has(key)) {
+      seen.add(key)
+      deduped.push(relationship)
+    }
+  }
+
+  return deduped
+}
+
+function countClaimModes(relationships) {
+  return relationships.reduce((acc, relationship) => {
+    const claimMode = relationship.claim_mode || 'asserted'
+    acc[claimMode] = (acc[claimMode] || 0) + 1
+    return acc
+  }, {})
+}
+
+function buildEmptyDiagnostics(options = {}) {
+  return {
+    source_mode: isGitHubDocument(options)
+      ? 'github'
+      : isArticleLikeDocument(options, options.content || '')
+        ? 'article'
+        : 'default',
+    skipped_reason: null,
+    used_recovery: false,
+    raw_candidate_count: 0,
+    pre_review_candidate_count: 0,
+    post_review_candidate_count: 0,
+    final_relationship_count: 0,
+    claim_mode_counts: {},
+    raw_candidates: options.includeDebugArtifacts ? [] : undefined,
+    pre_review_candidates: options.includeDebugArtifacts ? [] : undefined,
+    post_review_candidates: options.includeDebugArtifacts ? [] : undefined,
+    final_relationships: options.includeDebugArtifacts ? [] : undefined,
+  }
+}
+
+function normalizeCandidates(rawRelationships, options, content, filterMode = 'strict') {
+  let relationships = rawRelationships
+    .map(normalizeTypedRelationship)
+    .map((relationship) => normalizeRelationshipForDocument(relationship, options, content))
+    .filter(Boolean)
+    .filter(validateTypedRelationship)
+
+  if (filterMode === 'strict') {
+    relationships = relationships.filter((relationship) => !isLowValueRelationship(relationship, options, content))
+  }
+
+  return relationships
+}
+
+async function runRelationshipPipeline(content, options = {}) {
+  const diagnostics = buildEmptyDiagnostics({
+    ...options,
+    content,
+  })
+
+  if (!content) {
+    diagnostics.skipped_reason = 'empty_content'
+    return { relationships: [], diagnostics }
+  }
+
+  if (isVideoLikeDocument(options, content) && isThinVideoShell(content)) {
+    console.log('Skipping ontology extraction for thin video shell content')
+    diagnostics.skipped_reason = 'thin_video_shell'
+    return { relationships: [], diagnostics }
+  }
+
+  let rawRelationships = []
+  let normalizedRelationships = []
+
   try {
-    const supabase = getSupabase()
-    if (!supabase) return []
+    rawRelationships = await runExtractionPass(content, options, 'default')
 
-    const { data: scraps } = await supabase
-      .from('scraps')
-      .select('relationships')
-      .not('relationships', 'is', null)
-      .order('updated_at', { ascending: false })
-      .limit(3)
+    if (!rawRelationships) {
+      console.log('❌ No response from LLM')
+      diagnostics.skipped_reason = 'no_llm_response'
+      return { relationships: [], diagnostics }
+    }
 
-    if (!scraps || scraps.length === 0) return []
+    diagnostics.raw_candidate_count = rawRelationships.length
+    if (options.includeDebugArtifacts) {
+      diagnostics.raw_candidates = rawRelationships
+    }
 
-    const examples = []
-    for (const scrap of scraps) {
-      if (scrap.relationships?.length) {
-        // Pick up to 3 random relationships from each scrap
-        const sample = scrap.relationships
-          .filter(r => r.source && r.target && r.relationship)
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 3)
-          .map(r => `[${r.source}]-[${r.relationship}]->[${r.target}]`)
-        examples.push(...sample)
+    normalizedRelationships = normalizeCandidates(rawRelationships, options, content, 'strict')
+
+    if (
+      normalizedRelationships.length === 0 &&
+      rawRelationships.length > 0 &&
+      (isArticleLikeDocument(options, content) || options.source === 'arena')
+    ) {
+      normalizedRelationships = normalizeCandidates(rawRelationships, options, content, 'permissive')
+    }
+
+    diagnostics.pre_review_candidate_count = normalizedRelationships.length
+    if (options.includeDebugArtifacts) {
+      diagnostics.pre_review_candidates = normalizedRelationships
+    }
+
+    normalizedRelationships = await adjudicateRelationships(
+      normalizedRelationships,
+      content,
+      options,
+      'default',
+    )
+
+    diagnostics.post_review_candidate_count = normalizedRelationships.length
+    if (options.includeDebugArtifacts) {
+      diagnostics.post_review_candidates = normalizedRelationships
+    }
+
+    normalizedRelationships = normalizeCandidates(normalizedRelationships, options, content, 'strict')
+
+    if (
+      normalizedRelationships.length === 0 &&
+      isArticleLikeDocument(options, content) &&
+      (content.length >= 2500 || Boolean(options.summary))
+    ) {
+      diagnostics.used_recovery = true
+      const recoveredRelationships = await runExtractionPass(content, options, 'recovery')
+      if (recoveredRelationships) {
+        rawRelationships = recoveredRelationships
+        diagnostics.raw_candidate_count = recoveredRelationships.length
+        if (options.includeDebugArtifacts) {
+          diagnostics.raw_candidates = recoveredRelationships
+        }
+        normalizedRelationships = normalizeCandidates(recoveredRelationships, {
+          ...options,
+          requireAnchoredEvidence: true,
+        }, content, 'strict')
+
+        if (
+          normalizedRelationships.length === 0 &&
+          recoveredRelationships.length > 0 &&
+          isArticleLikeDocument(options, content)
+        ) {
+          normalizedRelationships = normalizeCandidates(recoveredRelationships, {
+            ...options,
+            requireAnchoredEvidence: true,
+          }, content, 'permissive')
+        }
+
+        diagnostics.pre_review_candidate_count = normalizedRelationships.length
+        if (options.includeDebugArtifacts) {
+          diagnostics.pre_review_candidates = normalizedRelationships
+        }
+
+        normalizedRelationships = await adjudicateRelationships(
+          normalizedRelationships,
+          content,
+          {
+            ...options,
+            requireAnchoredEvidence: true,
+          },
+          'recovery',
+        )
+
+        diagnostics.post_review_candidate_count = normalizedRelationships.length
+        if (options.includeDebugArtifacts) {
+          diagnostics.post_review_candidates = normalizedRelationships
+        }
+
+        normalizedRelationships = normalizeCandidates(normalizedRelationships, {
+          ...options,
+          requireAnchoredEvidence: true,
+        }, content, 'strict')
       }
     }
 
-    return examples.slice(0, count)
-  } catch (error) {
-    console.warn('Could not fetch recent examples:', error.message)
-    return []
-  }
-}
+    const dedupedRelationships = dedupeRelationships(normalizedRelationships)
+    diagnostics.final_relationship_count = dedupedRelationships.length
+    diagnostics.claim_mode_counts = countClaimModes(dedupedRelationships)
+    if (options.includeDebugArtifacts) {
+      diagnostics.final_relationships = dedupedRelationships
+    }
 
-// Validate relationship structure before returning
-function validateRelationship(rel) {
-  return rel &&
-    typeof rel === 'object' &&
-    typeof rel.source === 'string' &&
-    rel.source.length > 0 &&
-    typeof rel.target === 'string' &&
-    rel.target.length > 0 &&
-    typeof rel.relationship === 'string' &&
-    rel.relationship.length > 0
+    console.log(
+      `✅ Extracted ${dedupedRelationships.length} ontology relationships (${rawRelationships.length - dedupedRelationships.length} dropped by normalization)`,
+    )
+
+    return {
+      relationships: dedupedRelationships,
+      diagnostics,
+    }
+  } catch (error) {
+    console.error('Error extracting relationships:', error)
+    diagnostics.skipped_reason = 'pipeline_error'
+    return {
+      relationships: [],
+      diagnostics,
+    }
+  }
 }
 
 export async function extractRelationships(content, options = {}) {
-  if (!content) return []
+  const result = await runRelationshipPipeline(content, options)
+  return result.relationships
+}
 
-  const { url, isRawText = false, model = null } = options
-
-  try {
-    // Fetch recent examples from the archive
-    const recentExamples = await getRecentRelationshipExamples(9)
-    const examplesText = recentExamples.length > 0
-      ? `\n\nExamples (from recently processed scraps in your archive):\n${recentExamples.join('\n')}`
-      : ''
-
-    // Create properly formatted messages array
-    const messages = [
-      {
-        role: 'system',
-        content:
-          'You are a relationship extraction specialist. Extract relationships between entities in the text and format them in a Cypher-like syntax. Focus on meaningful connections between people, organizations, technologies, concepts, and places.',
-      },
-      {
-        role: 'user',
-        content: `Extract relationships from the following text. Return them in enhanced Cypher format with entity types, one per line:
-[EntityName:EntityType]-[RELATIONSHIP]->[EntityName:EntityType]
-
-Entity Types to use:
-- Person (individuals, people)
-- Organization (companies, institutions, agencies)
-- Technology (software, frameworks, tools, protocols)
-- Product (specific products, services, applications)
-- Location (places, cities, countries, regions)
-- Event (conferences, meetings, occurrences)
-- Concept (abstract ideas, methodologies, principles)${examplesText}
-
-Content to analyze:
-${content}
-${url ? `\nURL: ${url}` : ''}`,
-      },
-    ]
-
-    const response = await completion({
-      messages,
-      temperature: 0.3,
-      maxTokens: 1000,
-      model: model || getModelForTask('relationshipAnalysis'),
-    })
-
-    if (!response) {
-      console.log('❌ No response from LLM')
-      return []
-    }
-
-    // Parse Cypher-style relationships with optional entity types
-    const relationships = response
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.match(/^\[.+?\]-\[.+?\]->\[.+?\]$/))
-      .map((line) => {
-        // Handle both formats: [Entity] and [Entity:Type]
-        const match = line.match(/^\[(.+?)\]-\[(.+?)\]->\[(.+?)\]$/)
-        if (!match) return null
-
-        const [_, sourceRaw, relationship, targetRaw] = match
-
-        // Parse entity and type from format "Entity:Type" or just "Entity"
-        const parseEntity = (entityStr) => {
-          const parts = entityStr.split(':')
-          if (parts.length === 2) {
-            return {
-              name: parts[0].trim(),
-              type: parts[1].trim(),
-            }
-          }
-          // Fallback to old format without type
-          return {
-            name: entityStr.trim(),
-            type: null,
-          }
-        }
-
-        const sourceParsed = parseEntity(sourceRaw)
-        const targetParsed = parseEntity(targetRaw)
-
-        // Detect entity types based on common patterns
-        const detectEntityType = (entity) => {
-          const lower = entity.toLowerCase()
-          const trimmed = entity.trim()
-
-          // Technology patterns - check first as most specific
-          const techPatterns = [
-            /\.(js|py|java|cpp|c|go|rs|ts|jsx|tsx|vue|rb|php|swift|kt|scala|r|m|h)$/i,
-            /^(react|vue|angular|svelte|next\.?js|nuxt|gatsby|webpack|babel|vite|rollup|parcel|esbuild)$/i,
-            /^(node\.?js|deno|bun|python|java|c\+\+|rust|golang|ruby|php|swift|kotlin)$/i,
-            /^(gpt-\d|claude|llama|bert|transformer|ai|ml|api|sdk|cli|gui|ide)$/i,
-            /^(aws|azure|gcp|google cloud|amazon web services|microsoft azure)$/i,
-            /^(docker|kubernetes|k8s|terraform|ansible|jenkins|github|gitlab|bitbucket)$/i,
-            /^(mysql|postgresql|mongodb|redis|elasticsearch|kafka|rabbitmq|sqlite)$/i,
-            /^(http|https|tcp|udp|websocket|graphql|rest|grpc|mqtt)$/i,
-            /(framework|library|toolkit|platform|service|database|server|client|protocol|algorithm|technology|software|hardware|system|application|tool|package|module|component|interface|api|sdk)/i,
-          ]
-          if (techPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Technology'
-          }
-
-          // Organization patterns - companies, institutions, agencies
-          const orgPatterns = [
-            /\b(Inc\.?|Corp\.?|LLC|Ltd\.?|GmbH|SA|AG|PLC|Co\.?|Company|Corporation|Group|Holdings|Partners|Associates|Foundation|Institute|University|College|School|Academy|Hospital|Bank|Agency|Department|Ministry|Commission|Committee|Council|Board|Authority|Office|Bureau|Service|Administration|Organization|Association|Society|Union|Federation|Confederation|Alliance|Coalition|Network|Consortium|Trust|Fund)\b/i,
-            /^(Microsoft|Google|Facebook|Meta|Amazon|Apple|Netflix|Tesla|SpaceX|OpenAI|Anthropic|DeepMind|IBM|Oracle|Intel|AMD|NVIDIA|Samsung|Sony|Nintendo|Adobe|Salesforce|Uber|Airbnb|Twitter|X|LinkedIn|TikTok|ByteDance|Alibaba|Tencent|Baidu)/i,
-            /^(UN|UNESCO|WHO|IMF|World Bank|NATO|EU|NASA|FDA|CDC|FBI|CIA|NSA|MIT|Harvard|Stanford|Oxford|Cambridge)/i,
-          ]
-          if (orgPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Organization'
-          }
-
-          // Person patterns - names with common structures
-          const personPatterns = [
-            /^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Prof\.?|Sir|Dame|Lord|Lady)\s+/i,
-            /^[A-Z][a-z]+\s+(([A-Z]\.?\s+)?[A-Z][a-z]+|[A-Z][a-z]+\s+[A-Z][a-z]+)$/,  // First Last or First M. Last
-            /\s+(Jr\.?|Sr\.?|III|IV|V|MD|PhD|Esq\.?)$/i,
-            /^[A-Z][a-z]+\s+[A-Z]'[A-Z][a-z]+$/,  // Irish/Scottish names
-            /^[A-Z][a-z]+\s+(van|von|de|di|da|del|della|dos|mac|mc|o'|le|la)\s+[A-Z][a-z]+$/i,  // Names with particles
-            /(CEO|CTO|CFO|COO|CMO|President|Director|Manager|Engineer|Developer|Designer|Analyst|Scientist|Professor|Doctor|Attorney|Judge|Senator|Representative|Governor|Mayor|Minister|Secretary|Commissioner|Chief|Head|Lead|Principal|Founder|Co-founder|Chairman|Board Member)/i,
-          ]
-          if (personPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Person'
-          }
-
-          // Location patterns
-          const locationPatterns = [
-            /^(United States|Canada|Mexico|Brazil|Argentina|United Kingdom|France|Germany|Spain|Italy|Russia|China|Japan|India|Australia|South Africa)/i,
-            /^(New York|Los Angeles|Chicago|Houston|Phoenix|Philadelphia|San Antonio|San Diego|Dallas|San Jose|Austin|Jacksonville|San Francisco|Seattle|Denver|Boston|Washington|Miami|Atlanta|Portland)/i,
-            /^(London|Paris|Berlin|Rome|Madrid|Moscow|Beijing|Tokyo|Mumbai|Sydney|Toronto|Vancouver|Montreal|Mexico City|São Paulo|Buenos Aires)/i,
-            /\b(Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|Lane|Ln\.?|Drive|Dr\.?|Court|Ct\.?|Plaza|Square|Park|City|Town|Village|County|State|Province|Country|Nation|Continent|Ocean|Sea|River|Lake|Mountain|Valley|Desert|Forest|Island)\b/i,
-          ]
-          if (locationPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Location'
-          }
-
-          // Product patterns
-          const productPatterns = [
-            /^(iPhone|iPad|MacBook|iMac|Apple Watch|AirPods|Pixel|Galaxy|Surface|Xbox|PlayStation|Switch)/i,
-            /\b(Pro|Plus|Max|Mini|Air|Ultra|Lite|Premium|Standard|Basic|Enterprise|Professional|Personal|Home|Business)\b/i,
-            /\b(Version|v\d+|\d+\.\d+|\d{4}|Gen \d+|Generation|Edition|Release|Update|Patch|Build)\b/i,
-          ]
-          if (productPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Product'
-          }
-
-          // Concept patterns - abstract ideas, methodologies, etc.
-          const conceptPatterns = [
-            /^(Democracy|Capitalism|Socialism|Freedom|Justice|Equality|Liberty|Privacy|Security|Innovation|Sustainability|Diversity|Inclusion|Ethics|Morality|Philosophy|Science|Art|Culture|Education|Health|Wealth|Poverty|War|Peace|Love|Hate|Fear|Hope|Faith|Truth|Knowledge|Wisdom|Power|Authority|Responsibility|Accountability)/i,
-            /(methodology|approach|strategy|technique|process|procedure|principle|theory|concept|idea|framework|model|pattern|practice|standard|guideline|policy|rule|regulation|law)/i,
-          ]
-          if (conceptPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Concept'
-          }
-
-          // Event patterns
-          const eventPatterns = [
-            /^(World War|Civil War|Revolution|Olympics|World Cup|Super Bowl|Conference|Summit|Symposium|Workshop|Seminar|Meeting|Election|Referendum|Festival|Fair|Expo|Exhibition|Show|Concert|Tour)/i,
-            /\b(2019|2020|2021|2022|2023|2024|2025)\b/,
-            /(January|February|March|April|May|June|July|August|September|October|November|December)/i,
-          ]
-          if (eventPatterns.some(pattern => pattern.test(trimmed))) {
-            return 'Event'
-          }
-
-          // If it's a single capitalized word, likely a concept or brand
-          if (/^[A-Z][a-z]+$/.test(trimmed)) {
-            return 'Concept'
-          }
-
-          // Default fallback
-          return 'Entity'
-        }
-
-        // Return flat structure for database compatibility
-        return {
-          source: sourceParsed.name,
-          target: targetParsed.name,
-          relationship: relationship.trim(),
-        }
-      })
-      .filter(Boolean)
-
-    // Validate all relationships before returning
-    const validRelationships = relationships.filter(rel => {
-      const isValid = validateRelationship(rel)
-      if (!isValid) {
-        console.warn('Invalid relationship structure detected, skipping:', rel)
-      }
-      return isValid
-    })
-
-    console.log(`✅ Extracted ${validRelationships.length} valid relationships (${relationships.length - validRelationships.length} invalid skipped)`)
-    return validRelationships
-  } catch (error) {
-    console.error('Error extracting relationships:', error)
-    return []
-  }
+export async function extractRelationshipsDetailed(content, options = {}) {
+  return runRelationshipPipeline(content, options)
 }

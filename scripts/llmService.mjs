@@ -53,6 +53,8 @@ const config = loadConfig()
 // macOS notification helper with debouncing
 let lastCreditNotification = 0
 const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes between notifications
+let openRouterCreditCheckUnavailable = false
+let openRouterCreditCheckWarned = false
 
 function notifyCreditsExhausted(service = 'OpenRouter') {
   const now = Date.now()
@@ -717,8 +719,12 @@ const service = {
       return true
     }
 
+    if (openRouterCreditCheckUnavailable) {
+      return true
+    }
+
     try {
-      const response = await axios.get(`${OPENROUTER_API_URL}/auth/key`, {
+      const response = await axios.get(`${OPENROUTER_API_URL}/key`, {
         headers: {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'HTTP-Referer': 'https://github.com/ejfox/scrapbook-core',
@@ -730,16 +736,22 @@ const service = {
       })
 
       if (!response.data?.data) {
-        console.error(chalk.red('Invalid response format from OpenRouter API - returning false'))
-        return false // Gracefully fail instead of crashing
+        console.warn(chalk.yellow('Invalid response format from OpenRouter key endpoint - proceeding without preflight credit gating'))
+        return true
       }
 
-      const { usage, limit, is_free_tier, rate_limit } = response.data.data
+      const {
+        usage = 0,
+        limit = null,
+        limit_remaining = null,
+        is_free_tier,
+        rate_limit,
+      } = response.data.data
 
-      if (limit !== null && usage >= limit) {
+      if ((limit_remaining !== null && limit_remaining <= 0) || (limit !== null && usage >= limit)) {
         console.error(
           chalk.redBright(
-            `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}. Processing stopped.`,
+            `OpenRouter credit limit exceeded! Usage: ${usage}, Limit: ${limit}.`,
           ),
         )
         return false
@@ -753,10 +765,21 @@ const service = {
       )
       return true
     } catch (error) {
-      console.error(
-        `Error checking OpenRouter credits: ${error.message}. Processing stopped.`,
+      if (error.response?.status === 404) {
+        openRouterCreditCheckUnavailable = true
+        if (!openRouterCreditCheckWarned) {
+          openRouterCreditCheckWarned = true
+          console.warn(
+            'OpenRouter key endpoint unavailable for credit preflight; skipping future credit checks and proceeding with OpenRouter requests.',
+          )
+        }
+        return true
+      }
+
+      console.warn(
+        `Error checking OpenRouter credits: ${error.message}. Proceeding with OpenRouter request instead of forcing fallback.`,
       )
-      return false
+      return true
     }
   },
 

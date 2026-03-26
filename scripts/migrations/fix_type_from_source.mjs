@@ -14,14 +14,14 @@ import 'dotenv/config'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 )
 
 const SOURCE_TO_TYPE = {
   pinboard: 'bookmark',
   arena: 'block',
   github: 'repo',
-  mastodon: 'status'
+  mastodon: 'status',
 }
 
 async function migrate() {

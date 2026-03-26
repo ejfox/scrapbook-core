@@ -91,7 +91,7 @@ class HealthCheck {
     console.log(chalk.bold.blue('\n💰 CHECKING OPENROUTER CREDITS\n'))
 
     try {
-      const response = await axios.get('https://openrouter.ai/api/v1/auth/key', {
+      const response = await axios.get('https://openrouter.ai/api/v1/key', {
         headers: {
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         },
@@ -101,9 +101,11 @@ class HealthCheck {
       console.log(chalk.gray(`  Account: ${data.label || 'Unknown'}`))
       console.log(chalk.gray(`  Usage: $${data.usage?.toFixed(2) || '0.00'}`))
       console.log(chalk.gray(`  Limit: ${data.limit ? '$' + data.limit : 'Unlimited'}`))
+      console.log(chalk.gray(`  Remaining: ${data.limit_remaining ?? 'Unknown'}`))
       console.log(chalk.gray(`  Rate Limit: ${data.rate_limit?.requests || 'Unknown'}`))
 
-      if (data.limit && data.usage >= data.limit) {
+      if ((data.limit_remaining !== null && data.limit_remaining !== undefined && data.limit_remaining <= 0) ||
+          (data.limit && data.usage >= data.limit)) {
         this.fail('OpenRouter: Credit limit reached!', 'apis')
         this.results.apis.failed++
         return false

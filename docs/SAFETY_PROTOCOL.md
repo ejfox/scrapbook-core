@@ -63,7 +63,7 @@ grep "CircuitBreaker" logs/combined.log | tail -20
 
 ```bash
 npm run validate          # Check last 60 minutes
-npm run validate 120      # Check last 2 hours
+npm run validate -- 120   # Check last 2 hours
 ```
 
 This verifies:
@@ -125,7 +125,7 @@ Shows completeness for:
 
 4. **Validate Test Run**
    ```bash
-   npm run validate 5
+   npm run validate -- 5
    ```
    - ❌ If validation fails: STOP AND INVESTIGATE
    - ✅ If validation passes: Continue
@@ -139,7 +139,7 @@ Shows completeness for:
 
 6. **Validate Batch**
    ```bash
-   npm run validate 30
+   npm run validate -- 30
    ```
    - ❌ If validation fails: STOP
    - ✅ If validation passes: Scale up
@@ -272,7 +272,7 @@ Currently configured in `data/safety-state.json`:
 ### If You Suspect Money is Being Wasted:
 
 1. **Stop all processing immediately**
-2. **Run validation:** `npm run validate 120`
+2. **Run validation:** `npm run validate -- 120`
 3. **Run audit:** `npm run audit`
 4. **Check logs:** `tail -200 logs/error.log`
 5. **Run health check:** `npm run health`
@@ -290,10 +290,10 @@ npm run health
 node scripts/index.mjs --pinboard --limit 1
 
 # 3. Validate
-npm run validate 5
+npm run validate -- 5
 
 # 4. Check the actual scrap
-node check_actual_data.mjs
+npm run dashboard
 
 # 5. If all good, scale up slowly
 ```

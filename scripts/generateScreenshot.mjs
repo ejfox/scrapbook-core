@@ -112,8 +112,8 @@ async function uploadToCloudinary(buffer, scrapId, timeoutMs = 45000) {
       uploadStream.end(buffer)
     }),
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Cloudinary upload timeout')), timeoutMs)
-    )
+      setTimeout(() => reject(new Error('Cloudinary upload timeout')), timeoutMs),
+    ),
   ])
 }
 
@@ -336,9 +336,10 @@ export async function generateScreenshot(url, scrapId = null) {
       })
 
       // Add realistic chrome properties
-      window.chrome = {
-        runtime: {},
-      }
+      Object.defineProperty(globalThis, 'chrome', {
+        value: { runtime: {} },
+        configurable: true,
+      })
     })
 
     await page.setViewport({ width: 1080, height: 1920 })

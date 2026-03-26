@@ -73,7 +73,7 @@ export async function evaluateNewsworthiness(scrap, options = {}) {
   // Quick filters - skip obvious non-news
   const dominated = [
     'tutorial', 'howto', 'product', 'tool', 'documentation',
-    'recipe', 'review', 'opinion', 'personal', 'entertainment'
+    'recipe', 'review', 'opinion', 'personal', 'entertainment',
   ]
 
   if (scrap.content_type && dominated.includes(scrap.content_type)) {
@@ -139,7 +139,7 @@ Respond with ONLY a JSON object:
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         max_tokens: 100,
         temperature: 0.1, // Low temp for consistent decisions
@@ -166,7 +166,7 @@ Respond with ONLY a JSON object:
       const result = JSON.parse(jsonStr)
       return {
         isNewsworthy: result.newsworthy === true,
-        reason: result.reason || 'No reason provided'
+        reason: result.reason || 'No reason provided',
       }
     } catch (parseError) {
       console.error('Failed to parse newsworthiness response:', content)
@@ -197,7 +197,7 @@ export async function applyNewsworthinessTag(scrap, options = {}) {
       tags: ['!news', ...currentTags],
       evaluated: true,
       isNewsworthy: true,
-      reason
+      reason,
     }
   }
 
@@ -205,7 +205,7 @@ export async function applyNewsworthinessTag(scrap, options = {}) {
     tags: currentTags,
     evaluated: true,
     isNewsworthy: false,
-    reason
+    reason,
   }
 }
 
@@ -216,7 +216,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     summary: process.argv[3] || 'This is a test summary about something happening.',
     url: 'https://example.com/test',
     tags: ['politics', 'news'],
-    content_type: 'article'
+    content_type: 'article',
   }
 
   console.log('Testing newsworthiness evaluation...')

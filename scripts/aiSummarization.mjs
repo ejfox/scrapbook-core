@@ -40,7 +40,7 @@ export async function summarizeContent(content, options = {}) {
       // discoverThreadContext() already returns formatted string, not array
       threadContext = await discoverThreadContext(scrap, { tags })
       if (threadContext) {
-        log(`✅ Found related bookmarks`)
+        log('✅ Found related bookmarks')
       } else {
         log('📭 No related bookmarks found')
       }
@@ -83,7 +83,7 @@ export async function summarizeContent(content, options = {}) {
             ...otherOptions,
             scrapId,
             taskType,
-            threadContext: i === 0 ? threadContext : null // Only add context to first chunk
+            threadContext: i === 0 ? threadContext : null, // Only add context to first chunk
           })
           log(
             `✅ Chunk ${i + 1} summary generated (${result?.length || 0} chars)`,
@@ -169,14 +169,14 @@ Instructions:
 • Format as bullet points starting with "• "
 • Be comprehensive - this summary is the only record of this page's content
 
-Analyze the screenshot and provide a detailed summary:`
+Analyze the screenshot and provide a detailed summary:`,
               },
               {
                 type: 'image_url',
-                image_url: { url: screenshotUrl }
-              }
-            ]
-          }
+                image_url: { url: screenshotUrl },
+              },
+            ],
+          },
         ],
         max_tokens: 2048,
         temperature: 0.3,
@@ -258,7 +258,7 @@ ${chunk}`
 
   const userMessage = {
     role: 'user',
-    content: userContent
+    content: userContent,
   }
 
   while (summary === null && retries < 3) {
@@ -499,7 +499,7 @@ Return only valid tags from the list above, one per line, no explanations. Tags 
 
       // No valid tags - retry if we have attempts left
       if (attempt < MAX_RETRIES) {
-        log(`⚠️ No valid tags generated, retrying...`)
+        log('⚠️ No valid tags generated, retrying...')
         await new Promise(resolve => setTimeout(resolve, 500 * attempt))
       }
     } catch (error) {

@@ -221,7 +221,7 @@ export async function extractBatch(urls, options = {}) {
       batch.map(async (url) => {
         const content = await extractContentWithRetry(url, extractOptions)
         return { url, content, success: !!content }
-      })
+      }),
     )
 
     results.push(...batchResults)

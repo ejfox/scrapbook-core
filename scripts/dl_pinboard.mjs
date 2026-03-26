@@ -428,7 +428,7 @@ export async function processBookmark(bookmark) {
 
         // For YouTube URLs, try to fetch transcript first
         if (isYoutubeUrl(bookmark.href)) {
-          logger.info(`📺 YouTube URL detected, fetching transcript...`)
+          logger.info('📺 YouTube URL detected, fetching transcript...')
           const transcript = await fetchYoutubeTranscript(bookmark.href)
 
           if (transcript) {
@@ -449,7 +449,7 @@ export async function processBookmark(bookmark) {
             })
           } else {
             // No transcript available, fall through to regular extraction
-            logger.info(`YouTube transcript not available, trying regular extraction`)
+            logger.info('YouTube transcript not available, trying regular extraction')
           }
         }
 
@@ -666,7 +666,6 @@ async function generateEmbedding(text) {
 }
 
 // Update main processing loop
-// eslint-disable-next-line no-unused-vars
 async function fetchAndUpsertPinboardBookmarks() {
   const bookmarks = await fetchBookmarksWithCache()
   logger.info(`Found ${bookmarks.length} bookmarks`)

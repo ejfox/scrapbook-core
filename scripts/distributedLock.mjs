@@ -62,7 +62,7 @@ export async function acquireRunLock() {
         content: 'Run lock',
         title: 'Run Lock',
         created_at: now,
-        updated_at: now
+        updated_at: now,
       })
 
     if (error && !error.message.includes('duplicate')) {

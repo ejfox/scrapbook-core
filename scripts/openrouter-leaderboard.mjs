@@ -21,7 +21,7 @@ async function parseNDJSON(filepath, daysBack = 7) {
     byTask: {},
     bySource: {},
     byDay: {},
-    totals: { cost: 0, tokens: 0, requests: 0 }
+    totals: { cost: 0, tokens: 0, requests: 0 },
   }
 
   const cutoffDate = new Date()
@@ -161,7 +161,7 @@ async function pushToLoki(stats) {
   for (const [model, data] of Object.entries(stats.byModel)) {
     streams.push({
       stream: { job: 'openrouter-leaderboard', type: 'model', model: model.replace(/\//g, '_') },
-      values: [[timestamp.toString(), JSON.stringify({ model, ...data })]]
+      values: [[timestamp.toString(), JSON.stringify({ model, ...data })]],
     })
   }
 
@@ -169,21 +169,21 @@ async function pushToLoki(stats) {
   for (const [task, data] of Object.entries(stats.byTask)) {
     streams.push({
       stream: { job: 'openrouter-leaderboard', type: 'task', task },
-      values: [[timestamp.toString(), JSON.stringify({ task, ...data })]]
+      values: [[timestamp.toString(), JSON.stringify({ task, ...data })]],
     })
   }
 
   // Push totals
   streams.push({
     stream: { job: 'openrouter-leaderboard', type: 'totals' },
-    values: [[timestamp.toString(), JSON.stringify(stats.totals)]]
+    values: [[timestamp.toString(), JSON.stringify(stats.totals)]],
   })
 
   try {
     const response = await fetch(LOKI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ streams })
+      body: JSON.stringify({ streams }),
     })
     if (response.ok) {
       console.log(`✅ Pushed ${streams.length} streams to Loki`)

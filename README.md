@@ -33,7 +33,7 @@ Each package is LLM-agnostic and can work with OpenAI, Anthropic, OpenRouter, or
 - Processes and stores data as "scraps" with unique IDs
 - Generates summaries and extracts entities for easy retrieval
 - Uploads screenshots to Supabase or Cloudinary and stores URLs
-- Syncs data with both Supabase and SQLite databases
+- Stores canonical data in Supabase and supports local SQLite search workflows
 - Includes an Alfred Workflow for quick local database searches
 - **Realtime dashboard** with live activity feed and auto-advance
 - **Smart rate limiting** with automatic free model fallbacks
@@ -199,7 +199,7 @@ INSTANCE_NAME=local-dev
 
 3. Test your configuration:
 ```bash
-node scripts/validate_env.mjs
+npm run validate:env
 ```
 
 ## Local Development
@@ -217,14 +217,19 @@ npm install
 
 3. Set up environment variables (see Environment Setup above)
 
-4. Run the development server:
+4. Run the processor locally:
 ```bash
 npm run dev
 ```
 
-5. Run tests:
+5. Run package smoke tests:
 ```bash
 npm test
+```
+
+6. Run the dashboard UI:
+```bash
+npm run dashboard:dev
 ```
 
 ## Usage
@@ -232,7 +237,7 @@ npm test
 ### Data Collection
 - Fetch all data: `npm run fetch:all`
 - Fetch specific sources: `npm run fetch:pinboard`, `npm run fetch:github`, etc.
-- Sync to SQLite: `npm run sync:sqlite`
+- Local SQLite search helper: `node scripts/search_sqlite_scraps.js "query"`
 
 ### Data Quality & Maintenance
 - Check scrapbook health: `npm run doctor:status`
@@ -253,32 +258,32 @@ Can be accessed through the command-line [scrapbook-cli](https://github.com/ejfo
 Also visible on [my website's scrapbook](https://ejfox.com/scrapbook/)
 
 I also use it in combination with an Alfred Workflow and a local SQLite database for quick searching:
-- `scripts/setup_sqlite.mjs`
-- `scripts/sync_supabase_to_sqlite.js`
 - `scripts/search_sqlite_scraps.js`
 - `Local Scrap Search.1.1.alfredworkflow.zip`
+
+SQLite sync tooling is not currently bundled in this checkout.
 
 ### Maintenance Commands
 
 The following commands help maintain the database by fixing or removing problematic scraps:
 
 #### Cleaning Commands
-- Delete scraps with missing data: `node index.mjs --clean`
-- Delete only completely empty scraps: `node index.mjs --clean-empty`
-- Delete scraps missing some fields: `node index.mjs --clean-partial`
-- Preview what would be deleted: `node index.mjs --clean-dry-run`
+- Delete scraps with missing data: `node scripts/index.mjs --clean`
+- Delete only completely empty scraps: `node scripts/index.mjs --clean-empty`
+- Delete scraps missing some fields: `node scripts/index.mjs --clean-partial`
+- Preview what would be deleted: `node scripts/index.mjs --clean-dry-run`
 
 #### Fixing Commands
-- Fix missing data in scraps: `node index.mjs --fix`
-- Preview what would be fixed: `node index.mjs --fix-dry-run`
+- Fix missing data in scraps: `node scripts/index.mjs --fix`
+- Preview what would be fixed: `node scripts/index.mjs --fix-dry-run`
 - Fix specific issues:
-  - Missing images: `node index.mjs --fix-images`
-  - Missing embeddings: `node index.mjs --fix-embeddings`
-  - Missing AI data: `node index.mjs --fix-ai`
+  - Missing images: `node scripts/index.mjs --fix-images`
+  - Missing embeddings: `node scripts/index.mjs --fix-embeddings`
+  - Missing AI data: `node scripts/index.mjs --fix-ai`
 - Fix specific sources:
-  - Pinboard: `node index.mjs --fix-pinboard`
-  - Are.na: `node index.mjs --fix-arena`
-  - Mastodon: `node index.mjs --fix-mastodon`
+  - Pinboard: `node scripts/index.mjs --fix-pinboard`
+  - Are.na: `node scripts/index.mjs --fix-arena`
+  - Mastodon: `node scripts/index.mjs --fix-mastodon`
 
 All cleaning and fixing commands will:
 1. Show you what will be affected before making changes
@@ -309,7 +314,7 @@ graph TD
    - `aiRelationshipExtraction.mjs`: Identifies relationships between different scraps.
 3. **Storage**: Handles persistence of processed data.
    - `index.mjs`: The main script orchestrating data fetching, processing, and storage in Supabase.
-   - `sync_supabase_to_sqlite.js`: Synchronizes data between Supabase and a local SQLite database.
+   - Local SQLite search is supported, but sync tooling is currently maintained separately from this checkout.
 4. **Utilities**: Helper functions and modules.
    - `helpers.js`: Common utility functions.
    - `manifestHelpers.mjs`: Manages a manifest file for tracking data fetch operations.
@@ -587,13 +592,13 @@ This project requires several API keys and secrets. Store these securely in a `.
 The project includes validation utilities:
 
 ### Scrap Validation (`validate_scraps.mjs`)
-This script validates the structure and content of scraped data, checking for missing fields, incorrect data types, and invalid formats. Run it with `node scripts/validate_scraps.mjs [source]`.
+This script validates the structure and content of scraped data, checking for missing fields, incorrect data types, and invalid formats. Run it with `node tests/validate_scraps.mjs [source]`.
 
 ### AI Service Validation (`validate_ai.mjs`)
-This script tests the AI-powered features (summarization, geolocation, relationship extraction) using sample data. Run it with `node scripts/validate_ai.mjs [test_name]`.
+This script tests the AI-powered features (summarization, geolocation, relationship extraction) using sample data. Run it with `node tests/validate_ai.mjs [test_name]`.
 
 ### Database Maintenance
-Regularly run `node scripts/validate_db_integrity.mjs` to check for and clean up any orphaned or stuck processing records.
+Regularly run `node tests/validate_db_integrity.mjs` to check for and clean up any orphaned or stuck processing records.
 
 ## Smart Rate Limiting and Caching
 
@@ -616,7 +621,7 @@ The application features **SmartRateLimiter** that automatically handles API rat
 **Usage Example:**
 ```bash
 # Test the smart rate limiter
-node scripts/test-smart-rate-limiter.mjs
+node tests/test-smart-rate-limiter.mjs
 
 # Monitor rate limiter status in logs
 DEBUG=true node scripts/index.mjs --pinboard

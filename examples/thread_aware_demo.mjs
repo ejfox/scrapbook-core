@@ -14,7 +14,7 @@ import { createClient } from '@supabase/supabase-js'
 import { discoverThreadContext, formatThreadContext } from '../lib/threadContext.mjs'
 import {
   buildThreadAwareMessages,
-  previewContext
+  previewContext,
 } from '../lib/promptTemplates.mjs'
 import { summarizeContent } from '../scripts/aiSummarization.mjs'
 import dotenv from 'dotenv'
@@ -24,7 +24,7 @@ dotenv.config()
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
+  process.env.SUPABASE_KEY,
 )
 
 /**
@@ -102,7 +102,7 @@ async function demoThreadContext(scrapUrl) {
   console.log(chalk.bold('💬 Prompt Structure:'))
   const messages = buildThreadAwareMessages(
     scrap.content || scrap.title || 'No content available',
-    threadContext
+    threadContext,
   )
 
   console.log(chalk.cyan(`\n   System message: ${messages[0].content.substring(0, 100)}...`))
@@ -110,7 +110,7 @@ async function demoThreadContext(scrapUrl) {
 
   // Token estimation
   const estimatedTokens = Math.ceil(
-    (messages[0].content.length + messages[1].content.length) / 4
+    (messages[0].content.length + messages[1].content.length) / 4,
   )
   console.log(chalk.dim(`   Estimated tokens: ~${estimatedTokens}`))
   console.log(chalk.dim(`   Context overhead: ~${threadContext ? 800 : 0} tokens\n`))
@@ -179,7 +179,7 @@ async function demoComparison() {
   console.log(chalk.dim(messagesThreadAware[1].content.substring(0, 500) + '...\n'))
 
   const tokensAdded = Math.ceil(
-    (messagesThreadAware[1].content.length - messagesIsolated[1].content.length) / 4
+    (messagesThreadAware[1].content.length - messagesIsolated[1].content.length) / 4,
   )
 
   console.log(chalk.green(`✨ Context added ~${tokensAdded} tokens of relevant history`))

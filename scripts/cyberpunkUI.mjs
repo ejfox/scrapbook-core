@@ -293,7 +293,7 @@ export function rateLimitWarning(level, waitTime) {
     0: { icon: cyber.green(''), text: 'NORMAL', color: cyber.green },
     1: { icon: cyber.yellow(''), text: 'ELEVATED', color: cyber.yellow },
     2: { icon: cyber.pink(''), text: 'HIGH', color: cyber.pink },
-    3: { icon: cyber.red(''), text: 'CRITICAL', color: cyber.red }
+    3: { icon: cyber.red(''), text: 'CRITICAL', color: cyber.red },
   }
 
   const l = levels[level] || levels[0]

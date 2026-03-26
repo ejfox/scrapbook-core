@@ -56,7 +56,7 @@ async function checkCredits() {
   }
 
   try {
-    const response = await axios.get(`${OPENROUTER_API_URL}/auth/key`, {
+    const response = await axios.get(`${OPENROUTER_API_URL}/key`, {
       headers: {
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
