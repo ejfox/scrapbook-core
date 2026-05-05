@@ -1,6 +1,10 @@
 # Environment and secrets
 .env
+.env.*
+!.env.*.example
 .env.local
+.env.bak
+*.env.bak
 
 # Dependencies
 node_modules/
@@ -16,6 +20,11 @@ data/
 screenshots/
 *.tmp
 *.cache
+
+# Repair / batch dumps (may contain raw API requests with secrets)
+repair_*.txt
+repair_*.log
+*_batch.txt
 
 # OS generated files
 .DS_Store
