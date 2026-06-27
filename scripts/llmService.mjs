@@ -993,6 +993,11 @@ class CreditError extends Error {
 }
 
 async function tryCompletion(prompt, options = {}) {
+  // Hard timeout so a hung/slow provider call aborts instead of stalling a worker
+  // indefinitely (bare fetch has no timeout). Tunable via LLM_TIMEOUT_MS.
+  const controller = new AbortController()
+  const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || '90000', 10)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -1007,6 +1012,7 @@ async function tryCompletion(prompt, options = {}) {
           model: options.model || DEFAULT_COMPLETION_MODEL,
           messages: Array.isArray(prompt) ? prompt : [prompt],
         }),
+        signal: controller.signal,
       },
     )
 
@@ -1033,8 +1039,15 @@ async function tryCompletion(prompt, options = {}) {
     if (error instanceof CreditError) {
       throw error // Let it propagate up
     }
+    if (error.name === 'AbortError') {
+      const timeoutError = new Error(`OpenRouter request timed out after ${timeoutMs}ms`)
+      logger.error(timeoutError.message)
+      throw timeoutError
+    }
     logger.error('Error during completion:', error)
     throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

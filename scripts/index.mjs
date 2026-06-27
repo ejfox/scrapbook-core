@@ -823,9 +823,13 @@ async function enrichScrapWithAI(scrapData) {
         logger.info(chalk.yellow('ℹ️  No location found'))
       }
 
-      // Evaluate newsworthiness for !news tag (editorial curation, ~3/day)
+      // Evaluate newsworthiness for !news tag (editorial curation, ~3/day).
+      // Off by default: the newsworthiness API currently 401s ("User not found")
+      // AND hangs with no timeout, which stalls the whole run. Re-enable with
+      // ENABLE_NEWSWORTHINESS=true once that service is fixed.
       const potentialNewsTypes = ['news', 'article', 'report', null, undefined]
-      if (scrapData.summary && !(scrapData.tags || []).includes('!news') &&
+      if (process.env.ENABLE_NEWSWORTHINESS === 'true' &&
+          scrapData.summary && !(scrapData.tags || []).includes('!news') &&
           potentialNewsTypes.includes(scrapData.content_type)) {
         logger.info(chalk.blue('\n6️⃣  Evaluating newsworthiness...'))
         try {
