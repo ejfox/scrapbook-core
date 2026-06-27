@@ -58,9 +58,10 @@ RUN touch .env.example && chown appuser:appuser .env.example
 # Switch to non-root user
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "console.log('healthy')" || exit 1
+# Health check — validates env vars and node process is alive.
+# When running api-server.mjs, override with: curl -f http://localhost:3001/health
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD node lib/validateEnvironment.mjs || exit 1
 
 # Use tini for proper signal handling
 ENTRYPOINT ["/usr/bin/tini", "--"]

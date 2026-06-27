@@ -667,6 +667,110 @@ async function adjudicateRelationships(candidates, content, options = {}, mode =
     }))
 }
 
+// ── Remap loop ──────────────────────────────────────────────────────────────
+// Candidates the model extracted but that fail ontology typing (bad entity type,
+// unknown predicate, or invalid type pairing) are dropped silently today. Instead
+// we collect them and ask the model to re-express each one using ONLY approved
+// types/predicates — faithfully to the evidence — or admit it cannot map. This
+// recovers real edges (ACLU-NJ SUPPORTS …, Fontoura INVESTIGATES …) without
+// loosening the ontology. Anchoring/low-value drops are NOT remapped (those are
+// legitimately out of scope); only ontology-typing failures are.
+function findRemapTargets(rawRelationships) {
+  if (!Array.isArray(rawRelationships)) return []
+  return rawRelationships.filter((r) => normalizeTypedRelationship(r) === null)
+}
+
+function buildRemapMessages(documentPayload, rejected, options = {}) {
+  const entityPrompt = buildEntityTypePrompt()
+  const predicatePrompt = buildPredicatePrompt()
+  const rejectedPayload = JSON.stringify(
+    rejected.map((r, i) => ({
+      index: i,
+      source: r.source,
+      type: r.type || r.relationship,
+      target: r.target,
+      evidence: r.evidence,
+    })),
+    null,
+    2,
+  )
+
+  return [
+    {
+      role: 'system',
+      content: `You are an ontology remapper for an investigative/OSINT knowledge graph.
+
+You are given relationships another model extracted that did NOT fit the approved ontology. For each, do ONE of:
+- REWRITE it using ONLY an approved entity type and approved predicate, staying faithful to the evidence (e.g. a vague "BACKS [their demands]" becomes "Organization SUPPORTS Movement" only if a real named movement/entity exists; "INVESTIGATES [allegations]" becomes "Person INVESTIGATES Person/Organization" when the real target entity is named in the evidence).
+- If it genuinely cannot be expressed with the approved types/predicates without inventing entities or distorting meaning, mark it {"index": N, "decision": "cannot_map"}.
+
+Hard rules:
+- Never invent entities not present in the evidence/text.
+- Never coerce an abstraction (e.g. "environmental damage", "pedestrian deaths", "allegations") into an entity. If the only available target is an abstraction, return cannot_map.
+- Prefer cannot_map over a forced/garbage mapping. Fidelity over recall.
+- Return valid JSON only.`,
+    },
+    {
+      role: 'user',
+      content: `Approved entity types:
+${entityPrompt}
+
+Approved predicates:
+${predicatePrompt}
+
+Return JSON: {"relationships":[{"index":N,"source":{"name":"","type":"ApprovedType"},"type":"APPROVED_PREDICATE","target":{"name":"","type":"ApprovedType"},"evidence":"short grounded evidence"}], "cannot_map":[N,...]}
+
+Document text:
+${documentPayload}
+
+Rejected relationships to remap:
+${rejectedPayload}`,
+    },
+  ]
+}
+
+async function remapRejectedRelationships(rejected, content, options = {}) {
+  if (!Array.isArray(rejected) || rejected.length === 0) return []
+  const model = options.model || getModelForTask('relationshipAnalysis')
+  const documentPayload = selectExtractionContent(content, options)
+  const response = await completion({
+    messages: buildRemapMessages(documentPayload, rejected, options),
+    temperature: 0.1,
+    maxTokens: 1800,
+    model,
+    scrapId: options.scrapId,
+    taskType: 'relationshipAnalysisRemap',
+  })
+  if (!response) return []
+
+  let payload = parseJsonObjectFromResponse(response)
+  if (!payload) {
+    const repaired = await repairJsonResponse(response, model)
+    payload = parseJsonObjectFromResponse(repaired)
+  }
+  if (!payload || !Array.isArray(payload.relationships)) return []
+  // Return raw remapped candidates; caller runs them back through normalization.
+  return payload.relationships
+}
+
+// Dedup raw (pre-normalization) candidates by a loose source|type|target key.
+function dedupeRawCandidates(rawCandidates) {
+  const seen = new Set()
+  const out = []
+  for (const r of rawCandidates) {
+    if (!r) continue
+    const src = r.source?.name || r.source || ''
+    const tgt = r.target?.name || r.target || ''
+    const pred = r.type || r.relationship || ''
+    const key = `${src}|${pred}|${tgt}`.toLowerCase()
+    if (!seen.has(key)) {
+      seen.add(key)
+      out.push(r)
+    }
+  }
+  return out
+}
+
 function dedupeRelationships(relationships) {
   const seen = new Set()
   const deduped = []
@@ -761,6 +865,10 @@ async function runRelationshipPipeline(content, options = {}) {
       return { relationships: [], diagnostics }
     }
 
+    // Preserve the first-pass model output up front — the recovery pass below can
+    // reassign `rawRelationships`, and we never want to lose the original candidates.
+    const firstPassRaw = Array.isArray(rawRelationships) ? [...rawRelationships] : []
+
     diagnostics.raw_candidate_count = rawRelationships.length
     if (options.includeDebugArtifacts) {
       diagnostics.raw_candidates = rawRelationships
@@ -774,6 +882,29 @@ async function runRelationshipPipeline(content, options = {}) {
       (isArticleLikeDocument(options, content) || options.source === 'arena')
     ) {
       normalizedRelationships = normalizeCandidates(rawRelationships, options, content, 'permissive')
+    }
+
+    // Remap loop: recover candidates the ontology rejected on typing (unknown
+    // predicate / entity type / pair) by asking the model to re-express them in
+    // the approved ontology — rather than silently dropping real edges.
+    const remapTargets = findRemapTargets(rawRelationships)
+    if (remapTargets.length > 0) {
+      const remappedRaw = await remapRejectedRelationships(remapTargets, content, options)
+      const remappedNormalized = normalizeCandidates(remappedRaw, options, content, 'strict')
+      if (remappedNormalized.length > 0) {
+        const seenKeys = new Set(
+          normalizedRelationships.map((r) => `${r.source.name}|${r.type}|${r.target.name}`),
+        )
+        for (const r of remappedNormalized) {
+          const key = `${r.source.name}|${r.type}|${r.target.name}`
+          if (!seenKeys.has(key)) {
+            normalizedRelationships.push(r)
+            seenKeys.add(key)
+          }
+        }
+      }
+      diagnostics.remap_target_count = remapTargets.length
+      diagnostics.remapped_count = remappedNormalized.length
     }
 
     diagnostics.pre_review_candidate_count = normalizedRelationships.length
@@ -864,6 +995,9 @@ async function runRelationshipPipeline(content, options = {}) {
 
     return {
       relationships: dedupedRelationships,
+      // Union of first-pass + any recovery-pass raw candidates, deduped — the full
+      // pre-normalization model output, for relationships_raw persistence.
+      raw: dedupeRawCandidates([...firstPassRaw, ...(Array.isArray(rawRelationships) ? rawRelationships : [])]),
       diagnostics,
     }
   } catch (error) {
@@ -871,6 +1005,7 @@ async function runRelationshipPipeline(content, options = {}) {
     diagnostics.skipped_reason = 'pipeline_error'
     return {
       relationships: [],
+      raw: rawRelationships,
       diagnostics,
     }
   }

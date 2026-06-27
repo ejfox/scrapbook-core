@@ -39,15 +39,50 @@ services:
           memory: 512M
           cpus: '0.5'
     
-    # Health check
+    # Health check — validates env vars and node process is alive
     healthcheck:
-      test: ["CMD", "node", "-e", "process.exit(require('fs').existsSync('/app/data') ? 0 : 1)"]
+      test: ["CMD", "node", "lib/validateEnvironment.mjs"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     
     # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # API server / dashboard with full health endpoint
+  scrapbook-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scrapbook-core:latest
+    container_name: scrapbook-api
+    restart: unless-stopped
+    command: ["node", "scripts/api-server.mjs"]
+
+    environment:
+      - NODE_ENV=production
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./.env:/app/.env:ro
+
+    ports:
+      - "3001:3001"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
     logging:
       driver: "json-file"
       options:

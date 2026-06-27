@@ -42,6 +42,16 @@ const MODEL_PRICING = {
   'google/gemini-2.5-flash': { prompt: 0.0000003, completion: 0.0000025, request: 0 }, // $0.30/$2.50 per 1M tokens
   'google/gemini-2.0-flash-001': { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
   'google/gemini-2.5-flash-lite': { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
+  'google/gemini-2.5-flash-lite-preview-09-2025': { prompt: 0.0000001, completion: 0.0000004, request: 0 }, // $0.10/$0.40 per 1M tokens
+  'google/gemma-3-12b-it': { prompt: 0.00000005, completion: 0.00000015, request: 0 }, // $0.05/$0.15 per 1M tokens
+  'qwen/qwen3-235b-a22b-2507': { prompt: 0.00000009, completion: 0.0000001, request: 0 }, // $0.09/$0.10 per 1M tokens
+  'qwen/qwen3-30b-a3b-instruct-2507': { prompt: 0.000000048, completion: 0.000000193, request: 0 }, // $0.048/$0.193 per 1M tokens
+  'openai/gpt-5-nano': { prompt: 0.00000005, completion: 0.0000004, request: 0 }, // $0.05/$0.40 per 1M tokens
+  // Newer Chinese models (buffet candidates)
+  'qwen/qwen3.5-flash-02-23': { prompt: 0.000000065, completion: 0.00000026, request: 0 }, // $0.065/$0.26 per 1M tokens
+  'z-ai/glm-4.7-flash': { prompt: 0.00000006, completion: 0.0000004, request: 0 }, // $0.06/$0.40 per 1M tokens
+  'deepseek/deepseek-v3.2': { prompt: 0.000000229, completion: 0.000000343, request: 0 }, // $0.229/$0.343 per 1M tokens
+  'moonshotai/kimi-k2.5': { prompt: 0.000000375, completion: 0.000002025, request: 0 }, // $0.375/$2.025 per 1M tokens
 
   // Claude models
   'anthropic/claude-3.5-sonnet': { prompt: 0.000003, completion: 0.000015, request: 0 }, // $3/$15 per 1M tokens
@@ -50,16 +60,17 @@ const MODEL_PRICING = {
   'openai/gpt-4o-mini': { prompt: 0.00000015, completion: 0.0000006, request: 0 }, // $0.15/$0.60 per 1M tokens
 
   // OpenAI models (static pricing from documentation)
-  'text-embedding-3-small': { prompt: 0.00002, completion: 0, request: 0 }, // $0.02 per 1M tokens
-  'text-embedding-3-large': { prompt: 0.00013, completion: 0, request: 0 }, // $0.13 per 1M tokens
-  'text-embedding-ada-002': { prompt: 0.0001, completion: 0, request: 0 },  // $0.10 per 1M tokens
+  'text-embedding-3-small': { prompt: 0.00000002, completion: 0, request: 0 }, // $0.02 per 1M tokens
+  'text-embedding-3-large': { prompt: 0.00000013, completion: 0, request: 0 }, // $0.13 per 1M tokens
+  'text-embedding-ada-002': { prompt: 0.0000001, completion: 0, request: 0 },  // $0.10 per 1M tokens
 
   // Nomic models
   'nomic-embed-text-v1.5': { prompt: 0, completion: 0, request: 0 }, // Free tier available
   'nomic-embed-vision-v1.5': { prompt: 0, completion: 0, request: 0 }, // Free tier available
 
-  // Default fallback for unknown models
-  'unknown': { prompt: 0.00001, completion: 0.00001, request: 0 },
+  // Default fallback for unknown models — mid-range estimate (~$0.50/$1.50 per 1M),
+  // NOT the old $10/$10 which wildly overstated cheap models like gemma/qwen.
+  'unknown': { prompt: 0.0000005, completion: 0.0000015, request: 0 },
 }
 
 // Cost tracking state

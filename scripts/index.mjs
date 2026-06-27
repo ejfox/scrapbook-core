@@ -17,7 +17,7 @@ import {
 } from './aiGithubSummarization.mjs'
 import { generateEmbedding } from './llmService.mjs'
 import { extractLocation } from './aiGeolocation.mjs'
-import { extractRelationships } from './aiRelationshipExtraction.mjs'
+import { extractRelationships, extractRelationshipsDetailed } from './aiRelationshipExtraction.mjs'
 import { extractAndAddFinancialAnalysis } from './aiFinancialAnalysis.mjs'
 import { applyNewsworthinessTag } from './aiNewsworthiness.mjs'
 import { enrichWithReasoningFields } from './reasoningFields.mjs'
@@ -51,6 +51,7 @@ import cron from 'node-cron'
 import { run_terminal_cmd } from './utils.mjs'
 import { autoSyncRecentTags } from './sync_tags_to_pinboard.mjs'
 import { validateTypedRelationship } from '../lib/relationshipExtraction.mjs'
+import { validateEnvironment } from '../lib/validateEnvironment.mjs'
 
 // Load environment variables from .env file
 const envPath = path.resolve(process.cwd(), '.env')
@@ -62,14 +63,18 @@ if (fs.existsSync(envPath)) {
   dotenv.config()
 }
 
-// Debug environment variables immediately
-console.log('DEBUG: Environment variables after dotenv load:')
-console.log(
-  'OPENROUTER_API_KEY:',
-  process.env.OPENROUTER_API_KEY
-    ? process.env.OPENROUTER_API_KEY.substring(0, 10) + '...'
-    : 'not set',
-)
+// Startup environment validation
+const envValidation = validateEnvironment()
+if (envValidation.errors.length) {
+  console.error('Environment validation errors:')
+  envValidation.errors.forEach((e) => console.error(`  ✗ ${e}`))
+  console.error('Aborting — fix the above before running.')
+  process.exit(1)
+}
+if (envValidation.warnings.length) {
+  console.warn('Environment warnings (non-critical):')
+  envValidation.warnings.forEach((w) => console.warn(`  ⚠ ${w}`))
+}
 console.log('NODE_ENV:', process.env.NODE_ENV || 'not set')
 
 // Embedding generation toggle - disabled by default (not currently used)
@@ -223,7 +228,7 @@ const dailyStats = {
   },
 }
 
-import { getRateLimitConfig } from '../lib/config.mjs'
+import { getRateLimitConfig, getModelForTask } from '../lib/config.mjs'
 
 // Bottleneck limiters for rate-limiting async tasks using centralized config
 const generalConfig = getRateLimitConfig('general')
@@ -919,6 +924,23 @@ async function enrichScrapWithAI(scrapData) {
     }
 
     const totalDuration = Date.now() - startTime
+
+    // Provenance: stamp which model produced each field so a future single-field
+    // re-run (when a better model ships) is cheap and targeted, not a full reprocess.
+    scrapData.processing_meta = {
+      pipeline_version: 'recovery-2026-06',
+      processed_at: new Date().toISOString(),
+      duration_ms: totalDuration,
+      models: {
+        summary: getModelForTask('summarization'),
+        tags: getModelForTask('tagging'),
+        concept_tags: getModelForTask('conceptExtraction'),
+        relationships: getModelForTask('relationshipAnalysis'),
+        financial: getModelForTask('contentAnalysis'),
+        location: getModelForTask('geolocation'),
+      },
+    }
+
     stepViz.startStep(7)  // SAVE step
     stepViz.completeStep(7, `${(totalDuration / 1000).toFixed(1)}s total`)
     showSuccess()
@@ -1068,6 +1090,8 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
             metadata: enrichedData.metadata || {},
             tags: enrichedData.tags || [],
             relationships: enrichedData.relationships || null,
+            relationships_raw: enrichedData.relationships_raw || null,
+            processing_meta: enrichedData.processing_meta || null,
             location: enrichedData.location || null,
             latitude: enrichedData.latitude || null,
             longitude: enrichedData.longitude || null,
@@ -1166,9 +1190,9 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
       // Try 3 different models for relationship extraction
       let extractedRelationships = []
       const models = [
-        'deepseek/deepseek-chat-v3.1',     // First try: DeepSeek (default)
-        'google/gemini-2.5-flash',         // Second try: Gemini
-        'openai/gpt-4o-mini',               // Third try: OpenAI
+        getModelForTask('relationshipAnalysis'), // First try: configured model (qwen3-235b)
+        'google/gemini-2.5-flash',               // Second try: Gemini
+        'openai/gpt-4o-mini',                    // Third try: OpenAI
       ]
 
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -1176,8 +1200,8 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
           const model = models[attempt]
           logger.info(chalk.blue(`🔗 Attempt ${attempt + 1}/3 with ${model}...`))
 
-          extractedRelationships = await limiter.schedule(() =>
-            extractRelationships(primaryContent, {
+          const relResult = await limiter.schedule(() =>
+            extractRelationshipsDetailed(primaryContent, {
               isRawText: !scrapObj.summary,
               url: scrapObj.url,
               scrapId,
@@ -1187,15 +1211,21 @@ async function extractAndAddRelationships(scrapObj, scrapId) {
               model,
             }),
           )
-
-          // If we got relationships, break out of retry loop
-          if (extractedRelationships && extractedRelationships.length > 0) {
-            logger.info(chalk.green(`✅ Got ${extractedRelationships.length} relationships from ${model}`))
-            trackStep('relationships', true)
-            break
-          } else {
-            logger.warn(chalk.yellow(`⚠️ ${model} returned no relationships, trying next model...`))
+          extractedRelationships = relResult.relationships
+          // Preserve the model's pre-normalization output so we never lose information
+          // and can re-mine it for free when the ontology evolves.
+          if (Array.isArray(relResult.raw) && relResult.raw.length > 0) {
+            scrapObj.relationships_raw = relResult.raw
           }
+
+          // Accept the configured model's result, including an empty set — for OSINT
+          // content "no clean edges" is frequently the CORRECT answer. Do NOT fall
+          // through to fallback models on empty, or they will force coerced/garbage
+          // edges (e.g. "X DONATES_TO 'Environmental damage'"). The catch block below
+          // still advances to a fallback model on an actual API error.
+          logger.info(chalk.green(`✅ ${extractedRelationships.length} relationships from ${model}`))
+          trackStep('relationships', extractedRelationships.length > 0)
+          break
         } catch (error) {
           logger.error(chalk.red(`❌ Attempt ${attempt + 1} failed: ${error.message}`))
           if (attempt === 2) {
@@ -1617,82 +1647,71 @@ async function fetchAndUpsertPinboardBookmarks() {
       expectedItems: bookmarksToProcess.length,
     })
 
-    for (const bookmark of bookmarksToProcess) {
-      if (isShuttingDown) break
-
+    // Process one bookmark end-to-end. Returns {stop} to halt the whole run on a
+    // safety trip, or {skipped}/{processed}/{error} for metrics.
+    async function processOneBookmark(bookmark) {
       const scrapId = `pinboard-${bookmark.hash}`
       const itemStart = Date.now()
 
-      // Check safety before processing each item
       const itemSafetyCheck = shouldContinueProcessing(!isManualRun)
       if (!itemSafetyCheck.safe) {
-        logger.warn(chalk.yellow(`🛑 Safety stop during processing: ${itemSafetyCheck.reason}`))
-        break
+        return { stop: true, reason: itemSafetyCheck.reason }
       }
 
-      // Validate data before processing
       const validation = validateData(bookmark, source)
       if (!validation.valid) {
         logger.warn(chalk.yellow(`⚠️  Skipping malformed bookmark: ${validation.reason}`))
         recordFailure(scrapId, source, new Error(`Data validation: ${validation.reason}`))
-        continue
+        return { skipped: true }
       }
 
       try {
-        if (
-          !(await claimProcessAndUpsert(
-            scrapId,
-            source,
-            bookmark,
-            processBookmark,
-          ))
-        ) {
-          logMetric('item_skipped', {
-            source,
-            scrap_id: scrapId,
-            reason: 'already_processing',
-            url: bookmark.href,
-          })
+        if (!(await claimProcessAndUpsert(scrapId, source, bookmark, processBookmark))) {
+          logMetric('item_skipped', { source, scrap_id: scrapId, reason: 'already_processing', url: bookmark.href })
           metrics.skipped.total++
-          metrics.skipped.bySource[source] =
-            (metrics.skipped.bySource[source] || 0) + 1
-          continue
+          metrics.skipped.bySource[source] = (metrics.skipped.bySource[source] || 0) + 1
+          return { skipped: true }
         }
 
-        // Record successful processing
         recordSuccess(scrapId, source)
-
         metrics.processed.total++
-        metrics.processed.bySource[source] =
-          (metrics.processed.bySource[source] || 0) + 1
+        metrics.processed.bySource[source] = (metrics.processed.bySource[source] || 0) + 1
 
         const itemDuration = Date.now() - itemStart
         metrics.processingTimes.total += itemDuration
-        metrics.processingTimes.bySource[source] =
-          (metrics.processingTimes.bySource[source] || 0) + itemDuration
-
-        logMetric('item_processed', {
-          source,
-          scrap_id: scrapId,
-          duration_ms: itemDuration,
-          url: bookmark.href,
-        })
+        metrics.processingTimes.bySource[source] = (metrics.processingTimes.bySource[source] || 0) + itemDuration
+        logMetric('item_processed', { source, scrap_id: scrapId, duration_ms: itemDuration, url: bookmark.href })
+        return { processed: true }
       } catch (error) {
-        // Record failure for safety tracking
         recordFailure(scrapId, source, error)
-
-        logError('Item processing failed', error, {
-          source,
-          scrap_id: scrapId,
-          url: bookmark.href,
-        })
-
+        logError('Item processing failed', error, { source, scrap_id: scrapId, url: bookmark.href })
         metrics.errors.total++
-        metrics.errors.bySource[source] =
-          (metrics.errors.bySource[source] || 0) + 1
+        metrics.errors.bySource[source] = (metrics.errors.bySource[source] || 0) + 1
         await releaseScrap(scrapId)
+        return { error: true }
       }
     }
+
+    // Bounded-concurrency worker pool. Screenshots/AI calls are throttled by their
+    // own Bottleneck limiters, so this just controls how many scraps are in flight.
+    const PROCESS_CONCURRENCY = parseInt(process.env.PROCESS_CONCURRENCY || '6', 10)
+    let nextIndex = 0
+    let stopRequested = false
+    async function worker() {
+      while (!stopRequested && !isShuttingDown) {
+        const i = nextIndex++
+        if (i >= bookmarksToProcess.length) break
+        const result = await processOneBookmark(bookmarksToProcess[i])
+        if (result?.stop) {
+          stopRequested = true
+          logger.warn(chalk.yellow(`🛑 Safety stop during processing: ${result.reason}`))
+          break
+        }
+      }
+    }
+    const workerCount = Math.min(PROCESS_CONCURRENCY, bookmarksToProcess.length)
+    logger.info(chalk.blue(`⚙️  Processing ${bookmarksToProcess.length} bookmarks with ${workerCount}-way concurrency`))
+    await Promise.all(Array.from({ length: workerCount }, () => worker()))
 
     const totalDuration = Date.now() - startTime
     logMetric('source_processing_completed', {
@@ -2546,6 +2565,20 @@ async function runCleanupJob(dryRun = false) {
 // Main execution function
 async function main() {
   showHeader()
+
+  // Startup connectivity check
+  try {
+    const { count, error } = await supabase
+      .from('scraps')
+      .select('*', { count: 'exact', head: true })
+    if (error) throw error
+    logger.info(`Supabase connected — ${count} scraps in database`)
+  } catch (err) {
+    logger.error(`Supabase connectivity check failed: ${err.message}`)
+    logger.error('Aborting — cannot reach database.')
+    process.exit(1)
+  }
+
   logger.info(`Starting scrapbook processing (Instance: ${INSTANCE_NAME})`)
 
   // Send startup notification

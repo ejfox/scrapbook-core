@@ -268,7 +268,7 @@ ${chunk}`
         messages: [systemMessage, userMessage, ...messages],
         temperature: options.temperature || 0.3,
         maxTokens: options.metaSummary ? 2048 : 16384,  // Doubled the output limit
-        model: getModelForTask('summarization'),
+        model: options.model || getModelForTask('summarization'),
         scrapId,
         taskType,
       })
@@ -434,12 +434,18 @@ export async function metaSummaryToTags(summary, options = {}) {
   }
 
   const MAX_RETRIES = 3
-  const coreTags = await loadCoreTags()
+  const rawCoreTags = await loadCoreTags()
 
-  if (!coreTags || coreTags.length === 0) {
+  if (!rawCoreTags || rawCoreTags.length === 0) {
     log('❌ No core tags available - cannot generate tags')
     return []
   }
+
+  // Exclude personal/workflow action tags ("!tobuy", "!tohire", "!news", "!inspo", …)
+  // — those are applied manually and must never be auto-assigned by the tagger.
+  const coreTags = rawCoreTags.filter(
+    (t) => typeof t === 'string' && t.trim() && !t.trim().startsWith('!'),
+  )
 
   // Create a Set for O(1) validation lookup (lowercase for case-insensitive matching)
   const coreTagsSet = new Set(coreTags.map(t => t.toLowerCase()))
@@ -457,7 +463,9 @@ export async function metaSummaryToTags(summary, options = {}) {
         },
         {
           role: 'user',
-          content: `Choose 2-3 most relevant tags from this list:
+          content: `From the list below, choose ONLY the 1-3 tags that are genuinely central to this content. Fewer precise tags are better than more loosely-related ones. If only one tag truly fits, return just one. Do NOT include tags that are merely tangentially related.
+
+Tag list:
 ${coreTags.join('\n')}
 
 Content to tag:
@@ -472,7 +480,7 @@ Return only valid tags from the list above, one per line, no explanations. Tags 
         messages,
         temperature: 0.2 + (attempt - 1) * 0.1, // Slightly increase temperature on retries
         maxTokens: 100,
-        model: MODELS.GPT_3_5_TURBO,
+        model: options.model || MODELS.GPT_3_5_TURBO,
         scrapId: options.scrapId,
         taskType: 'tagging',
       })

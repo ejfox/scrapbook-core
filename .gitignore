@@ -50,3 +50,9 @@ tmp/
 
 # Deprecated scripts (kept locally for reference)
 scripts/deprecated/
+
+# Local per-domain auth cookies (never commit)
+data/cookies.json
+
+# Dedicated Chrome automation profile (auth sessions; never commit)
+data/chrome-profile/

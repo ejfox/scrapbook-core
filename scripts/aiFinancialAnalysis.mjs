@@ -253,6 +253,37 @@ function determineAssetType(ticker) {
   return 'stock'
 }
 
+// Phrases that indicate an asset was NOT actually discussed (model hallucination markers)
+const NOT_MENTIONED_RE = /\b(not mentioned|not discussed|not present|not referenced|no mention|n\/?a|none|absent|implied|indirect)\b/i
+
+/**
+ * Guard against phantom assets: only keep assets the model actually grounded in the
+ * content. Drops entries whose context says "not mentioned" or that lack any real
+ * verbatim mention. Fixes tracked tickers (e.g. AAPL) being injected into
+ * non-financial scraps.
+ * @param {Object} asset
+ * @returns {boolean}
+ */
+function isAssetActuallyMentioned(asset) {
+  if (!asset || !asset.ticker) return false
+
+  const context = String(asset.context || '').trim()
+  // Explicit "not mentioned" style context is a hard reject.
+  if (context && NOT_MENTIONED_RE.test(context)) return false
+
+  const realMentions = Array.isArray(asset.mentions)
+    ? asset.mentions
+      .map((m) => String(m || '').trim())
+      .filter((m) => m.length > 0 && !NOT_MENTIONED_RE.test(m))
+    : []
+
+  if (realMentions.length > 0) return true
+
+  // No usable mentions array — only keep if the context is a substantive,
+  // non-negative description of how the asset was discussed.
+  return Boolean(context) && context.length > 3 && !NOT_MENTIONED_RE.test(context)
+}
+
 /**
  * Extract financial assets and analyze sentiment from content
  * @param {string} content - Text content to analyze
@@ -266,9 +297,14 @@ export async function extractFinancialAnalysis(content, options = {}) {
 
   try {
     // Create system prompt for financial analysis
-    const systemPrompt = `You are a financial analysis specialist. Extract mentions of financial assets (stocks, crypto, ETFs, commodities, forex) and analyze sentiment.
+    const systemPrompt = `You are a financial analysis specialist. Extract ONLY financial assets (stocks, crypto, ETFs, commodities, forex) that are EXPLICITLY mentioned or clearly discussed in the content, then analyze sentiment for each.
 
-TRACKED ASSETS (prioritize these): ${Object.keys(TRACKED_ASSETS).join(', ')}
+If — and only if — the content actually discusses one of these tracked assets, use its exact ticker: ${Object.keys(TRACKED_ASSETS).join(', ')}
+
+Hard rules:
+- NEVER include an asset that is not genuinely discussed in the content. The tracked list is a ticker reference, NOT a checklist to fill in.
+- Most content is not about finance. When no asset is discussed, return empty arrays — that is the correct, expected answer.
+- Every asset you return must have a real "mentions" entry quoting how it appears in the text. Do not output context values like "not mentioned".
 
 CRITICAL: You MUST return ONLY valid JSON with no markdown, no code blocks, no explanations. Just the raw JSON object.
 
@@ -278,8 +314,10 @@ Sentiment scores: -1 (very negative) to +1 (very positive)`
 
 CRITICAL FORMATTING RULE: Your response must be ONLY the JSON object starting with { and ending with }. NO markdown code blocks (no \`\`\`), NO explanations, NO text before or after the JSON.
 
-Return this exact structure:
-{"tracked_assets":[{"ticker":"AAPL","name":"Apple Inc.","mentions":["Apple"],"context":"how mentioned","sentiment_score":0.5,"sentiment_reasoning":"why","is_tracked":true}],"discovered_assets":[{"ticker":"OTHER","name":"Other Asset","mentions":["name"],"context":"how mentioned","sentiment_score":0.0,"sentiment_reasoning":"why","is_tracked":false,"asset_type":"stock"}],"overall_market_sentiment":0.0,"market_reasoning":"overall analysis"}
+Use this structure (the tickers below illustrate FORMAT ONLY — do not copy them; include an asset only if it is actually discussed):
+{"tracked_assets":[{"ticker":"<ticker>","name":"<name>","mentions":["<verbatim phrase from the text>"],"context":"how it is discussed","sentiment_score":0.5,"sentiment_reasoning":"why","is_tracked":true}],"discovered_assets":[{"ticker":"<ticker>","name":"<name>","mentions":["<verbatim phrase from the text>"],"context":"how it is discussed","sentiment_score":0.0,"sentiment_reasoning":"why","is_tracked":false,"asset_type":"stock"}],"overall_market_sentiment":0.0,"market_reasoning":"overall analysis"}
+
+If no financial assets are discussed, return: {"tracked_assets":[],"discovered_assets":[],"overall_market_sentiment":0.0,"market_reasoning":"No financial assets discussed"}
 
 Content to analyze:
 ${content}
@@ -351,9 +389,10 @@ RESPOND WITH ONLY THE JSON OBJECT. START YOUR RESPONSE WITH { AND END WITH }`
       }
     }
 
-    // Process tracked assets (validate against whitelist)
+    // Process tracked assets (validate against whitelist + require real mention)
     const trackedAssets = (analysisResult.tracked_assets || analysisResult.assets || [])
       .filter(asset => TRACKED_ASSETS[asset.ticker]) // Only include whitelisted assets
+      .filter(isAssetActuallyMentioned) // Drop phantom assets the model didn't ground in the text
       .map(asset => ({
         ...asset,
         sentiment_score: Math.max(-1, Math.min(1, asset.sentiment_score || 0)), // Clamp to [-1, 1]
@@ -365,6 +404,7 @@ RESPOND WITH ONLY THE JSON OBJECT. START YOUR RESPONSE WITH { AND END WITH }`
     // Process discovered assets (any assets not in our whitelist)
     const discoveredAssets = (analysisResult.discovered_assets || [])
       .filter(asset => !TRACKED_ASSETS[asset.ticker]) // Only non-whitelisted assets
+      .filter(isAssetActuallyMentioned) // Drop phantom assets the model didn't ground in the text
       .map(asset => ({
         ...asset,
         sentiment_score: Math.max(-1, Math.min(1, asset.sentiment_score || 0)), // Clamp to [-1, 1]

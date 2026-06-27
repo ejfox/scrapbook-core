@@ -1,11 +1,12 @@
 {
   "models": {
     "tasks": {
-      "summarization": "google/gemini-2.5-flash",
+      "summarization": "qwen/qwen3.5-flash-02-23",
+      "conceptExtraction": "qwen/qwen3.5-flash-02-23",
       "tagging": "openai/gpt-4o-mini",
       "contentAnalysis": "google/gemini-2.5-flash",
-      "relationshipAnalysis": "openai/gpt-4o-mini",
-      "relationshipReview": "openai/gpt-4o-mini",
+      "relationshipAnalysis": "qwen/qwen3-235b-a22b-2507",
+      "relationshipReview": "qwen/qwen3-235b-a22b-2507",
       "relationshipJudge": "openai/gpt-5.4",
       "geolocation": "deepseek/deepseek-chat-v3.1",
       "mastodonProcessing": "google/gemini-2.5-flash",

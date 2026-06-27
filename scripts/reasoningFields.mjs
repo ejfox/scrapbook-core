@@ -115,7 +115,7 @@ Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concep
       ],
       temperature: 0.3,
       maxTokens: 200,
-      model: getModelForTask('superCheap'),
+      model: options.model || getModelForTask('conceptExtraction'),
       scrapId,
       taskType,
     })
