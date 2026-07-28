@@ -22,6 +22,23 @@ const limiter = new Bottleneck({
 
 const blacklistPhrases = ['Here is a summary'] // Add more phrases as needed
 
+/**
+ * Strip conversational preamble the model sometimes prepends before the actual
+ * summary (e.g. "Here's a detailed summary of the webpage based on the provided
+ * screenshot:"). These leak onto the display cards, so we scrub them from every
+ * summary before it's returned. Idempotent — safe to run on already-clean text.
+ */
+export function stripSummaryPreamble(text) {
+  if (!text || typeof text !== 'string') return text
+  let out = text.trim()
+  // A leading sentence that announces the summary and ends in a colon, optionally
+  // referencing "the webpage", "the provided screenshot", "the content", etc.
+  const preamble = /^\s*(sure[,!]?\s*)?(here'?s|here is|below is|this is|following is)\b[^\n:]{0,160}:\s*/i
+  // Up to two stacked preambles ("Sure! Here's a summary: Here's a detailed...")
+  for (let i = 0; i < 2 && preamble.test(out); i++) out = out.replace(preamble, '').trim()
+  return out
+}
+
 export async function summarizeContent(content, options = {}) {
   const { scrapId, scrap, tags, taskType = 'summarization', ...otherOptions } = options
 
@@ -108,7 +125,7 @@ export async function summarizeContent(content, options = {}) {
     }
 
     // Combine summaries
-    const summary = summaries.join('\n').trim()
+    const summary = stripSummaryPreamble(summaries.join('\n').trim())
     log(`✅ Final summary generated (${summary.length} chars)`)
     log(`📝 First line: ${summary.split('\n')[0]}`)
 
@@ -168,8 +185,9 @@ Instructions:
 • Include any visible details that would help remember what this page is about
 • Format as bullet points starting with "• "
 • Be comprehensive - this summary is the only record of this page's content
+• Output ONLY the bullet points. Do NOT include any preamble, intro sentence, or phrase like "Here's a summary" — start directly with the first "• " bullet.
 
-Analyze the screenshot and provide a detailed summary:`,
+Analyze the screenshot and provide the bullet-point summary:`,
               },
               {
                 type: 'image_url',
@@ -193,8 +211,9 @@ Analyze the screenshot and provide a detailed summary:`,
     const summary = data.choices?.[0]?.message?.content
 
     if (summary) {
-      log(`✅ Vision summary generated (${summary.length} chars)`)
-      return summary
+      const cleaned = stripSummaryPreamble(summary)
+      log(`✅ Vision summary generated (${cleaned.length} chars)`)
+      return cleaned
     }
 
     log('❌ No summary in vision API response')
