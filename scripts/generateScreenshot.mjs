@@ -1,12 +1,21 @@
-import puppeteer from 'puppeteer-core'
+import puppeteerCore from 'puppeteer-core'
+import { addExtra } from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import dotenv from 'dotenv'
 import path from 'path'
 import os from 'os'
 import fs from 'fs/promises'
 import winston from 'winston'
 import { v2 as cloudinary } from 'cloudinary'
+import { getCookiesForUrl, isSocialUrl } from '../lib/captureDomains.mjs'
 
 dotenv.config()
+
+// puppeteer-extra wraps puppeteer-core (the default `puppeteer-extra` import
+// expects full puppeteer, which isn't installed). Stealth plugin replaces the
+// old hand-rolled navigator.webdriver spoofing with a maintained evasion suite.
+const puppeteer = addExtra(puppeteerCore)
+puppeteer.use(StealthPlugin())
 
 // Check if Cloudinary is configured
 const isCloudinaryConfigured = !!(
@@ -143,55 +152,6 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 })
 
-// Add browser lifecycle management
-let browserWSEndpoint = null
-
-// Enhanced browser launcher with better error checking
-async function getBrowserLauncher() {
-  try {
-    // Production configuration for Fly.io
-    if (process.env.NODE_ENV === 'production') {
-      return {
-        executablePath: '/usr/bin/chromium',
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-gpu',
-          '--disable-software-rasterizer',
-          '--disable-dev-shm-usage', // Important for Docker/Fly.io
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote', // Recommended for running in containers
-          '--single-process', // Recommended for containerized environments
-          '--disable-extensions',
-          '--window-size=1080,1920',
-        ],
-        headless: 'new',
-        defaultViewport: {
-          width: 1080,
-          height: 1920,
-          deviceScaleFactor: 2,
-        },
-      }
-    }
-
-    // Development configuration
-    if (os.platform() === 'darwin') {
-      return {
-        executablePath:
-          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        args: ['--no-sandbox', '--disable-gpu'],
-        headless: 'new',
-      }
-    }
-
-    throw new Error(`Unsupported platform: ${os.platform()}`)
-  } catch (error) {
-    logger.error('Browser launcher error:', error)
-    throw error
-  }
-}
-
 // Helper to get detailed error info from response
 function getResponseError(response) {
   if (!response) return 'No response received'
@@ -228,28 +188,63 @@ const getChromePath = () => {
   }
 }
 
-// Add retry logic
-async function takeScreenshotWithRetry(page, retries = 2) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const screenshotBuffer = await page.screenshot({
-        type: 'jpeg',
-        quality: 85,
-        fullPage: false,
-        captureBeyondViewport: false,
-      })
-      return screenshotBuffer
-    } catch (error) {
-      logger.warn(`Screenshot attempt ${i + 1} failed: ${error.message}`)
-      if (i === retries - 1) throw error
-      await page.waitForTimeout(1000)
-    }
+// Post-render heuristic: inspect the settled DOM for blocker signals so we can
+// refuse to store signup boxes / cookie walls / CAPTCHAs as if they were the
+// page's content. Runs in the page context, returns cheap booleans + text size.
+// Deliberately conservative — a wall is only asserted when the page is BOTH
+// signal-positive AND text-poor, so real articles that merely mention "cookie"
+// or link a login don't get flagged.
+async function classifyRenderedPage(page) {
+  try {
+    return await page.evaluate(() => {
+      const text = (document.body?.innerText || '').trim()
+      const textLen = text.length
+      const lower = text.toLowerCase()
+      const has = (sel) => !!document.querySelector(sel)
+
+      const hasCaptcha =
+        has('iframe[src*="captcha"], iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[title*="challenge" i]') ||
+        has('#challenge-form, #cf-challenge-running, .cf-browser-verification') ||
+        /verify (you are|you’re) (a )?human|are you a robot|complete the (security )?check/.test(lower)
+
+      const hasCookieWall =
+        has('#onetrust-banner-sdk, #cookieConsent, .cookie-consent, .gdpr, [id*="cookie" i][class*="banner" i]') ||
+        /we (use|value) (your )?cookies|accept (all )?cookies|manage (your )?(cookie )?preferences/.test(lower)
+
+      const looksLoginWall =
+        /(log in|sign in|sign up|create (an )?account) to (see|view|continue|read)|join (twitter|x|instagram|facebook)|see more on (instagram|facebook)|new to twitter/.test(lower)
+
+      return { textLen, hasCaptcha, hasCookieWall, looksLoginWall }
+    })
+  } catch {
+    // If evaluate fails (nav aborted, detached frame) treat as unknown, not blocked.
+    return { textLen: 0, hasCaptcha: false, hasCookieWall: false, looksLoginWall: false }
   }
 }
 
+// Fold the raw signals + HTTP status into a capture verdict. Only asserts a
+// blocking category when the page is ALSO text-poor (< ~200 visible chars),
+// which is what keeps false positives (Cloudflare *docs*, articles about
+// paywalls) out of the reject lane.
+function verdictFrom(status, sig) {
+  const textPoor = sig.textLen < 200
+  if (status >= 400) {
+    return { blocked: true, category: 'error_page' }
+  }
+  if (sig.hasCaptcha && textPoor) return { blocked: true, category: 'captcha' }
+  if (sig.looksLoginWall && textPoor) return { blocked: true, category: 'login_wall' }
+  if (sig.hasCookieWall && textPoor) return { blocked: true, category: 'cookie_wall' }
+  if (textPoor) return { blocked: true, category: 'blank' }
+  return { blocked: false, category: 'content' }
+}
+
 // Update the screenshot function with better cleanup
-// scrapId is used as Cloudinary public_id to prevent duplicates
-export async function generateScreenshot(url, scrapId = null) {
+// scrapId is used as Cloudinary public_id to prevent duplicates.
+// opts.force   -> bypass the "already exists" short-circuit (required for recapture)
+// opts.headful -> launch with a visible browser (harder-to-detect for stubborn sites)
+// Returns { url, public_id, capture_status, category, blocked }.
+export async function generateScreenshot(url, scrapId = null, opts = {}) {
+  const { force = false, headful = false } = opts
   if (!url || url === null || url === undefined || url === '') {
     logger.warn(`Skipping screenshot generation - invalid URL: ${url}`)
     return null
@@ -267,8 +262,9 @@ export async function generateScreenshot(url, scrapId = null) {
     throw new Error(`Invalid URL format: ${urlString}`)
   }
 
-  // Check if screenshot already exists in Cloudinary (skip if so)
-  if (scrapId) {
+  // Check if screenshot already exists in Cloudinary (skip if so). Recapture
+  // passes force:true to overwrite the stale image in the same public_id slot.
+  if (scrapId && !force) {
     const existing = await checkExistingScreenshot(scrapId)
     if (existing) {
       logger.info(`Screenshot already exists for ${scrapId}, skipping generation`)
@@ -290,20 +286,18 @@ export async function generateScreenshot(url, scrapId = null) {
     tempFilePath = path.join(TEMP_DIR, tempFileName)
 
     browser = await puppeteer.launch({
-      headless: 'new',
+      headless: headful ? false : 'new',
       executablePath: getChromePath(),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled', // Hide automation
       ],
     })
 
     const page = await browser.newPage()
 
-    // Set random user agent
-    const userAgent = getRandomUserAgent()
-    await page.setUserAgent(userAgent)
+    // Set random user agent (stealth plugin patches the rest of the fingerprint).
+    await page.setUserAgent(getRandomUserAgent())
 
     // Set extra headers to look like a real browser
     await page.setExtraHTTPHeaders({
@@ -318,42 +312,39 @@ export async function generateScreenshot(url, scrapId = null) {
       'Sec-Fetch-User': '?1',
     })
 
-    // Hide webdriver and automation properties
-    await page.evaluateOnNewDocument(() => {
-      // Override navigator.webdriver
-      Object.defineProperty(navigator, 'webdriver', {
-        get: () => false,
-      })
+    // Apply per-domain auth cookies (data/cookies.json) BEFORE navigating so
+    // logged-in-only pages (X/Twitter/Instagram/Facebook, NYT) render real
+    // content instead of a signup wall.
+    const cookies = getCookiesForUrl(url)
+    if (cookies.length) {
+      try {
+        await page.setCookie(...cookies)
+        logger.info(`Applied ${cookies.length} auth cookie(s) for ${new URL(url).hostname}`)
+      } catch (e) {
+        logger.warn(`Failed to set cookies for ${url}: ${e.message}`)
+      }
+    }
 
-      // Mock plugins to look like real browser
-      Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5],
-      })
+    // Fixed viewport for CONSISTENT card aspect ratios (no more fullPage giants).
+    // Social posts read best portrait; everything else gets a standard card.
+    // deviceScaleFactor 2 => crisp @2x captures.
+    const social = isSocialUrl(url)
+    const viewport = social
+      ? { width: 1080, height: 1350, deviceScaleFactor: 2 }
+      : { width: 1200, height: 1500, deviceScaleFactor: 2 }
+    await page.setViewport(viewport)
+    await page.setDefaultNavigationTimeout(45000)
 
-      // Mock languages
-      Object.defineProperty(navigator, 'languages', {
-        get: () => ['en-US', 'en'],
-      })
-
-      // Add realistic chrome properties
-      Object.defineProperty(globalThis, 'chrome', {
-        value: { runtime: {} },
-        configurable: true,
-      })
-    })
-
-    await page.setViewport({ width: 1080, height: 1920 })
-
-    // Increase timeout to 60s for slow sites
-    await page.setDefaultNavigationTimeout(60000)
-
-    // Navigate with retry logic
+    // Navigate with retry. networkidle2 (was domcontentloaded) waits for the
+    // page to settle so stylesheets/fonts have loaded — kills the unstyled
+    // "giant CSS-less" renders. Capture the response so we can gate on status.
     let navigationError
+    let response = null
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        await page.goto(url, {
-          waitUntil: 'domcontentloaded',
-          timeout: 60000,
+        response = await page.goto(url, {
+          waitUntil: 'networkidle2',
+          timeout: 45000,
         })
         navigationError = null
         break
@@ -371,15 +362,33 @@ export async function generateScreenshot(url, scrapId = null) {
       throw navigationError
     }
 
-    // Brief wait for critical content
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Let webfonts settle (with a short cap) so text isn't captured mid-swap.
+    await Promise.race([
+      page.evaluate(() => document.fonts?.ready).catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ])
 
-    // Take the screenshot and save to temp file
+    // Inspect the settled DOM: is this real content, or a wall/CAPTCHA/error?
+    const status = response?.status?.() ?? 0
+    const signals = await classifyRenderedPage(page)
+    const verdict = verdictFrom(status, signals)
+
+    // If it's a blocker page (and text-poor), DON'T store it as a screenshot —
+    // return the verdict so the caller can route to a text path / skip vision.
+    if (verdict.blocked) {
+      logger.warn(`Capture blocked for ${scrapId || url}: ${verdict.category} (status ${status}, ${signals.textLen} chars) — not storing`)
+      return { url: null, public_id: null, capture_status: status, category: verdict.category, blocked: true }
+    }
+
+    // Take the screenshot and save to temp file. fullPage:false + fixed viewport
+    // => every card is the same shape; the above-the-fold hero is also the
+    // highest-signal region for vision summarization.
     await page.screenshot({
       path: tempFilePath,
       type: 'jpeg',
-      quality: 80,
-      fullPage: true,
+      quality: 82,
+      fullPage: false,
+      captureBeyondViewport: false,
     })
 
     // Read the file and upload to Cloudinary if configured
@@ -397,10 +406,16 @@ export async function generateScreenshot(url, scrapId = null) {
       cleanupTempFiles().catch((error) =>
         logger.error('Background cleanup failed:', error),
       )
-      return { url: result.secure_url, public_id: result.public_id }
+      return {
+        url: result.secure_url,
+        public_id: result.public_id,
+        capture_status: status,
+        category: verdict.category, // 'content'
+        blocked: false,
+      }
     } catch (error) {
       logger.error('Failed to upload screenshot to Cloudinary:', error)
-      return { url: null, localPath: tempFilePath }
+      return { url: null, localPath: tempFilePath, capture_status: status, category: verdict.category }
     }
   } finally {
     // Cleanup resources
@@ -426,7 +441,8 @@ export async function generateScreenshot(url, scrapId = null) {
         await fs.unlink(tempFilePath)
         logger.debug('Cleaned up temp screenshot file')
       } catch (error) {
-        logger.error('Failed to cleanup temp file:', error)
+        // ENOENT is expected when we bailed before writing (e.g. blocked page).
+        if (error.code !== 'ENOENT') logger.error('Failed to cleanup temp file:', error)
       }
     }
   }

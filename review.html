@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screenshot Triage</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0e0e11; color: #e7e7ea; font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; height: 100vh; overflow: hidden; }
+  #wrap { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+  header { padding: 8px 14px; display: flex; gap: 16px; align-items: center; border-bottom: 1px solid #222; }
+  header .bar { flex: 1; height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
+  header .bar > i { display: block; height: 100%; background: #4c9; width: 0; transition: width .2s; }
+  header b { color: #fff; } header .muted { color: #888; }
+  main { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 10px; }
+  main img { max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid #333; background: #fff; }
+  main .empty { color: #888; font-size: 18px; text-align: center; }
+  .meta { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; gap: 10px; align-items: center; pointer-events: none; }
+  .chip { background: rgba(0,0,0,.7); border: 1px solid #444; border-radius: 4px; padding: 3px 8px; font-size: 12px; }
+  .chip.cat { color: #fc6; } .chip a { color: #9cf; pointer-events: auto; }
+  footer { padding: 8px 14px; border-top: 1px solid #222; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  kbd { background: #222; border: 1px solid #444; border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; font-family: ui-monospace, monospace; color: #fff; }
+  .act { color: #bbb; } .act b { color: #fff; }
+  .toast { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: #223; border: 1px solid #4c9; padding: 8px 16px; border-radius: 6px; opacity: 0; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <span id="count" class="muted">loading…</span>
+    <div class="bar"><i id="progress"></i></div>
+    <span id="catleft" class="muted"></span>
+  </header>
+  <main id="stage"><div class="empty">Loading queue…</div></main>
+  <footer>
+    <span class="act"><kbd>a</kbd> <b>approve</b></span>
+    <span class="act"><kbd>r</kbd> <b>reject</b></span>
+    <span class="act"><kbd>c</kbd> <b>recapture</b></span>
+    <span class="act"><kbd>s</kbd> skip</span>
+    <span class="act"><kbd>u</kbd> undo</span>
+    <span class="act"><kbd>R</kbd> reject-all-in-category</span>
+    <span class="act"><kbd>A</kbd> approve-all-in-category</span>
+  </footer>
+</div>
+<div id="toast" class="toast"></div>
+<script>
+const $ = s => document.querySelector(s)
+let queue = [], cur = 0, history = []
+
+async function api(path, opts) {
+  const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts })
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status)
+  return r.json()
+}
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1200) }
+
+async function load() {
+  queue = await api('/review/queue')
+  cur = 0; history = []
+  render()
+}
+
+function catLeft(category) { return queue.slice(cur).filter(x => x.quality_category === category).length }
+
+function render() {
+  const total = queue.length
+  $('#count').innerHTML = total ? `<b>${Math.min(cur + 1, total)}</b> / ${total} <span class="muted">reviewed ${cur}</span>` : '0'
+  $('#progress').style.width = total ? `${cur / total * 100}%` : '0'
+  const s = queue[cur]
+  const stage = $('#stage')
+  if (!s) {
+    stage.innerHTML = `<div class="empty">✅ Queue clear — ${total} reviewed.<br><small class="muted">Press <kbd>u</kbd> to undo the last one, or reload for a fresh queue.</small></div>`
+    $('#catleft').textContent = ''
+    return
+  }
+  const host = (() => { try { return new URL(s.url).hostname.replace(/^www\./, '') } catch { return s.url || '' } })()
+  $('#catleft').innerHTML = `<span class="muted">${s.quality_category || '?'}: ${catLeft(s.quality_category)} left</span>`
+  stage.innerHTML = `
+    <div class="meta">
+      <span class="chip cat">${s.quality_category || 'unknown'}</span>
+      <span class="chip">${(s.quality_score ?? 0).toFixed(2)}</span>
+      <span class="chip">${s.source || ''}</span>
+      <span class="chip" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(s.title || '').slice(0, 90)} · <a href="${s.url}" target="_blank">${host}</a></span>
+    </div>
+    <img src="${s.screenshot_url}" alt="">`
+  // Preload next image so advancing is instant.
+  const nxt = queue[cur + 1]
+  if (nxt?.screenshot_url) { const im = new Image(); im.src = nxt.screenshot_url }
+}
+
+async function decide(decision) {
+  const s = queue[cur]; if (!s) return
+  history.push({ index: cur, scrap: s })
+  cur++; render()                                   // optimistic advance
+  try { await api('/review/decide', { method: 'POST', body: JSON.stringify({ id: s.id, decision, category: s.quality_category, score: s.quality_score }) }) }
+  catch (e) { toast('⚠ ' + e.message) }
+}
+async function recapture() {
+  const s = queue[cur]; if (!s) return
+  history.push({ index: cur, scrap: s })
+  cur++; render()
+  try { await api('/review/recapture', { method: 'POST', body: JSON.stringify({ id: s.id }) }); toast('🔄 recapturing…') }
+  catch (e) { toast('⚠ ' + e.message) }
+}
+function undo() {
+  const h = history.pop(); if (!h) { toast('nothing to undo'); return }
+  cur = h.index; render(); toast('↩ undo (server change not reverted)')
+}
+async function bulk(decision) {
+  const s = queue[cur]; if (!s) return
+  const cat = s.quality_category
+  if (!confirm(`${decision.toUpperCase()} all ${catLeft(cat)} remaining "${cat}" items?`)) return
+  try {
+    const r = await api('/review/bulk', { method: 'POST', body: JSON.stringify({ category: cat, decision }) })
+    // Drop all remaining items of that category from the local queue.
+    const removedIds = new Set(queue.slice(cur).filter(x => x.quality_category === cat).map(x => x.id))
+    queue = queue.filter((x, i) => i < cur || !removedIds.has(x.id))
+    render(); toast(`${decision}ed ${r.count} "${cat}"`)
+  } catch (e) { toast('⚠ ' + e.message) }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return
+  switch (e.key) {
+    case 'a': decide('approve'); break
+    case 'r': decide('reject'); break
+    case 'c': recapture(); break
+    case 's': decide('skip'); break
+    case 'u': undo(); break
+    case 'A': bulk('approve'); break
+    case 'R': bulk('reject'); break
+    default: return
+  }
+  e.preventDefault()
+})
+load().catch(e => { $('#stage').innerHTML = `<div class="empty">Failed to load queue: ${e.message}</div>` })
+</script>
+</body>
+</html>
