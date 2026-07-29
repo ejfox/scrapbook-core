@@ -1,5 +1,5 @@
 import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs'
-import { getModelForTask } from '../lib/config.mjs'
+import { getModelForTask, getApiEndpoint } from '../lib/config.mjs'
 import { breakContentIntoChunks } from '../helpers.js'
 import { discoverThreadContext } from '../lib/threadContext.mjs'
 import Bottleneck from 'bottleneck'
@@ -157,8 +157,18 @@ export async function summarizeFromScreenshot(screenshotUrl, options = {}) {
   try {
     log(`📸 Summarizing from screenshot: ${screenshotUrl}`)
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    // Route through the same OpenRouter proxy endpoint llmService uses — the
+    // bare OPENROUTER_API_KEY 401s against openrouter.ai directly; the proxy
+    // handles auth. (getApiEndpoint('openrouter') -> router.tools.ejfox.com/v1)
+    // Hard timeout so a hung request can't wedge the caller forever.
+    const visionTimeoutMs = parseInt(process.env.LLM_TIMEOUT_MS || '90000', 10)
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), visionTimeoutMs)
+    let response
+    try {
+      response = await fetch(`${getApiEndpoint('openrouter')}/chat/completions`, {
       method: 'POST',
+      signal: ac.signal,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -199,7 +209,10 @@ Analyze the screenshot and provide the bullet-point summary:`,
         max_tokens: 2048,
         temperature: 0.3,
       }),
-    })
+      })
+    } finally {
+      clearTimeout(timer)
+    }
 
     if (!response.ok) {
       const errorText = await response.text()
