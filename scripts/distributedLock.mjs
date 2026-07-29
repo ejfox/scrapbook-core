@@ -55,12 +55,20 @@ export async function acquireRunLock() {
       .from('scraps')
       .insert({
         scrap_id: RUN_LOCK_ID,
-        source: 'pinboard',
-        type: 'bookmark',
+        source: 'system',
+        type: 'system',
         processing_instance_id: INSTANCE_ID,
         processing_started_at: now,
         content: 'Run lock',
         title: 'Run Lock',
+        // Self-exclude from enrichment worklists + the public feed. Non-null
+        // summary skips summary.is.null queries; empty arrays skip the
+        // tags/relationships.is.null queries; shared:false hides it from Unity.
+        summary: 'Internal run lock — not a scrap.',
+        content_type: 'system',
+        tags: [],
+        relationships: [],
+        shared: false,
         created_at: now,
         updated_at: now,
       })

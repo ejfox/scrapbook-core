@@ -135,73 +135,61 @@ Return ONLY a JSON array of 3-5 thread concepts. Format: ["concept_one", "concep
   }
 }
 
+// Placeholder/empty summaries the summarizer emits when it has nothing to work with.
+const EMPTY_SUMMARY_RE = /^\s*(\[no content available\]|no content|n\/?a|none|unknown)\s*$/i
+
 /**
- * Extract confidence scores from AI
- * Ask the AI how confident it is in its extractions
+ * Compute deterministic confidence scores from real, measurable signals.
+ *
+ * Deliberately NOT an LLM call. Asking a model to grade its own opaque prior
+ * outputs (a) has no ground truth to reason from, violating "ground claims in
+ * evidence", and (b) leaks the few-shot example — the old prompt showed
+ * {"summary":0.9,"tags":0.85,...} and the model copied it verbatim onto every
+ * scrap. Modern prompt-engineering guidance is to prefer deterministic /
+ * schema-grounded signals over self-assessment for exactly this reason.
+ *
+ * Each score reflects something we can actually observe:
+ *  - summary: real, non-placeholder, and substantive enough to be trustworthy
+ *  - tags: present at a sensible count (not zero, not spammy)
+ *  - relationships: the mean of the per-edge confidences the relationship
+ *    pipeline already produced (grounded), or 0 when there are none to assess
  */
-export async function extractConfidenceScores(scrapObj, options = {}) {
-  const { scrapId, taskType = 'confidence_assessment' } = options
+export function computeConfidenceScores(scrapObj) {
+  const clamp = (n) => Math.max(0, Math.min(1, n))
 
-  const prompt = `Assess the extraction quality for this content:
+  // --- summary ---
+  const summary = typeof scrapObj.summary === 'string' ? scrapObj.summary.trim() : ''
+  let summaryScore = 0
+  if (summary && !EMPTY_SUMMARY_RE.test(summary)) {
+    // Ramp from a real-but-thin summary (~0.55) up to full confidence by ~800 chars.
+    summaryScore = clamp(0.4 + summary.length / 800)
+  }
 
-SUMMARY (${scrapObj.summary?.length || 0} chars):
-${scrapObj.summary?.substring(0, 500) || 'none'}
+  // --- tags ---
+  const tags = Array.isArray(scrapObj.tags)
+    ? scrapObj.tags.filter((t) => typeof t === 'string' && t.trim() && !t.startsWith('!'))
+    : []
+  let tagScore
+  if (tags.length === 0) tagScore = 0
+  else if (tags.length <= 5) tagScore = clamp(0.6 + tags.length * 0.08) // 1→0.68 … 5→1.0
+  else tagScore = clamp(1 - (tags.length - 5) * 0.1) // penalize tag spam
 
-TAGS:
-${scrapObj.tags?.join(', ') || 'none'}
+  // --- relationships ---
+  const rels = Array.isArray(scrapObj.relationships) ? scrapObj.relationships : []
+  let relScore = 0
+  if (rels.length > 0) {
+    const perEdge = rels
+      .map((r) => (typeof r?.confidence === 'number' ? clamp(r.confidence) : null))
+      .filter((c) => c !== null)
+    relScore = perEdge.length > 0
+      ? perEdge.reduce((a, b) => a + b, 0) / perEdge.length
+      : 0.6 // edges survived the strict ontology but carried no explicit score
+  }
 
-RELATIONSHIPS:
-${scrapObj.relationships?.length || 0} extracted
-
-For each extraction, rate your confidence (0.0-1.0):
-- 0.9-1.0: Very confident, clear and unambiguous
-- 0.7-0.8: Confident, likely correct
-- 0.5-0.6: Moderate, some uncertainty
-- 0.3-0.4: Low, significant uncertainty
-- 0.0-0.2: Very low, probably wrong
-
-Return ONLY a JSON object with scores:
-{
-  "summary": 0.9,
-  "tags": 0.85,
-  "relationships": 0.7
-}`
-
-  try {
-    const response = await completion({
-      messages: [
-        { role: 'system', content: 'You assess extraction quality and return confidence scores as JSON.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.1,
-      maxTokens: 100,
-      model: getModelForTask('superCheap'),
-      scrapId,
-      taskType,
-    })
-
-    if (!response) {
-      return { summary: 0.5, tags: 0.5, relationships: 0.5 }
-    }
-
-    // Parse JSON object from response
-    const match = response.match(/\{.*?\}/s)
-    if (!match) {
-      return { summary: 0.5, tags: 0.5, relationships: 0.5 }
-    }
-
-    const scores = JSON.parse(match[0])
-
-    // Ensure all scores are between 0 and 1
-    return {
-      summary: Math.max(0, Math.min(1, scores.summary || 0.5)),
-      tags: Math.max(0, Math.min(1, scores.tags || 0.5)),
-      relationships: Math.max(0, Math.min(1, scores.relationships || 0.5)),
-    }
-
-  } catch (error) {
-    console.error('Error extracting confidence scores:', error.message)
-    return { summary: 0.5, tags: 0.5, relationships: 0.5 }
+  return {
+    summary: Number(summaryScore.toFixed(2)),
+    tags: Number(tagScore.toFixed(2)),
+    relationships: Number(relScore.toFixed(2)),
   }
 }
 
@@ -230,15 +218,10 @@ export async function enrichWithReasoningFields(scrapObj, options = {}) {
     scrapObj.concept_tags = []
   }
 
-  // 3. Extract confidence scores (requires AI if we have extractions)
-  if (scrapObj.summary) {
-    scrapObj.extraction_confidence = await extractConfidenceScores(
-      scrapObj,
-      { scrapId, taskType: 'confidence_assessment' },
-    )
-  } else {
-    scrapObj.extraction_confidence = null
-  }
+  // 3. Confidence scores — deterministic, derived from real signals (no LLM call)
+  scrapObj.extraction_confidence = scrapObj.summary
+    ? computeConfidenceScores(scrapObj)
+    : null
 
   return scrapObj
 }

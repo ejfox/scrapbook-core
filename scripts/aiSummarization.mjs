@@ -2,6 +2,7 @@ import { completion, MODELS, PROMPTS, loadCoreTags } from './llmService.mjs'
 import { getModelForTask, getApiEndpoint } from '../lib/config.mjs'
 import { breakContentIntoChunks } from '../helpers.js'
 import { discoverThreadContext } from '../lib/threadContext.mjs'
+import { looksLikeErrorPage } from '../lib/contentQuality.mjs'
 import Bottleneck from 'bottleneck'
 import fetch from 'node-fetch'
 
@@ -31,12 +32,45 @@ const blacklistPhrases = ['Here is a summary'] // Add more phrases as needed
 export function stripSummaryPreamble(text) {
   if (!text || typeof text !== 'string') return text
   let out = text.trim()
-  // A leading sentence that announces the summary and ends in a colon, optionally
-  // referencing "the webpage", "the provided screenshot", "the content", etc.
-  const preamble = /^\s*(sure[,!]?\s*)?(here'?s|here is|below is|this is|following is)\b[^\n:]{0,160}:\s*/i
-  // Up to two stacked preambles ("Sure! Here's a summary: Here's a detailed...")
-  for (let i = 0; i < 2 && preamble.test(out); i++) out = out.replace(preamble, '').trim()
+  // Leading sentences that announce the summary and end in a colon.
+  const preambles = [
+    // "Here's a detailed summary of the webpage:", "Sure! Below is a summary:"
+    /^\s*(sure[,!]?\s*)?(here'?s|here is|below is|this is|following is|okay|certainly)\b[^\n:]{0,160}:\s*/i,
+    // "Based on the provided content, here's a detailed summary:" /
+    // "Based on the content:" — the [^\n:] run absorbs any ", here's ..." clause.
+    /^\s*based on (the |your |this )?(provided |given |above )?(content|text|document|article|screenshot|webpage|information|page|material)\b[^\n:]{0,60}:\s*/i,
+  ]
+  // Up to two stacked preambles ("Based on the content, here's a summary: Here's...")
+  for (let i = 0; i < 2; i++) {
+    const hit = preambles.find((re) => re.test(out))
+    if (!hit) break
+    out = out.replace(hit, '').trim()
+  }
   return out
+}
+
+// Split a vision response into its leading JSON quality verdict + the bullet
+// summary body. The prompt asks for `{...}` on line 1, blank line, then bullets.
+// Tolerant: finds the first {...} anywhere near the top; if none, treats the
+// whole thing as the summary body and returns a null verdict (→ 'unknown' lane).
+export function splitVisionVerdict(raw) {
+  if (!raw || typeof raw !== 'string') return { verdict: null, body: raw || '' }
+  const text = raw.trim()
+  const match = text.match(/\{[^{}]*"category"[^{}]*\}/)
+  if (!match) return { verdict: null, body: text }
+  let verdict = null
+  try {
+    const v = JSON.parse(match[0])
+    const CATS = ['content', 'login_wall', 'captcha', 'error_page', 'cookie_wall', 'blank', 'css_broken']
+    verdict = {
+      category: CATS.includes(v.category) ? v.category : 'unknown',
+      is_real_content: !!v.is_real_content,
+      confidence: typeof v.confidence === 'number' ? Math.max(0, Math.min(1, v.confidence)) : 0.5,
+    }
+  } catch { /* leave verdict null */ }
+  // Body = everything after the verdict object.
+  const body = text.slice(match.index + match[0].length).replace(/^\s+/, '')
+  return { verdict, body: body || text }
 }
 
 export async function summarizeContent(content, options = {}) {
@@ -74,6 +108,14 @@ export async function summarizeContent(content, options = {}) {
 
     if (!cleanContent) {
       log('❌ No content after cleaning')
+      return null
+    }
+
+    // Don't summarize dead / 404 / unreachable pages — otherwise we produce a
+    // "Summary of a Page Not Found" that pollutes the feed. Bail so the caller
+    // leaves summary null and can mark the scrap as a dead link.
+    if (looksLikeErrorPage(cleanContent)) {
+      log('🚫 Content looks like an error/dead page — skipping summarization')
       return null
     }
 
@@ -126,6 +168,15 @@ export async function summarizeContent(content, options = {}) {
 
     // Combine summaries
     const summary = stripSummaryPreamble(summaries.join('\n').trim())
+
+    // Reject a summary that's really just a leaked API/HTTP error string
+    // (e.g. "Error: Request failed with status code 502"). Short + error-shaped
+    // → return null so the caller leaves summary empty instead of storing junk.
+    if (summary.length < 200 && looksLikeErrorPage(summary)) {
+      log('🚫 Generated summary looks like an error string — discarding')
+      return null
+    }
+
     log(`✅ Final summary generated (${summary.length} chars)`)
     log(`📝 First line: ${summary.split('\n')[0]}`)
 
@@ -142,7 +193,7 @@ export async function summarizeContent(content, options = {}) {
  * Used as fallback when text content is blocked/empty
  */
 export async function summarizeFromScreenshot(screenshotUrl, options = {}) {
-  const { scrapId, url, title } = options
+  const { scrapId, url, title, returnVerdict = false } = options
 
   if (!screenshotUrl) {
     log('❌ No screenshot URL provided for vision summarization')
@@ -189,15 +240,19 @@ Context:
 - Title: ${title || 'unknown'}
 
 Instructions:
+• FIRST LINE ONLY: output a JSON quality verdict and nothing else on that line:
+  {"category":"content|login_wall|captcha|error_page|cookie_wall|blank|css_broken","is_real_content":true|false,"confidence":0.0-1.0}
+  Use "content" only if the screenshot shows the page's actual content. Use "login_wall" for a signup/login gate (e.g. logged-out Twitter/X/Instagram/Facebook), "captcha" for a human-verification/Cloudflare challenge, "error_page" for 404/403/500, "cookie_wall" for a consent gate blocking the page, "blank" for an empty/near-empty capture, "css_broken" for an unstyled/broken render.
+• THEN a blank line, THEN the bullet summary:
 • Describe what type of content this is (article, product page, video, app, etc.)
 • Extract any visible text, headlines, prices, or key information
 • Note the main topic or purpose of the page
 • Include any visible details that would help remember what this page is about
 • Format as bullet points starting with "• "
 • Be comprehensive - this summary is the only record of this page's content
-• Output ONLY the bullet points. Do NOT include any preamble, intro sentence, or phrase like "Here's a summary" — start directly with the first "• " bullet.
+• After the verdict line + blank line, output ONLY bullet points. No preamble like "Here's a summary" — start bullets directly with "• ".
 
-Analyze the screenshot and provide the bullet-point summary:`,
+Analyze the screenshot. Output the JSON verdict line, a blank line, then the bullet-point summary:`,
               },
               {
                 type: 'image_url',
@@ -221,16 +276,17 @@ Analyze the screenshot and provide the bullet-point summary:`,
     }
 
     const data = await response.json()
-    const summary = data.choices?.[0]?.message?.content
+    const raw = data.choices?.[0]?.message?.content
 
-    if (summary) {
-      const cleaned = stripSummaryPreamble(summary)
-      log(`✅ Vision summary generated (${cleaned.length} chars)`)
-      return cleaned
+    if (raw) {
+      const { verdict, body } = splitVisionVerdict(raw)
+      const cleaned = stripSummaryPreamble(body)
+      log(`✅ Vision summary generated (${cleaned.length} chars${verdict ? `, verdict: ${verdict.category}` : ''})`)
+      return returnVerdict ? { summary: cleaned, verdict } : cleaned
     }
 
     log('❌ No summary in vision API response')
-    return null
+    return returnVerdict ? { summary: null, verdict: null } : null
   } catch (error) {
     console.error('❌ Error in vision summarization:', error)
     return null

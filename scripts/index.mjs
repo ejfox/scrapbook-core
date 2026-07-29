@@ -809,8 +809,14 @@ async function enrichScrapWithAI(scrapData) {
 
       // Extract location from the summary
       logger.info(chalk.blue('\n5️⃣  Extracting location...'))
+      const locationInput = [scrapData.content, scrapData.summary]
+        .filter(Boolean)
+        .join('\n\n')
       const location = await limiter.schedule(() =>
-        extractLocation(scrapData.summary, { scrapId: scrapIdentifier }),
+        extractLocation(locationInput, {
+          url: scrapData.url,
+          scrapId: scrapIdentifier,
+        }),
       )
       if (location) {
         scrapData.location = location.location
@@ -874,11 +880,21 @@ async function enrichScrapWithAI(scrapData) {
             generateScreenshot(scrapData.url, scrapData.scrap_id),
           )
           const duration = ((Date.now() - startTime) / 1000).toFixed(1)
+          // Persist the capture verdict so the quality gate / vision path can
+          // trust it (stop discarding the HTTP status like the old code did).
+          if (screenshot?.capture_status != null) scrapData.capture_status = screenshot.capture_status
           if (screenshot?.url) {
             scrapData.screenshot_url = screenshot.url
             const filename = screenshot.url.split('/').pop()?.substring(0, 20) || 'screenshot'
             console.log(chalk.green(`✅ ${filename} (${duration}s)`))
             trackStep('screenshots', true)
+          } else if (screenshot?.blocked) {
+            // Wall/CAPTCHA/error page — deliberately not stored. Flag it so
+            // vision summarization doesn't hallucinate over a signup box.
+            scrapData.quality_category = screenshot.category
+            scrapData.screenshot_quality = 'reject'
+            console.log(chalk.yellow(`⛔ blocked: ${screenshot.category} (${duration}s)`))
+            trackStep('screenshots', false)
           } else {
             console.log(chalk.yellow(`⚠️ no URL (${duration}s)`))
             trackStep('screenshots', false)
@@ -1092,7 +1108,10 @@ async function claimProcessAndUpsert(scrapId, source, data, processFunction) {
             title: enrichedData.title || '',
             summary: enrichedData.summary || null, // EXPLICITLY include summary
             metadata: enrichedData.metadata || {},
-            tags: enrichedData.tags || [],
+            tags: (enrichedData.tags || []).filter(
+              (t) => typeof t === 'string' && t.trim() && !t.startsWith('!'),
+            ), // final safety net: never persist control/empty tags
+
             relationships: enrichedData.relationships || null,
             relationships_raw: enrichedData.relationships_raw || null,
             processing_meta: enrichedData.processing_meta || null,
@@ -1186,7 +1205,12 @@ async function upsertWithRetry(scrapData, retries = 3) {
 
 // Extract and add relationships to scrap
 async function extractAndAddRelationships(scrapObj, scrapId) {
-  const primaryContent = scrapObj.content || scrapObj.summary
+  // Feed the extractor the richest text available. The ontology pipeline anchors
+  // every edge's evidence in this text, so summary-only starves it — give it the
+  // full content plus the summary so anchoring can actually succeed.
+  const primaryContent = [scrapObj.content, scrapObj.summary]
+    .filter(Boolean)
+    .join('\n\n')
   if (!primaryContent) return scrapObj
 
   try {
@@ -1322,8 +1346,12 @@ async function generateSummaryAndTags(scrapObj, scrapId) {
 
   try {
     if (process.env.OPENROUTER_API_KEY) {
-      // If content is insufficient but we have a screenshot, use vision
-      if (contentIsInsufficient && scrapObj.screenshot_url) {
+      // If content is insufficient but we have a screenshot, use vision.
+      // Skip it when the gate already judged the shot a wall/blocker — vision
+      // over a signup box just hallucinates a description of the signup box.
+      const shotIsBlocker = scrapObj.screenshot_quality === 'reject' ||
+        ['login_wall', 'captcha', 'error_page', 'cookie_wall', 'blank'].includes(scrapObj.quality_category)
+      if (contentIsInsufficient && scrapObj.screenshot_url && !shotIsBlocker) {
         logger.info(chalk.blue('📸 Content insufficient, using vision summarization from screenshot...'))
         try {
           scrapObj.summary = await limiter.schedule(() =>
@@ -1370,7 +1398,9 @@ async function generateSummaryAndTags(scrapObj, scrapId) {
         )
         scrapObj.tags = [
           ...new Set([...(scrapObj.tags || []), ...summaryTags]),
-        ]
+        ].filter(
+          (t) => typeof t === 'string' && t.trim() && !t.startsWith('!'),
+        ) // drop pinboard control tags (!hide/!tobuy/…) and empties
         logger.info(`Generated ${summaryTags.length} tags`)
       } else {
         logger.warn('No summary generated, skipping tag generation')
@@ -2256,7 +2286,11 @@ async function identifyAndFixMissingData(options = {}) {
           if (screenshot?.url) {
             logger.info(chalk.green('✅ Screenshot generated'))
             trackStep('screenshots', true)
-            return { screenshot_url: screenshot.url }
+            return { screenshot_url: screenshot.url, capture_status: screenshot.capture_status }
+          } else if (screenshot?.blocked) {
+            logger.warn(chalk.yellow(`⛔ blocked: ${screenshot.category}`))
+            trackStep('screenshots', false)
+            return { capture_status: screenshot.capture_status, quality_category: screenshot.category, screenshot_quality: 'reject' }
           } else {
             logger.warn(chalk.yellow('⚠️ No screenshot URL returned'))
             trackStep('screenshots', false)

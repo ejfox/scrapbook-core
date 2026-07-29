@@ -5,6 +5,7 @@ import Bottleneck from 'bottleneck'
 import cheerio from 'cheerio'
 import { completion, MODELS, PROMPTS } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
+import { isThinForLocation } from '../lib/contentQuality.mjs'
 
 const DEBUG = process.env.DEBUG === 'true'
 function log(...args) {
@@ -42,6 +43,14 @@ export async function extractLocation(content, options = {}) {
       .replace(/<[^>]*>/g, ' ') // Remove HTML
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim()
+
+    // Not enough real text to ground a location. Bailing here prevents the model
+    // from fabricating a confident city out of a near-empty page (e.g. 74 chars
+    // of nav → "Paris, France"). Better to return no location than a made-up one.
+    if (isThinForLocation(cleanContent)) {
+      log(`❌ Content too thin for location (${cleanContent.length} chars) — abstaining`)
+      return { location: null, latitude: null, longitude: null, metadata: { otherLocations: [] } }
+    }
 
     if (!cleanContent) {
       log('❌ No content after cleaning')
@@ -260,6 +269,12 @@ async function extractLocationsFromString(content) {
         role: 'system',
         content: `You are an expert at identifying REAL GEOGRAPHIC LOCATIONS in formats that geocoding APIs can easily resolve. You ONLY output valid JSON with no explanations.
 
+WHEN TO ABSTAIN (this is the most important rule):
+- Only extract a location if the content is genuinely ABOUT or SET IN a real physical place.
+- Do NOT extract incidental mentions, an author's byline city, a dateline, a company HQ mentioned in passing, or the setting of a FICTIONAL/game/online work.
+- Most content has NO real geographic subject. When nothing is genuinely specified, return an empty "locations" array — that is the correct, expected answer.
+- If you are not sure the place is the actual subject, leave it out.
+
 CRITICAL: Format locations for maximum geocodability:
 - Cities: Include state/country (e.g., "San Francisco, California", "Tokyo, Japan", "Paris, France")
 - Neighborhoods: Include city and state/country (e.g., "Brooklyn, New York", "Shibuya, Tokyo, Japan")
@@ -381,6 +396,12 @@ ${content}`,
         return { primary: null, others: [], analysis_notes: parsed.analysis_notes || 'Invalid response format' }
       }
 
+      // Only accept genuine geographic place types. Rejects the model coercing
+      // non-places (years, "world", fictional settings) into the locations array.
+      const GEO_TYPES = new Set([
+        'city', 'neighborhood', 'landmark', 'address', 'region', 'country',
+      ])
+
       // Validate and filter locations by confidence threshold
       const validLocations = parsed.locations
         .filter((loc) =>
@@ -388,7 +409,8 @@ ${content}`,
           typeof loc === 'object' &&
           typeof loc.name === 'string' &&
           loc.name.trim().length > 0 &&
-          (loc.confidence || 0) >= 0.3, // Minimum confidence threshold
+          GEO_TYPES.has(String(loc.type || '').toLowerCase()) && // must be a real place type
+          (loc.confidence || 0) >= 0.7, // Require high confidence; abstain on incidental/uncertain mentions
         )
         .sort((a, b) => (b.confidence || 0) - (a.confidence || 0)) // Sort by confidence descending
 
