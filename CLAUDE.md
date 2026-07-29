@@ -49,6 +49,32 @@ Other:
 - `graph_imported` - Neo4j sync status
 - `processing_instance_id` / `processing_started_at` - Processing locks
 
+Screenshot quality fields (migrations/add_screenshot_quality.sql):
+- `capture_status` - HTTP status at capture time (int2)
+- `screenshot_quality` - accept | reject | review | recapture_pending. **Unity feed filter: `screenshot_quality = 'accept' OR screenshot_quality IS NULL`**
+- `quality_category` - content|login_wall|captcha|error_page|cookie_wall|blank|css_broken|unknown
+- `quality_score` - 0..1 confidence the shot is good content
+- `quality_signals` - JSONB {aspect,dominantPct,entropy,visionConfidence,domain,recaptures}
+- `quality_checked_at` - last gate timestamp
+- `hide_shot_in_unity` - reject => render text/color card, keep the scrap
+
+## Screenshot quality pipeline
+```bash
+# Gate stored screenshots (accept/reject/review). --dry = no writes, --no-vision = Stage A only
+node scripts/quality_gate.mjs --dry --limit 100
+node scripts/quality_gate.mjs --limit 500
+
+# Corpus backfill: classify all, then auto-recapture retryable rejects
+node scripts/quality_backfill.mjs classify [--dry]
+node scripts/quality_backfill.mjs recapture [--dry]
+
+# Human triage of the 'review' lane (keyboard UI):
+node scripts/api-server.mjs   # then open http://localhost:3001/review
+
+# Import logged-in social cookies (Cookie-Editor JSON export) for un-walling:
+node scripts/import_cookies.mjs <export.json> [domainKey]
+```
+
 ## Status Commands
 ```bash
 # Field completeness (recent 64 scraps with samples)
