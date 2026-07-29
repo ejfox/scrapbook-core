@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 import fetch from 'node-fetch'
+import { getApiEndpoint } from '../lib/config.mjs'
 
 dotenv.config()
 
@@ -129,7 +130,9 @@ Respond with ONLY a JSON object:
 {"newsworthy": true/false, "reason": "one sentence explanation"}`
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    // Route through the OpenRouter proxy the rest of the app uses — the bare
+    // OPENROUTER_API_KEY 401s ("User not found") against openrouter.ai directly.
+    const response = await fetch(`${getApiEndpoint('openrouter')}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

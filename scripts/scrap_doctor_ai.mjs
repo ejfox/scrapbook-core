@@ -10,14 +10,15 @@ import fs from 'fs'
 
 // Import AI services and utilities
 import { summarizeContent, generateMetaSummary } from './aiSummarization.mjs'
-import { extractRelationships } from './aiRelationshipExtraction.mjs'
+import { extractRelationshipsDetailed } from './aiRelationshipExtraction.mjs'
 import { extractLocation } from './aiGeolocation.mjs'
 import { extractFinancialAnalysis } from './aiFinancialAnalysis.mjs'
 import { enrichWithReasoningFields } from './reasoningFields.mjs'
 import { generateScreenshot } from './generateScreenshot.mjs'
 import { completion, MODELS } from './llmService.mjs'
 import { getModelForTask } from '../lib/config.mjs'
-import { fetchPageContent } from '../helpers.js'
+import { looksLikeErrorPage } from '../lib/contentQuality.mjs'
+import { extractContentWithRetry } from './contentExtractor.mjs'
 import { trackCost } from './costTracking.mjs'
 import { autoSyncRecentTags } from './sync_tags_to_pinboard.mjs'
 import { applyNewsworthinessTag } from './aiNewsworthiness.mjs'
@@ -221,6 +222,7 @@ async function repair(options) {
     let query = supabase
       .from('scraps')
       .select('*')
+      .neq('scrap_id', '__run_lock__') // never enrich the internal distributed lock
       .order('created_at', { ascending: false })  // Most recent first
       .limit(parseInt(options.limit))
 
@@ -438,17 +440,31 @@ async function repairScrapWithAI(scrap, options) {
   if (options.type !== 'screenshot' && options.fetchContent && scrap.url && (!content || content.length < 200)) {
     console.log(chalk.dim(`    Fetching content from ${scrap.url.substring(0, 50)}...`))
     try {
-      const fetchedContent = await fetchPageContent(scrap.url)
+      const extracted = await extractContentWithRetry(scrap.url, { timeout: 10000, maxRetries: 1 })
+      const fetchedContent = extracted?.content
       if (fetchedContent && fetchedContent.length > content.length) {
         content = fetchedContent
         updates.content = fetchedContent
-        console.log(chalk.dim(`    ✓ Fetched ${fetchedContent.length} chars of content`))
+        console.log(chalk.dim(`    ✓ Fetched ${fetchedContent.length} chars of content (${extracted.method})`))
+      } else if (!fetchedContent) {
+        // extractContentWithRetry returns null (not throw) when all tiers fail;
+        // preserve the old needsRetry semantics that keyed off the catch block.
+        contentFetchFailed = true
+        console.log(chalk.dim('    ⚠ No content extracted (all tiers failed)'))
       }
     } catch (error) {
       contentFetchFailed = true
       errors.push({ type: 'content_fetch', message: error.message })
       console.log(chalk.dim(`    ⚠ Could not fetch content: ${error.message}`))
     }
+  }
+
+  // Dead / 404 / unreachable page? Don't summarize or enrich it — that just
+  // produces a "Summary of a Page Not Found". Mark it and skip enrichment.
+  const isDeadPage = !!content && looksLikeErrorPage(content)
+  if (isDeadPage) {
+    console.log(chalk.yellow('    ☠️  Dead/error page detected — marking dead_link, skipping enrichment'))
+    updates.content_type = 'dead_link'
   }
 
   // Check if we have insufficient content and should retry
@@ -465,7 +481,7 @@ async function repairScrapWithAI(scrap, options) {
   }
 
   // Generate summary if missing (or if --force is used)
-  if (shouldProcessType('summary') && (options.force || !scrap.summary || scrap.summary.trim() === '')) {
+  if (!isDeadPage && shouldProcessType('summary') && (options.force || !scrap.summary || scrap.summary.trim() === '')) {
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping summary (insufficient content)'))
     } else {
@@ -526,7 +542,7 @@ async function repairScrapWithAI(scrap, options) {
     scrap.tags.some(tag => stopWords.includes(tag) || badCapWords.includes(tag) ||
       (tag[0] && tag[0] === tag[0].toUpperCase() && tag.length > 2 && /^[A-Z]/.test(tag)))
   )
-  if (shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags || options.force)) {
+  if (!isDeadPage && shouldProcessType('tags') && (!scrap.tags || scrap.tags.length === 0 || hasBadTags || options.force)) {
     // Need substantial content to generate good tags - skip if:
     // - No content or too short (< 200 chars)
     // - Content is just placeholder like "[no title]"
@@ -563,7 +579,7 @@ async function repairScrapWithAI(scrap, options) {
   }
 
   // Extract relationships if missing (or if --force is used)
-  if (shouldProcessType('relationships') && (options.force || !scrap.relationships || scrap.relationships.length === 0)) {
+  if (!isDeadPage && shouldProcessType('relationships') && (options.force || !scrap.relationships || scrap.relationships.length === 0)) {
     // Skip if no content
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping relationships (insufficient content)'))
@@ -571,58 +587,56 @@ async function repairScrapWithAI(scrap, options) {
       console.log(chalk.dim('    Extracting relationships...'))
       console.log(chalk.gray(`      Input: ${content.length} chars`))
 
-      // Try 3 different models for relationship extraction
+      // Consolidated onto the same ontology pipeline the ingest path uses.
+      // (The old hardcoded 'deepseek/deepseek-chat-v3.1' is not a valid
+      // OpenRouter slug and 400'd on every scrap.) Lead with the configured
+      // model; fall through to the others only on a thrown error — an EMPTY
+      // result is a valid answer (the strict ontology drops abstraction edges),
+      // so we don't cycle models chasing coerced garbage.
       const models = [
-        'deepseek/deepseek-chat-v3.1',     // First try: DeepSeek (default)
-        'google/gemini-2.5-flash',         // Second try: Gemini
-        'openai/gpt-4o-mini',               // Third try: OpenAI
+        getModelForTask('relationshipAnalysis'), // qwen3-235b (valid, canonical)
+        'google/gemini-2.5-flash',
+        'openai/gpt-4o-mini',
       ]
 
-      let relationships = []
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          const model = models[attempt]
-          console.log(chalk.dim(`      Attempt ${attempt + 1}/3 with ${model}...`))
+      // Anchor evidence needs the real text; give it content + summary.
+      const relInput = [content, scrap.summary].filter(Boolean).join('\n\n')
 
-          relationships = await extractRelationships(content, {
+      let relationships = []
+      for (let attempt = 0; attempt < models.length; attempt++) {
+        const model = models[attempt]
+        try {
+          console.log(chalk.dim(`      Attempt ${attempt + 1}/${models.length} with ${model}...`))
+          const relResult = await extractRelationshipsDetailed(relInput, {
             scrapId,
             url: scrap.url,
             title: scrap.title,
+            source: scrap.source,
+            summary: scrap.summary,
+            isRawText: !scrap.summary,
             model,
           })
-
-          // If we got relationships, break out of retry loop
-          if (relationships && relationships.length > 0) {
-            updates.relationships = relationships
-            console.log(chalk.dim(`    ✓ Extracted ${relationships.length} relationships from ${model}`))
-            break
-          } else {
-            console.log(chalk.yellow(`      ${model} returned empty relationships`))
-            console.log(chalk.gray(`        Response: ${JSON.stringify(relationships)}`))
+          relationships = relResult.relationships || []
+          if (Array.isArray(relResult.raw) && relResult.raw.length > 0) {
+            updates.relationships_raw = relResult.raw
           }
+          updates.relationships = relationships
+          console.log(chalk.dim(`    ✓ ${relationships.length} relationships from ${model}`))
+          break // success (even if empty) — don't cycle models
         } catch (error) {
-          console.error(chalk.yellow(`      Attempt ${attempt + 1} with ${models[attempt]} FAILED`))
-          console.error(chalk.yellow(`        Error: ${error.message}`))
-          console.error(chalk.gray(`        Stack: ${error.stack}`))
-          if (attempt < 2) {
-          // Wait a bit before next attempt
+          console.error(chalk.yellow(`      Attempt ${attempt + 1} with ${model} failed: ${error.message}`))
+          if (attempt < models.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000))
+          } else {
+            console.error(chalk.red(`    ✗ All ${models.length} models failed for ${scrapId}`))
           }
         }
-      }
-
-      if (!relationships || relationships.length === 0) {
-        console.error(chalk.red('    ✗ ALL 3 MODELS FAILED TO EXTRACT RELATIONSHIPS'))
-        console.error(chalk.red(`      Scrap ID: ${scrapId}`))
-        console.error(chalk.red(`      URL: ${scrap.url}`))
-        console.error(chalk.red(`      Content length: ${content.length}`))
-        console.error(chalk.red(`      Models tried: ${models.join(', ')}`))
       }
     } // Close else block for content check
   }
 
   // Extract locations if missing (or if --force is used)
-  if (shouldProcessType('location') && (options.force || !scrap.location)) {
+  if (!isDeadPage && shouldProcessType('location') && (options.force || !scrap.location)) {
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping location (insufficient content)'))
     } else {
@@ -655,7 +669,7 @@ async function repairScrapWithAI(scrap, options) {
   }
 
   // Extract financial analysis if missing
-  if (shouldProcessType('financial') && (!scrap.financial_analysis || typeof scrap.financial_analysis === 'undefined')) {
+  if (!isDeadPage && shouldProcessType('financial') && (!scrap.financial_analysis || typeof scrap.financial_analysis === 'undefined')) {
     if (!content || content.length < 50) {
       console.log(chalk.dim('    ⏭️  Skipping financial analysis (insufficient content)'))
     } else {
@@ -776,7 +790,8 @@ async function repairScrapWithAI(scrap, options) {
   const currentTagsForNews = updates.tags || scrap.tags || []
   const potentialNewsTypes = ['news', 'article', 'report', null, undefined]
 
-  if (currentSummaryForNews && !currentTagsForNews.includes('!news') &&
+  if (process.env.ENABLE_NEWSWORTHINESS === 'true' &&
+      currentSummaryForNews && !currentTagsForNews.includes('!news') &&
       potentialNewsTypes.includes(scrap.content_type || updates.content_type)) {
     console.log(chalk.dim('    Evaluating newsworthiness...'))
     try {
@@ -812,10 +827,8 @@ async function repairScrapWithAI(scrap, options) {
       try {
         const metaSummary = generateMetaSummary(tempScrap)
         if (metaSummary && metaSummary !== 'No summary available') {
-          // TEMP: Commented out until meta_summary column is added to Supabase
-          // Run: migrations/add_meta_summary.sql in Supabase SQL Editor
-          // updates.meta_summary = metaSummary
-          console.log(chalk.dim(`    ✓ META-summary: ${metaSummary.substring(0, 60)}... (not saved - column missing)`))
+          updates.meta_summary = metaSummary
+          console.log(chalk.dim(`    ✓ META-summary: ${metaSummary.substring(0, 60)}...`))
         }
       } catch (error) {
         console.error(chalk.red('    ✗ META-SUMMARY GENERATION FAILED'))
@@ -932,24 +945,21 @@ ${userTags.join(', ')}
 
 CRITICAL RULES:
 1. ONLY use tags from the vocabulary list above
-2. If a perfect match doesn't exist, choose the CLOSEST related tag from the list
-3. NEVER invent new tags - only use what's in the vocabulary
-4. Choose 5-10 tags maximum
-5. IGNORE: Footer text, legal disclaimers, navigation, ads, terms of service
-6. FOCUS ON: Main subject matter, product type, article topic, core concepts
-7. REPLACE OUTDATED temporal tags: If existing tags contain outdated years (like "election2020" for a ${currentYear} story), replace with current year or generic version from vocabulary
-
-MATCHING STRATEGY:
-- For "neural networks" → use "machinelearning" or "ai" from vocabulary
-- For "evolutionary computing" → use "machinelearning" or "ai" from vocabulary
-- For specific products → use category from vocabulary (electronics, hardware, tool)
-- For article topics → use domain from vocabulary (journalism, education, coding)
+2. Choose ONLY tags that are genuinely CENTRAL to this content. Fewer precise tags beat more loosely-related ones.
+3. If no vocabulary tag genuinely fits, return FEWER tags — omit rather than force a loose or "closest" match. Returning 1 accurate tag is better than 5 tangential ones.
+4. Choose 1-3 tags. Never pad to hit a count.
+5. NEVER invent new tags - only use what's in the vocabulary
+6. NEVER output control tags that start with "!" (e.g. !hide, !tobuy) — those are private and off-limits
+7. IGNORE: Footer text, legal disclaimers, navigation, ads, terms of service
+8. FOCUS ON: Main subject matter, product type, article topic, core concepts
+9. REPLACE OUTDATED temporal tags: If existing tags contain outdated years (like "election2020" for a ${currentYear} story), replace with current year or generic version from vocabulary
 
 EXAMPLES:
-Content about neural networks → machinelearning, ai, python, tutorial
-Content about a laptop → hardware, electronics, product, !tobuy
-Content about woodworking → woodworking, design, howto, tutorial
-${currentYear} election article with "election2020" tag → elections, politics, legal (replace outdated year)
+Content about neural networks → machinelearning, ai
+Content about a laptop review → hardware, electronics
+Content about woodworking → woodworking, howto
+A graphics-engineer job posting → programming, opensource   (NOT "3d"/"3dmodel" unless the content is genuinely about 3D modeling)
+${currentYear} election article with "election2020" tag → elections, politics (replace outdated year)
 
 Return ONLY comma-separated tags from the vocabulary list. No explanations. No new tags.`
 
@@ -958,7 +968,7 @@ Return ONLY comma-separated tags from the vocabulary list. No explanations. No n
       model,
       prompt,
       max_tokens: 150,
-      temperature: 0.5,
+      temperature: 0.2,
       taskType: 'tagging',
       scrapId: scrap.scrap_id,
     })
@@ -975,16 +985,24 @@ Return ONLY comma-separated tags from the vocabulary list. No explanations. No n
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0 && tag.length < 30)  // Max length for single word tags
 
-      // Basic sanity filtering - trust the AI's judgment, just catch obvious errors
+      // Hard vocabulary gate: the model may ONLY return tags that actually exist
+      // in the user's vocabulary. This stops hallucinated tags (e.g. "cms",
+      // "3dmodel") from surviving even if the prompt is ignored.
+      const vocabSet = new Set(userTags.map((t) => String(t).toLowerCase()))
+
       // Known 2-char vocabulary tags
       const twoCharTags = ['ai', 'ar', 'vr', 'ui', 'ux', 'js', 'ny', 'r', 'd3']
 
       const filteredTags = rawTags.filter(tag => {
+        // Never allow private control tags (!hide/!tobuy/…)
+        if (tag.startsWith('!')) return false
+        // Must be a real vocabulary tag
+        if (!vocabSet.has(tag)) return false
         // Remove structural mistakes
         if (tag.includes(' ')) return false  // Multi-word tags
-        // Allow 2-char tags only if they're known vocabulary or start with !
+        // Allow 2-char tags only if they're known vocabulary
         if (tag.length <= 2) {
-          if (tag.startsWith('!') || twoCharTags.includes(tag)) {
+          if (twoCharTags.includes(tag)) {
             return true
           }
           return false

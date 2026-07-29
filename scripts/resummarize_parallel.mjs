@@ -8,7 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'; dotenv.config()
 import { summarizeContent, summarizeFromScreenshot } from './aiSummarization.mjs'
-import { fetchPageContent } from '../helpers.js'
+import { extractContentWithRetry } from './contentExtractor.mjs'
 
 const WORKERS = parseInt(process.argv[2] || '5', 10)
 // By default skip the slow puppeteer fetch for no-screenshot rows — a single
@@ -57,7 +57,8 @@ async function processOne(s) {
     // 3. Last resort: re-fetch the live page (slow, many are dead). Off by
     //    default so it can't block the fast vision lanes.
     try {
-      const fetched = await fetchPageContent(s.url)
+      const extracted = await extractContentWithRetry(s.url, { timeout: 10000, maxRetries: 1 })
+      const fetched = extracted?.content
       if (fetched && fetched.length >= 50) {
         summary = await summarizeContent(fetched, {
           scrapId: s.scrap_id, scrap: s, tags: s.tags, taskType: 'summarization',
